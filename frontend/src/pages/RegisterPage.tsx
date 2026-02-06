@@ -32,7 +32,7 @@ const RegisterPage: React.FC = () => {
 
     setIsRegistering(true);
     try {
-      await register(email, password, confirmPassword, name || undefined);
+      await register(email, password, name || undefined);
       toast.success('Registration successful!');
       navigate('/feed');
     } catch (error: any) {

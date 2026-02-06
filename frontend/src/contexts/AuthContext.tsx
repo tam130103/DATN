@@ -8,6 +8,8 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   loginWithGoogle: (idToken: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -44,6 +46,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(response.user);
   };
 
+  const login = async (email: string, password: string) => {
+    const response = await authService.login({ email, password });
+    localStorage.setItem('token', response.accessToken);
+    localStorage.setItem('refreshToken', response.refreshToken);
+    setToken(response.accessToken);
+    setUser(response.user);
+  };
+
+  const register = async (email: string, password: string, name?: string) => {
+    const response = await authService.register({ email, password, name });
+    localStorage.setItem('token', response.accessToken);
+    localStorage.setItem('refreshToken', response.refreshToken);
+    setToken(response.accessToken);
+    setUser(response.user);
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
@@ -57,6 +75,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isLoading,
     isAuthenticated: !!user,
     loginWithGoogle,
+    login,
+    register,
     logout,
   };
 

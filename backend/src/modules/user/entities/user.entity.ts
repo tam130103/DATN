@@ -1,5 +1,10 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, OneToMany, Index } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany, Index } from 'typeorm';
 import { Follow } from './follow.entity';
+
+export enum UserProvider {
+  LOCAL = 'local',
+  GOOGLE = 'google',
+}
 
 @Entity('users')
 @Index(['username'])
@@ -25,6 +30,16 @@ export class User {
   @Column({ nullable: true })
   googleId: string;
 
+  @Column({ nullable: true })
+  password: string;
+
+  @Column({
+    type: 'enum',
+    enum: UserProvider,
+    default: UserProvider.LOCAL,
+  })
+  provider: UserProvider;
+
   @Column({ default: 0 })
   followersCount: number;
 
@@ -37,10 +52,19 @@ export class User {
   @CreateDateColumn()
   createdAt: Date;
 
+  @UpdateDateColumn()
+  updatedAt: Date;
+
   // Relations
   @OneToMany(() => Follow, (follow) => follow.followerId)
   followers: Follow[];
 
   @OneToMany(() => Follow, (follow) => follow.followingId)
   following: Follow[];
+
+  // Exclude password from JSON responses
+  toJSON() {
+    const { password, ...rest } = this;
+    return rest;
+  }
 }

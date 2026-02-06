@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { User } from './entities/user.entity';
+import { User, UserProvider } from './entities/user.entity';
 import { Follow } from './entities/follow.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
@@ -53,6 +53,7 @@ export class UserService {
         email,
         name,
         avatarUrl: avatarUrl || null,
+        provider: UserProvider.GOOGLE,
       });
     }
     return user;

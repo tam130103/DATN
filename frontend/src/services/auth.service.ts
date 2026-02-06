@@ -7,6 +7,17 @@ interface LoginResponse {
   refreshToken: string;
 }
 
+interface RegisterData {
+  email: string;
+  password: string;
+  name?: string;
+}
+
+interface LoginData {
+  email: string;
+  password: string;
+}
+
 export const authService = {
   getCurrentUser: async (): Promise<User> => {
     const response = await apiClient.get<User>('/auth/me');
@@ -15,6 +26,16 @@ export const authService = {
 
   googleLogin: async (idToken: string): Promise<LoginResponse> => {
     const response = await apiClient.post<LoginResponse>('/auth/google', { idToken });
+    return response.data;
+  },
+
+  register: async (data: RegisterData): Promise<LoginResponse> => {
+    const response = await apiClient.post<LoginResponse>('/auth/register', data);
+    return response.data;
+  },
+
+  login: async (data: LoginData): Promise<LoginResponse> => {
+    const response = await apiClient.post<LoginResponse>('/auth/login', data);
     return response.data;
   },
 
