@@ -1,3 +1,9 @@
+# ============= CLAUDE CODE =============
+.claude/
+CLAUDE.md
+plans/
+.claude*
+
 # ============= DEPENDENCIES =============
 node_modules/
 npm-debug.log*
