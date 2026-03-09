@@ -38,6 +38,6 @@ export class Media {
 
   // Relations
   @ManyToOne(() => Post, (post) => post.media, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'post_id' })
+  @JoinColumn({ name: 'postId' })
   post: Post;
 }

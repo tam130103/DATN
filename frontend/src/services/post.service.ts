@@ -3,7 +3,7 @@ import { Post, FeedResponse } from '../types';
 
 export interface CreatePostInput {
   caption: string;
-  media: { url: string; type: 'IMAGE' | 'VIDEO' }[];
+  media?: { url: string; type: 'IMAGE' | 'VIDEO' }[];
 }
 
 export const postService = {

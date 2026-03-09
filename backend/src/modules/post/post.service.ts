@@ -38,21 +38,23 @@ export class PostService {
   async create(userId: string, createPostDto: CreatePostDto): Promise<Post> {
     const { caption, media: mediaDto } = createPostDto;
 
-    return this.dataSource.transaction(async (manager) => {
+    const savedPost = await this.dataSource.transaction(async (manager) => {
       // Create post
       const post = manager.create(Post, { userId, caption });
       const savedPost = await manager.save(post);
 
-      // Create media with orderIndex
-      const mediaEntities = mediaDto.map((m, index) =>
-        manager.create(Media, {
-          postId: savedPost.id,
-          url: m.url,
-          type: m.type,
-          orderIndex: index,
-        }),
-      );
-      await manager.save(mediaEntities);
+      // Create media with orderIndex (if provided)
+      if (mediaDto && mediaDto.length > 0) {
+        const mediaEntities = mediaDto.map((m, index) =>
+          manager.create(Media, {
+            postId: savedPost.id,
+            url: m.url,
+            type: m.type,
+            orderIndex: index,
+          }),
+        );
+        await manager.save(mediaEntities);
+      }
 
       // Extract and create hashtags
       const hashtagNames = this.extractHashtags(caption);
@@ -74,60 +76,76 @@ export class PostService {
         await manager.save(postHashtag);
       }
 
-      return this.findById(savedPost.id);
+      return savedPost;
     });
+
+    // Load media separately after transaction
+    const media = await this.mediaRepository.find({
+      where: { postId: savedPost.id },
+      order: { orderIndex: 'ASC' },
+    });
+
+    return { ...savedPost, media } as Post;
   }
 
   async getFeed(userId: string, cursor?: string, limit = 20): Promise<{ posts: Post[]; nextCursor: string | null }> {
-    const followingIds = await this.followRepository
-      .createQueryBuilder('follow')
-      .select('follow.followingId')
-      .where('follow.followerId = :userId', { userId })
-      .getMany();
+    // Get following IDs using plain find
+    const following = await this.followRepository.find({
+      where: { followerId: userId },
+      select: ['followingId']
+    });
 
-    const userIds = [userId, ...followingIds.map((f) => f.followingId)];
+    const userIds = [userId, ...following.map((f) => f.followingId)];
 
-    const query = this.postRepository
+    // Get posts without relations first
+    let query = this.postRepository
       .createQueryBuilder('post')
-      .leftJoinAndSelect('post.user', 'user')
-      .leftJoinAndSelect('post.media', 'media')
-      .leftJoinAndSelect('post.postHashtags', 'postHashtags')
-      .leftJoinAndSelect('postHashtags.hashtag', 'hashtag')
       .where('post.userId IN (:...userIds)', { userIds })
       .orderBy('post.createdAt', 'DESC')
-      .take(limit + 1);
+      .limit(limit + 1);
 
     if (cursor) {
-      query.andWhere('post.createdAt < :cursor', { cursor: new Date(cursor) });
+      query = query.andWhere('post.createdAt < :cursor', { cursor: new Date(cursor) });
     }
 
     const posts = await query.getMany();
 
+    // Load media for each post separately
+    const postsWithMedia = await Promise.all(
+      posts.map(async (post) => {
+        const media = await this.mediaRepository.find({
+          where: { postId: post.id },
+          order: { orderIndex: 'ASC' }
+        });
+        return { ...post, media } as Post;
+      })
+    );
+
     let nextCursor: string | null = null;
-    if (posts.length > limit) {
-      posts.pop();
-      nextCursor = posts[posts.length - 1].createdAt.toISOString();
+    if (postsWithMedia.length > limit) {
+      postsWithMedia.pop();
+      nextCursor = postsWithMedia[postsWithMedia.length - 1].createdAt.toISOString();
     }
 
-    return { posts, nextCursor };
+    return { posts: postsWithMedia, nextCursor };
   }
 
   async findById(id: string): Promise<Post> {
-    const post = await this.postRepository
-      .createQueryBuilder('post')
-      .leftJoinAndSelect('post.user', 'user')
-      .leftJoinAndSelect('post.media', 'media')
-      .leftJoinAndSelect('post.postHashtags', 'postHashtags')
-      .leftJoinAndSelect('postHashtags.hashtag', 'hashtag')
-      .where('post.id = :id', { id })
-      .orderBy('media.orderIndex', 'ASC')
-      .getOne();
+    const post = await this.postRepository.findOne({
+      where: { id },
+    });
 
     if (!post) {
       throw new NotFoundException('Post not found');
     }
 
-    return post;
+    // Load media separately to avoid type casting issues
+    const media = await this.mediaRepository.find({
+      where: { postId: id },
+      order: { orderIndex: 'ASC' },
+    });
+
+    return { ...post, media } as Post;
   }
 
   async delete(id: string, userId: string): Promise<void> {

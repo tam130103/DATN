@@ -49,20 +49,23 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (mediaFiles.length === 0) {
-      toast.error('At least 1 media is required');
+    if (!caption.trim()) {
+      toast.error('Please write something');
       return;
     }
 
     setIsLoading(true);
     try {
-      // Upload all media
-      const uploadedMedia = await Promise.all(
-        mediaFiles.map(async (m) => ({
-          url: await uploadMedia(m.file),
-          type: m.type,
-        })),
-      );
+      // Upload all media if present
+      let uploadedMedia;
+      if (mediaFiles.length > 0) {
+        uploadedMedia = await Promise.all(
+          mediaFiles.map(async (m) => ({
+            url: await uploadMedia(m.file),
+            type: m.type,
+          })),
+        );
+      }
 
       await postService.createPost({
         caption,
@@ -84,33 +87,41 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-4 mb-4">
+    <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5 mb-6 transition-all duration-200 hover:shadow-lg">
       <form onSubmit={handleSubmit}>
         <textarea
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
-          placeholder="Write a caption... #hashtags"
-          className="w-full p-3 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="What's on your mind? Share your thoughts... #hashtags"
+          className="w-full p-4 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
           rows={3}
         />
 
         {mediaFiles.length > 0 && (
-          <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="mt-4 grid grid-cols-3 gap-3">
             {mediaFiles.map((m, index) => (
-              <div key={index} className="relative aspect-square">
+              <div key={index} className="relative aspect-square group">
                 {m.type === 'IMAGE' ? (
-                  <img src={m.preview} alt="" className="w-full h-full object-cover rounded" />
+                  <img
+                    src={m.preview}
+                    alt={`Upload ${index + 1}`}
+                    className="w-full h-full object-cover rounded-lg"
+                  />
                 ) : (
-                  <video src={m.preview} className="w-full h-full object-cover rounded" />
+                  <video
+                    src={m.preview}
+                    className="w-full h-full object-cover rounded-lg"
+                  />
                 )}
                 <button
                   type="button"
                   onClick={() => removeMedia(index)}
-                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
+                  aria-label={`Remove media ${index + 1}`}
+                  className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm transition-colors duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   ×
                 </button>
-                <span className="absolute bottom-1 left-1 bg-black bg-opacity-50 text-white text-xs px-2 rounded">
+                <span className="absolute bottom-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded-md">
                   {index + 1}
                 </span>
               </div>
@@ -118,7 +129,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
           </div>
         )}
 
-        <div className="mt-3 flex items-center justify-between">
+        <div className="mt-4 flex items-center justify-between gap-3">
           <input
             ref={fileInputRef}
             type="file"
@@ -131,17 +142,30 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={mediaFiles.length >= 10 || isLoading}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-300"
           >
-            📷 Add Media ({mediaFiles.length}/10)
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828-2.828L16 16m-2-2l1.586-1.586a2 2 0 012.828-2.828l-6-6a2 2 0 00-2.828 0l-6 6a2 2 0 002.828 2.828l1.414 1.414a2 2 0 001.414 0z" />
+            </svg>
+            <span className="text-sm font-medium">Add Media ({mediaFiles.length}/10)</span>
           </button>
 
           <button
             type="submit"
-            disabled={isLoading || mediaFiles.length === 0}
-            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isLoading || !caption.trim()}
+            className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
-            {isLoading ? 'Posting...' : 'Post'}
+            {isLoading ? (
+              <span className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Posting...
+              </span>
+            ) : (
+              'Post'
+            )}
           </button>
         </div>
       </form>

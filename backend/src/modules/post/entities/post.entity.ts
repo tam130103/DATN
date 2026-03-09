@@ -30,7 +30,7 @@ export class Post {
 
   // Relations
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'user_id' })
+  @JoinColumn({ name: 'userId' })
   user: User;
 
   @OneToMany(() => Media, (media) => media.post, { cascade: true })
