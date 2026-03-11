@@ -22,7 +22,6 @@ export class ChatService {
     userId: string,
     otherUserId: string,
   ): Promise<Conversation> {
-    // Find existing 1-1 conversation
     const existing = await this.conversationRepository
       .createQueryBuilder('conversation')
       .leftJoinAndSelect('conversation.members', 'member')
@@ -41,7 +40,6 @@ export class ChatService {
 
     if (existing) return existing;
 
-    // Create new conversation
     return this.dataSource.transaction(async (manager) => {
       const conversation = manager.create(Conversation, {
         isGroup: false,
@@ -63,13 +61,14 @@ export class ChatService {
     dto: CreateConversationDto,
   ): Promise<Conversation> {
     return this.dataSource.transaction(async (manager) => {
+      const participantIds = Array.from(new Set([userId, ...dto.participantIds]));
       const conversation = manager.create(Conversation, {
         isGroup: true,
         name: dto.name,
       });
       const savedConv = await manager.save(conversation);
 
-      const members = dto.participantIds.map((participantId) =>
+      const members = participantIds.map((participantId) =>
         manager.create(ConversationMember, {
           conversationId: savedConv.id,
           userId: participantId,
@@ -95,7 +94,6 @@ export class ChatService {
       .orderBy('conversation.updatedAt', 'DESC')
       .getMany();
 
-    // Get last message for each conversation
     const result = await Promise.all(
       conversations.map(async (conv) => {
         const lastMessage = await this.messageRepository.findOne({
@@ -149,7 +147,6 @@ export class ChatService {
     content: string,
     mediaUrl?: string,
   ): Promise<Message> {
-    // Verify user is member
     const isMember = await this.isMember(conversationId, senderId);
     if (!isMember) {
       throw new ForbiddenException('You are not a member of this conversation');
@@ -164,14 +161,16 @@ export class ChatService {
       });
       const saved = await manager.save(message);
 
-      // Update conversation's updatedAt
       await manager.update(
         Conversation,
         { id: conversationId },
         { updatedAt: new Date() },
       );
 
-      return this.findById(saved.id).then(() => saved);
+      return this.messageRepository.findOneOrFail({
+        where: { id: saved.id },
+        relations: ['sender'],
+      });
     });
   }
 
@@ -196,13 +195,14 @@ export class ChatService {
   }
 
   async markAsRead(conversationId: string, userId: string): Promise<void> {
-    await this.messageRepository.update(
-      {
-        conversationId,
-        senderId: userId,
-      },
-      { isRead: true },
-    );
+    await this.messageRepository
+      .createQueryBuilder()
+      .update(Message)
+      .set({ isRead: true })
+      .where('conversationId = :conversationId', { conversationId })
+      .andWhere('senderId != :userId', { userId })
+      .andWhere('isRead = false')
+      .execute();
   }
 
   async getUnreadCount(userId: string): Promise<number> {

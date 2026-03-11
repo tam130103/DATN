@@ -7,6 +7,7 @@ export interface User {
   avatarUrl: string | null;
   followersCount: number;
   followingCount: number;
+  notificationEnabled: boolean;
   isFollowing?: boolean;
   createdAt: string;
 }

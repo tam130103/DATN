@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { apiClient } from './api';
 import { Notification } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -16,14 +17,6 @@ class NotificationService {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
-    });
-
-    this.socket.on('connect', () => {
-      console.log('Connected to notifications');
-    });
-
-    this.socket.on('disconnect', () => {
-      console.log('Disconnected from notifications');
     });
 
     this.socket.on('notification', (notification: Notification) => {
@@ -44,7 +37,7 @@ class NotificationService {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
-    this.listeners.get(event)!.add(callback);
+    this.listeners.get(event)?.add(callback);
 
     return () => {
       this.listeners.get(event)?.delete(callback);
@@ -64,7 +57,6 @@ class NotificationService {
   }
 
   async getNotifications(page = 1, limit = 20): Promise<Notification[]> {
-    const { apiClient } = await import('./api');
     const response = await apiClient.get<Notification[]>('/notifications', {
       params: { page, limit },
     });
@@ -72,17 +64,14 @@ class NotificationService {
   }
 
   async markAsReadHttp(notificationId: string): Promise<void> {
-    const { apiClient } = await import('./api');
     await apiClient.post(`/notifications/${notificationId}/read`);
   }
 
   async markAllAsReadHttp(): Promise<void> {
-    const { apiClient } = await import('./api');
     await apiClient.post('/notifications/read-all');
   }
 
   async getUnreadCount(): Promise<number> {
-    const { apiClient } = await import('./api');
     const response = await apiClient.get<number>('/notifications/unread-count');
     return response.data;
   }

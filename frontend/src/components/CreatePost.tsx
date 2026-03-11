@@ -1,174 +1,172 @@
-import React, { useState, useRef } from 'react';
-import { postService } from '../services/post.service';
+import React, { useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
+import { postService } from '../services/post.service';
+import { Avatar } from './common/Avatar';
 
 interface CreatePostProps {
   onPostCreated?: () => void;
 }
 
+type MediaDraft = {
+  file: File;
+  preview: string;
+  type: 'IMAGE' | 'VIDEO';
+};
+
 export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
+  const { user } = useAuth();
   const [caption, setCaption] = useState('');
-  const [mediaFiles, setMediaFiles] = useState<Array<{ file: File; preview: string; type: 'IMAGE' | 'VIDEO' }>>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [mediaFiles, setMediaFiles] = useState<MediaDraft[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const helperText = useMemo(() => {
+    if (mediaFiles.length === 0) {
+      return 'Add up to 10 images or videos. Files are uploaded to the backend before publishing.';
+    }
+    return `${mediaFiles.length} media item${mediaFiles.length > 1 ? 's' : ''} ready to publish.`;
+  }, [mediaFiles.length]);
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
     if (mediaFiles.length + files.length > 10) {
-      toast.error('Maximum 10 media allowed');
+      toast.error('Maximum 10 media files per post.');
       return;
     }
 
-    const newMedia = files.map((file) => ({
+    const newMedia: MediaDraft[] = files.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
-      type: file.type.startsWith('video') ? 'VIDEO' : 'IMAGE' as const,
+      type: file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE',
     }));
 
     setMediaFiles((prev) => [...prev, ...newMedia]);
+    event.target.value = '';
   };
 
   const removeMedia = (index: number) => {
     setMediaFiles((prev) => {
-      const newMedia = [...prev];
-      URL.revokeObjectURL(newMedia[index].preview);
-      newMedia.splice(index, 1);
-      return newMedia;
+      const next = [...prev];
+      URL.revokeObjectURL(next[index].preview);
+      next.splice(index, 1);
+      return next;
     });
   };
 
-  // Simulate upload (replace with actual Cloudinary/S3 upload)
-  const uploadMedia = async (file: File): Promise<string> => {
-    // TODO: Replace with actual Cloudinary/S3 upload
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(URL.createObjectURL(file));
-      }, 500);
-    });
+  const resetForm = () => {
+    setCaption('');
+    mediaFiles.forEach((item) => URL.revokeObjectURL(item.preview));
+    setMediaFiles([]);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!caption.trim()) {
-      toast.error('Please write something');
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const trimmedCaption = caption.trim();
+    if (!trimmedCaption && mediaFiles.length === 0) {
+      toast.error('Write something or attach media before publishing.');
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
-      // Upload all media if present
-      let uploadedMedia;
-      if (mediaFiles.length > 0) {
-        uploadedMedia = await Promise.all(
-          mediaFiles.map(async (m) => ({
-            url: await uploadMedia(m.file),
-            type: m.type,
-          })),
-        );
-      }
+      const uploadedMedia = mediaFiles.length > 0
+        ? await postService.uploadMedia(mediaFiles.map((item) => item.file))
+        : undefined;
 
       await postService.createPost({
-        caption,
-        media: uploadedMedia,
+        caption: trimmedCaption,
+        media: uploadedMedia?.map((item) => ({ url: item.url, type: item.type })),
       });
 
-      // Reset form
-      setCaption('');
-      mediaFiles.forEach((m) => URL.revokeObjectURL(m.preview));
-      setMediaFiles([]);
-
-      toast.success('Post created!');
+      resetForm();
+      toast.success('Post published successfully.');
       onPostCreated?.();
-    } catch {
-      toast.error('Failed to create post');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to publish post.');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-5 mb-6 transition-all duration-200 hover:shadow-lg">
-      <form onSubmit={handleSubmit}>
+    <section className="rounded-[32px] border border-white/70 bg-white/85 p-5 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.28)] backdrop-blur lg:p-6">
+      <div className="flex items-center gap-3">
+        <Avatar src={user?.avatarUrl} name={user?.name} username={user?.username} size="lg" />
+        <div>
+          <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Composer</p>
+          <h2 className="mt-1 text-xl font-semibold text-slate-900">Share a new update</h2>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="mt-5 space-y-5">
         <textarea
           value={caption}
-          onChange={(e) => setCaption(e.target.value)}
-          placeholder="What's on your mind? Share your thoughts... #hashtags"
-          className="w-full p-4 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-          rows={3}
+          onChange={(event) => setCaption(event.target.value)}
+          placeholder="What happened today? Add context, a takeaway, or a hashtag trail for discovery."
+          rows={4}
+          className="w-full rounded-[28px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm leading-7 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-900/5"
         />
 
-        {mediaFiles.length > 0 && (
-          <div className="mt-4 grid grid-cols-3 gap-3">
-            {mediaFiles.map((m, index) => (
-              <div key={index} className="relative aspect-square group">
-                {m.type === 'IMAGE' ? (
-                  <img
-                    src={m.preview}
-                    alt={`Upload ${index + 1}`}
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                ) : (
-                  <video
-                    src={m.preview}
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                )}
-                <button
-                  type="button"
-                  onClick={() => removeMedia(index)}
-                  aria-label={`Remove media ${index + 1}`}
-                  className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm transition-colors duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  ×
-                </button>
-                <span className="absolute bottom-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded-md">
-                  {index + 1}
-                </span>
-              </div>
-            ))}
+        <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50/80 p-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-900">Media attachments</p>
+              <p className="mt-1 text-sm text-slate-500">{helperText}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isSubmitting || mediaFiles.length >= 10}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Attach media
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSubmitting ? 'Publishing...' : 'Publish post'}
+              </button>
+            </div>
           </div>
-        )}
 
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,video/*"
-            multiple
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={mediaFiles.length >= 10 || isLoading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-gray-300"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828-2.828L16 16m-2-2l1.586-1.586a2 2 0 012.828-2.828l-6-6a2 2 0 00-2.828 0l-6 6a2 2 0 002.828 2.828l1.414 1.414a2 2 0 001.414 0z" />
-            </svg>
-            <span className="text-sm font-medium">Add Media ({mediaFiles.length}/10)</span>
-          </button>
-
-          <button
-            type="submit"
-            disabled={isLoading || !caption.trim()}
-            className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            {isLoading ? (
-              <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Posting...
-              </span>
-            ) : (
-              'Post'
-            )}
-          </button>
+          {mediaFiles.length > 0 ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {mediaFiles.map((media, index) => (
+                <div key={`${media.file.name}-${index}`} className="relative overflow-hidden rounded-[24px] bg-slate-900">
+                  {media.type === 'IMAGE' ? (
+                    <img src={media.preview} alt={media.file.name} className="h-52 w-full object-cover opacity-95" />
+                  ) : (
+                    <video src={media.preview} className="h-52 w-full object-cover opacity-95" />
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/70 to-transparent px-4 py-3 text-sm text-white">
+                    <span className="truncate pr-3">{media.file.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeMedia(index)}
+                      className="rounded-xl bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] transition hover:bg-white/25"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       </form>
-    </div>
+    </section>
   );
 };

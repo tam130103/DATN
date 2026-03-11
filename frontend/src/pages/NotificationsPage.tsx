@@ -1,23 +1,30 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
+import { AppShell } from '../components/layout/AppShell';
+import { Avatar } from '../components/common/Avatar';
+import { StatePanel } from '../components/common/StatePanel';
 import { useAuth } from '../contexts/AuthContext';
 import { notificationService } from '../services/notification.service';
 import { userService } from '../services/user.service';
 import { Notification } from '../types';
-import toast from 'react-hot-toast';
 
 const NotificationsPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [showSettings, setShowSettings] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const unreadCount = useMemo(() => notifications.filter((item) => !item.isRead).length, [notifications]);
 
   useEffect(() => {
     const loadNotifications = async () => {
       if (!user) return;
+      setIsLoading(true);
       try {
         const data = await notificationService.getNotifications();
         setNotifications(data);
       } catch {
-        toast.error('Failed to load notifications');
+        toast.error('Failed to load notifications.');
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -26,128 +33,129 @@ const NotificationsPage: React.FC = () => {
 
   const handleMarkAllAsRead = async () => {
     try {
-      await notificationService.markAllAsRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      toast.success('All notifications marked as read');
+      await notificationService.markAllAsReadHttp();
+      setNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })));
+      toast.success('All notifications marked as read.');
     } catch {
-      toast.error('Failed to mark as read');
+      toast.error('Failed to mark notifications.');
     }
   };
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      await notificationService.markAsRead(notificationId);
+      await notificationService.markAsReadHttp(notificationId);
       setNotifications((prev) =>
-        prev.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n)),
+        prev.map((item) => (item.id === notificationId ? { ...item, isRead: true } : item)),
       );
     } catch {
-      toast.error('Failed to mark as read');
+      toast.error('Failed to update notification.');
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Notifications</h1>
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className="text-blue-500 hover:underline text-sm"
-          >
-            {showSettings ? 'Done' : 'Settings'}
-          </button>
-        </div>
-      </header>
+  const toggleNotifications = async () => {
+    const nextValue = !(user?.notificationEnabled ?? true);
+    try {
+      await userService.updateNotificationSettings(nextValue);
+      updateUser((previous) => (previous ? { ...previous, notificationEnabled: nextValue } : previous));
+      toast.success(nextValue ? 'Notifications enabled.' : 'Notifications disabled.');
+    } catch {
+      toast.error('Failed to update notification settings.');
+    }
+  };
 
-      <main className="max-w-4xl mx-auto px-4 py-6">
-        {showSettings ? (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Notification Settings</h2>
-            <div className="flex items-center justify-between py-3 border-b">
-              <div>
-                <p className="font-medium">Allow Notifications</p>
-                <p className="text-sm text-gray-500">Receive notifications when someone interacts with you</p>
-              </div>
-              <button
-                onClick={async () => {
-                  const newValue = !user?.notificationEnabled ?? true;
-                  await userService.updateNotificationSettings(newValue);
-                  toast.success(newValue ? 'Notifications enabled' : 'Notifications disabled');
-                }}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  user?.notificationEnabled !== false
-                    ? 'bg-blue-500 text-white hover:bg-blue-600'
-                    : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
-                }`}
-              >
-                {user?.notificationEnabled !== false ? 'Enabled' : 'Disabled'}
-              </button>
-            </div>
+  const aside = (
+    <div className="space-y-6">
+      <div className="rounded-[32px] border border-white/70 bg-white/80 p-5 shadow-[0_30px_80px_-50px_rgba(15,23,42,0.45)] backdrop-blur">
+        <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Settings</p>
+        <h3 className="mt-3 text-xl font-semibold text-slate-900">Delivery preference</h3>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Control whether likes, comments, and follows should generate alerts for your account.
+        </p>
+        <button
+          type="button"
+          onClick={toggleNotifications}
+          className={`mt-5 w-full rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+            user?.notificationEnabled !== false
+              ? 'bg-slate-900 text-white hover:bg-slate-800'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          }`}
+        >
+          {user?.notificationEnabled !== false ? 'Notifications enabled' : 'Notifications disabled'}
+        </button>
+      </div>
+
+      <div className="rounded-[32px] border border-white/70 bg-white/80 p-5 shadow-[0_30px_80px_-50px_rgba(15,23,42,0.45)] backdrop-blur">
+        <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Summary</p>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-2xl bg-slate-50 px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Unread</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-900">{unreadCount}</p>
           </div>
-        ) : (
-          <>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">All Notifications</h2>
-              {notifications.some((n) => !n.isRead) && (
-                <button
-                  onClick={handleMarkAllAsRead}
-                  className="text-blue-500 hover:underline text-sm"
-                >
-                  Mark all as read
-                </button>
-              )}
-            </div>
-
-            {notifications.length === 0 ? (
-              <div className="bg-white rounded-lg shadow p-6 text-center">
-                <p className="text-gray-600">No notifications yet</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    onClick={() => handleMarkAsRead(notification.id)}
-                    className={`bg-white rounded-lg shadow p-4 cursor-pointer transition-colors hover:bg-gray-50 ${
-                      !notification.isRead ? 'bg-blue-50' : ''
-                    }`}
-                  >
-                    <div className="flex items-start space-x-3">
-                      {notification.sender.avatarUrl ? (
-                        <img
-                          src={notification.sender.avatarUrl}
-                          alt=""
-                          className="w-12 h-12 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-                          <span className="text-gray-500">
-                            {(notification.sender.name || 'U')[0].toUpperCase()}
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <p className="font-medium">
-                          {notification.type === 'LIKE' && `${notification.sender.name || 'Someone'} liked your post`}
-                          {notification.type === 'COMMENT' && `${notification.sender.name || 'Someone'} commented on your post`}
-                          {notification.type === 'FOLLOW' && `${notification.sender.name || 'Someone'} started following you`}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(notification.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                      {!notification.isRead && (
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </main>
+          <div className="rounded-2xl bg-slate-50 px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Total</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-900">{notifications.length}</p>
+          </div>
+        </div>
+      </div>
     </div>
+  );
+
+  return (
+    <AppShell
+      title="Notifications"
+      description="A single place to review reactions, comments, and follow activity around your account."
+      action={
+        unreadCount > 0 ? (
+          <button
+            type="button"
+            onClick={handleMarkAllAsRead}
+            className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+          >
+            Mark all read
+          </button>
+        ) : undefined
+      }
+      aside={aside}
+    >
+      {isLoading ? (
+        <StatePanel title="Alerts" description="Loading the latest notification activity." />
+      ) : notifications.length === 0 ? (
+        <StatePanel title="Quiet" description="No notifications yet. New activity will appear here." />
+      ) : (
+        <div className="space-y-4">
+          {notifications.map((notification) => (
+            <button
+              key={notification.id}
+              type="button"
+              onClick={() => handleMarkAsRead(notification.id)}
+              className={`w-full rounded-[32px] border px-5 py-4 text-left shadow-[0_24px_80px_-40px_rgba(15,23,42,0.28)] backdrop-blur transition lg:px-6 ${
+                notification.isRead
+                  ? 'border-white/70 bg-white/82 hover:bg-white'
+                  : 'border-cyan-100 bg-cyan-50/70 hover:bg-cyan-50'
+              }`}
+            >
+              <div className="flex items-start gap-4">
+                <Avatar src={notification.sender.avatarUrl} name={notification.sender.name} username={notification.sender.username} size="lg" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm leading-7 text-slate-700">
+                    <span className="font-semibold text-slate-900">
+                      {notification.sender.username ? `@${notification.sender.username}` : notification.sender.name || 'Someone'}
+                    </span>{' '}
+                    {notification.type === 'LIKE' && 'liked your post.'}
+                    {notification.type === 'COMMENT' && 'commented on your post.'}
+                    {notification.type === 'FOLLOW' && 'started following you.'}
+                  </p>
+                  <p className="mt-2 text-xs uppercase tracking-[0.25em] text-slate-400">
+                    {new Date(notification.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                {!notification.isRead ? <span className="mt-3 h-2.5 w-2.5 rounded-full bg-cyan-500" /> : null}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </AppShell>
   );
 };
 

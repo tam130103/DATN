@@ -11,6 +11,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
+  updateUser: (nextUser: User | null | ((previous: User | null) => User | null)) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,16 +22,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [isLoading, setIsLoading] = useState(true);
 
+  const refreshUser = async () => {
+    const userData = await authService.getCurrentUser();
+    setUser(userData);
+  };
+
   useEffect(() => {
     const initAuth = async () => {
       const storedToken = localStorage.getItem('token');
       if (storedToken) {
         try {
-          const userData = await authService.getCurrentUser();
-          setUser(userData);
+          await refreshUser();
+          setToken(storedToken);
         } catch {
           localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
           setToken(null);
+          setUser(null);
         }
       }
       setIsLoading(false);
@@ -69,6 +78,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(null);
   };
 
+  const updateUser = (nextUser: User | null | ((previous: User | null) => User | null)) => {
+    setUser((previous) =>
+      typeof nextUser === 'function' ? (nextUser as (previous: User | null) => User | null)(previous) : nextUser,
+    );
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -78,6 +93,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     login,
     register,
     logout,
+    refreshUser,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

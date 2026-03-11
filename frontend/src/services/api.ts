@@ -27,7 +27,7 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
-        if (error.response?.status === 401) {
+        if (error.response?.status === 401 && error.config) {
           const refreshToken = localStorage.getItem('refreshToken');
           if (refreshToken) {
             try {
@@ -56,3 +56,4 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient().getInstance();
+

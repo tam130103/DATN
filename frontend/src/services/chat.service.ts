@@ -15,11 +15,15 @@ export interface Conversation {
   updatedAt: string;
 }
 
+export interface CreateConversationInput {
+  participantIds: string[];
+  isGroup?: boolean;
+  name?: string;
+}
+
 export const chatService = {
-  createConversation: async (participantId: string): Promise<Conversation> => {
-    const response = await apiClient.post<Conversation>('/conversations', {
-      participantIds: [participantId],
-    });
+  createConversation: async (input: CreateConversationInput): Promise<Conversation> => {
+    const response = await apiClient.post<Conversation>('/conversations', input);
     return response.data;
   },
 

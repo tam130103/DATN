@@ -1,6 +1,7 @@
 import { Controller, Get, Query, Param, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { SearchService } from './search.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('search')
 @UseGuards(JwtAuthGuard)
@@ -27,11 +28,12 @@ export class SearchController {
 
   @Get('hashtags/:name/posts')
   getHashtagPosts(
+    @CurrentUser() user: any,
     @Param('name') name: string,
     @Query('page', new ParseIntPipe({ optional: true })) page = 1,
     @Query('limit', new ParseIntPipe({ optional: true })) limit = 20,
   ) {
-    return this.searchService.getHashtagPosts(name, page, limit);
+    return this.searchService.getHashtagPosts(name, user.id, page, limit);
   }
 
   @Get('global')

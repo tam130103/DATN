@@ -7,9 +7,11 @@ import { Media } from './entities/media.entity';
 import { Hashtag } from './entities/hashtag.entity';
 import { PostHashtag } from './entities/post-hashtag.entity';
 import { Follow } from '../user/entities/follow.entity';
+import { User } from '../user/entities/user.entity';
+import { Like } from '../engagement/entities/like.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Post, Media, Hashtag, PostHashtag, Follow])],
+  imports: [TypeOrmModule.forFeature([Post, Media, Hashtag, PostHashtag, Follow, User, Like])],
   controllers: [PostController],
   providers: [PostService],
   exports: [PostService],

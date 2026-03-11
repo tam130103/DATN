@@ -1,12 +1,31 @@
 import { apiClient } from './api';
 import { Post, FeedResponse } from '../types';
 
+export interface UploadedMedia {
+  url: string;
+  type: 'IMAGE' | 'VIDEO';
+  originalName?: string;
+}
+
 export interface CreatePostInput {
   caption: string;
   media?: { url: string; type: 'IMAGE' | 'VIDEO' }[];
 }
 
 export const postService = {
+  uploadMedia: async (files: File[]): Promise<UploadedMedia[]> => {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+
+    const response = await apiClient.post<UploadedMedia[]>('/posts/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data;
+  },
+
   createPost: async (data: CreatePostInput): Promise<Post> => {
     const response = await apiClient.post<Post>('/posts', data);
     return response.data;

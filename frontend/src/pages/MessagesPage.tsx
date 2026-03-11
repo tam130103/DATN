@@ -1,15 +1,20 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { AppShell } from '../components/layout/AppShell';
+import { Avatar } from '../components/common/Avatar';
+import { StatePanel } from '../components/common/StatePanel';
 import { useAuth } from '../contexts/AuthContext';
 import { chatService, Conversation } from '../services/chat.service';
 import { chatSocketService } from '../services/chat-socket.service';
-import { Message } from '../types';
-import toast from 'react-hot-toast';
+import { searchService } from '../services/search.service';
+import { Message, User } from '../types';
 
 const MessagesPage: React.FC = () => {
   const { user, token } = useAuth();
   const { conversationId } = useParams();
   const navigate = useNavigate();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(conversationId || null);
@@ -17,55 +22,85 @@ const MessagesPage: React.FC = () => {
   const [messageInput, setMessageInput] = useState('');
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [composeMode, setComposeMode] = useState<'direct' | 'group'>('direct');
+  const [composeQuery, setComposeQuery] = useState('');
+  const [composeResults, setComposeResults] = useState<User[]>([]);
+  const [selectedParticipants, setSelectedParticipants] = useState<User[]>([]);
+  const [groupName, setGroupName] = useState('');
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
 
-  // Load conversations
-  useEffect(() => {
-    const loadConversations = async () => {
-      try {
-        const data = await chatService.getConversations();
-        setConversations(data);
-      } catch {
-        toast.error('Failed to load conversations');
-      }
-    };
-
-    loadConversations();
+  const loadConversations = useCallback(async () => {
+    setIsLoadingConversations(true);
+    try {
+      const data = await chatService.getConversations();
+      setConversations(data);
+    } catch {
+      toast.error('Failed to load conversations.');
+    } finally {
+      setIsLoadingConversations(false);
+    }
   }, []);
 
-  // Connect to socket
+  useEffect(() => {
+    loadConversations();
+  }, [loadConversations]);
+
+  useEffect(() => {
+    setSelectedConversation(conversationId || null);
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!composeQuery.trim() || composeQuery.trim().length < 2) {
+      setComposeResults([]);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const results = await searchService.searchUsers(composeQuery.trim(), 1, 8);
+        const filteredResults = results.filter(
+          (entry) => entry.id !== user?.id && !selectedParticipants.some((participant) => participant.id === entry.id),
+        );
+        setComposeResults(filteredResults);
+      } catch {
+        toast.error('Failed to search users.');
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [composeQuery, selectedParticipants, user?.id]);
+
   useEffect(() => {
     if (!token) return;
 
     chatSocketService.connect(token);
 
-    // Listen for new messages
     const unsubscribeNewMessage = chatSocketService.on('newMessage', (message: Message) => {
-      if (selectedConversation === message.conversationId) {
+      if (message.conversationId === selectedConversation) {
         setMessages((prev) => [...prev, message]);
       }
-      // Reload conversations to update last message
-      chatService.getConversations().then(setConversations);
+      loadConversations();
     });
 
-    // Listen for typing indicators
     const unsubscribeTyping = chatSocketService.on('userTyping', (data: any) => {
-      if (data.conversationId === selectedConversation) {
-        setTypingUsers((prev) => {
-          const next = new Set(prev);
-          if (data.isTyping) {
-            next.add(data.userId);
-          } else {
-            next.delete(data.userId);
-          }
-          return next;
-        });
-      }
+      if (data.conversationId !== selectedConversation) return;
+      setTypingUsers((prev) => {
+        const next = new Set(prev);
+        if (data.isTyping) {
+          next.add(data.userId);
+        } else {
+          next.delete(data.userId);
+        }
+        return next;
+      });
     });
 
-    // Listen for online/offline
     const unsubscribeOnline = chatSocketService.on('userOnline', (data: any) => {
-      setOnlineUsers((prev) => new Set(prev).add(data.userId));
+      setOnlineUsers((prev) => new Set([...prev, data.userId]));
     });
 
     const unsubscribeOffline = chatSocketService.on('userOffline', (data: any) => {
@@ -76,11 +111,9 @@ const MessagesPage: React.FC = () => {
       });
     });
 
-    // Listen for online members in conversation
     const unsubscribeMembersOnline = chatSocketService.on('membersOnline', (data: any) => {
-      if (data.conversationId === selectedConversation) {
-        setOnlineUsers((prev) => new Set(prev.concat(data.userIds)));
-      }
+      if (data.conversationId !== selectedConversation) return;
+      setOnlineUsers((prev) => new Set([...prev, ...data.userIds]));
     });
 
     return () => {
@@ -90,254 +123,348 @@ const MessagesPage: React.FC = () => {
       unsubscribeOffline();
       unsubscribeMembersOnline();
     };
-  }, [token, selectedConversation]);
+  }, [loadConversations, selectedConversation, token]);
 
-  // Load messages when conversation is selected
   useEffect(() => {
     if (!selectedConversation) return;
 
     const loadMessages = async () => {
+      setIsLoadingMessages(true);
       try {
         const data = await chatService.getMessages(selectedConversation);
         setMessages(data.reverse());
         chatSocketService.joinConversation(selectedConversation);
         chatSocketService.markAsRead(selectedConversation);
-
-        // Scroll to bottom
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
       } catch {
-        toast.error('Failed to load messages');
+        toast.error('Failed to load messages.');
+      } finally {
+        setIsLoadingMessages(false);
       }
     };
 
     loadMessages();
 
     return () => {
-      if (selectedConversation) {
-        chatSocketService.leaveConversation(selectedConversation);
-      }
+      chatSocketService.leaveConversation(selectedConversation);
     };
   }, [selectedConversation]);
 
-  // Auto scroll on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, typingUsers]);
 
-  const handleSelectConversation = (conversationId: string) => {
-    setSelectedConversation(conversationId);
-    navigate(`/messages/${conversationId}`);
+  const selectedConv = useMemo(
+    () => conversations.find((conversation) => conversation.id === selectedConversation),
+    [conversations, selectedConversation],
+  );
+
+  const getConversationName = (conversation: Conversation) => {
+    if (conversation.isGroup && conversation.name) return conversation.name;
+    if (conversation.members.length === 1) {
+      const member = conversation.members[0];
+      return member.username ? `@${member.username}` : member.name || 'Conversation';
+    }
+    return conversation.members.map((member) => member.name || member.username || 'Member').join(', ');
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSelectConversation = (id: string) => {
+    setSelectedConversation(id);
+    navigate(`/messages/${id}`);
+  };
+
+  const handleSendMessage = (event: React.FormEvent) => {
+    event.preventDefault();
     if (!messageInput.trim() || !selectedConversation) return;
 
-    chatSocketService.sendMessage(selectedConversation, messageInput);
+    chatSocketService.sendMessage(selectedConversation, messageInput.trim());
     setMessageInput('');
   };
 
-  const handleTyping = (value: string) => {
-    if (selectedConversation) {
-      chatSocketService.sendTyping(selectedConversation, value.length > 0);
+  const handleStartDirectConversation = async (participant: User) => {
+    setIsCreatingConversation(true);
+    try {
+      const conversation = await chatService.createConversation({ participantIds: [participant.id] });
+      await loadConversations();
+      setComposeQuery('');
+      setComposeResults([]);
+      navigate(`/messages/${conversation.id}`);
+    } catch {
+      toast.error('Failed to start conversation.');
+    } finally {
+      setIsCreatingConversation(false);
     }
   };
 
-  const getConversationName = (conv: Conversation): string => {
-    if (conv.isGroup && conv.name) return conv.name;
-    if (conv.members.length === 1) {
-      const member = conv.members[0];
-      return member.username ? `@${member.username}` : member.name || 'Unknown';
-    }
-    return conv.isGroup ? 'Group Chat' : 'Conversation';
+  const toggleParticipant = (participant: User) => {
+    setSelectedParticipants((prev) =>
+      prev.some((entry) => entry.id === participant.id)
+        ? prev.filter((entry) => entry.id !== participant.id)
+        : [...prev, participant],
+    );
+    setComposeQuery('');
+    setComposeResults([]);
   };
 
-  const selectedConv = conversations.find((c) => c.id === selectedConversation);
+  const handleCreateGroupConversation = async () => {
+    if (selectedParticipants.length < 2) {
+      toast.error('Select at least 2 participants for a group conversation.');
+      return;
+    }
+
+    if (!groupName.trim()) {
+      toast.error('Add a group name.');
+      return;
+    }
+
+    setIsCreatingConversation(true);
+    try {
+      const conversation = await chatService.createConversation({
+        participantIds: selectedParticipants.map((participant) => participant.id),
+        isGroup: true,
+        name: groupName.trim(),
+      });
+      await loadConversations();
+      setSelectedParticipants([]);
+      setGroupName('');
+      setComposeQuery('');
+      setComposeResults([]);
+      navigate(`/messages/${conversation.id}`);
+    } catch {
+      toast.error('Failed to create group conversation.');
+    } finally {
+      setIsCreatingConversation(false);
+    }
+  };
+
+  const typingSummary = selectedConv?.members
+    .filter((member) => typingUsers.has(member.id))
+    .map((member) => member.username || member.name || 'Someone')
+    .join(', ');
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <h1 className="text-xl font-semibold">Messages</h1>
-        </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-4 py-6">
-        <div className="bg-white rounded-lg shadow overflow-hidden flex" style={{ height: 'calc(100vh - 150px)' }}>
-          {/* Conversations list */}
-          <div className="w-80 border-r overflow-y-auto">
-            <div className="p-4 border-b">
-              <input
-                type="text"
-                placeholder="Search conversations..."
-                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+    <AppShell
+      title="Messages"
+      description="Direct conversations and group threads stay live here with realtime delivery and typing state."
+    >
+      <div className="grid gap-6 xl:grid-cols-[340px,minmax(0,1fr)]">
+        <section className="rounded-[32px] border border-white/70 bg-white/82 p-5 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.28)] backdrop-blur lg:p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Compose</p>
+              <h2 className="mt-2 text-xl font-semibold text-slate-900">Start a conversation</h2>
             </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setComposeMode('direct')}
+                className={`rounded-2xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition ${
+                  composeMode === 'direct' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Direct
+              </button>
+              <button
+                type="button"
+                onClick={() => setComposeMode('group')}
+                className={`rounded-2xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition ${
+                  composeMode === 'group' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                Group
+              </button>
+            </div>
+          </div>
 
-            <div className="divide-y">
-              {conversations.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">No conversations yet</p>
+          {composeMode === 'group' ? (
+            <div className="mt-4 space-y-3">
+              <input
+                value={groupName}
+                onChange={(event) => setGroupName(event.target.value)}
+                placeholder="Group name"
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-900/5"
+              />
+              <div className="flex flex-wrap gap-2">
+                {selectedParticipants.map((participant) => (
+                  <button
+                    key={participant.id}
+                    type="button"
+                    onClick={() => toggleParticipant(participant)}
+                    className="rounded-full bg-cyan-50 px-3 py-1.5 text-sm font-medium text-cyan-700 transition hover:bg-cyan-100"
+                  >
+                    {participant.name || participant.username || 'Participant'} ×
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-4 space-y-3">
+            <input
+              value={composeQuery}
+              onChange={(event) => setComposeQuery(event.target.value)}
+              placeholder={composeMode === 'direct' ? 'Search a user to message' : 'Search users to add'}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-900/5"
+            />
+
+            {composeResults.length > 0 ? (
+              <div className="space-y-2">
+                {composeResults.map((entry) => (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    onClick={() =>
+                      composeMode === 'direct'
+                        ? handleStartDirectConversation(entry)
+                        : toggleParticipant(entry)
+                    }
+                    className="flex w-full items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-left transition hover:bg-slate-100"
+                  >
+                    <Avatar src={entry.avatarUrl} name={entry.name} username={entry.username} size="md" />
+                    <div>
+                      <p className="font-semibold text-slate-900">{entry.name || entry.username || 'User'}</p>
+                      <p className="text-sm text-slate-500">{entry.username ? `@${entry.username}` : entry.email}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {composeMode === 'group' ? (
+              <button
+                type="button"
+                onClick={handleCreateGroupConversation}
+                disabled={isCreatingConversation}
+                className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+              >
+                {isCreatingConversation ? 'Creating group...' : 'Create group conversation'}
+              </button>
+            ) : null}
+          </div>
+
+          <div className="mt-6 border-t border-slate-100 pt-5">
+            <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Conversations</p>
+            <div className="mt-4 space-y-2">
+              {isLoadingConversations ? (
+                <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">Loading conversations...</p>
+              ) : conversations.length === 0 ? (
+                <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">No conversations yet.</p>
               ) : (
-                conversations.map((conv) => (
-                  <div
-                    key={conv.id}
-                    onClick={() => handleSelectConversation(conv.id)}
-                    className={`p-4 hover:bg-gray-50 cursor-pointer flex items-center space-x-3 ${
-                      selectedConversation === conv.id ? 'bg-blue-50' : ''
+                conversations.map((conversation) => (
+                  <button
+                    key={conversation.id}
+                    type="button"
+                    onClick={() => handleSelectConversation(conversation.id)}
+                    className={`w-full rounded-[24px] px-4 py-3 text-left transition ${
+                      selectedConversation === conversation.id
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
                     }`}
                   >
-                    {conv.members.length === 1 ? (
-                      conv.members[0].avatarUrl ? (
-                        <img
-                          src={conv.members[0].avatarUrl}
-                          alt=""
-                          className="w-12 h-12 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-                          <span className="text-gray-500">
-                            {(conv.members[0].name || 'U')[0].toUpperCase()}
-                          </span>
-                        </div>
-                      )
-                    ) : (
-                      <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
-                        <span className="text-white font-semibold">
-                          {conv.members.slice(0, 2).map((m) => (m.name || 'U')[0]).join('')}
-                        </span>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-semibold">{getConversationName(conversation)}</p>
+                        <p className={`mt-1 text-sm ${selectedConversation === conversation.id ? 'text-white/70' : 'text-slate-500'}`}>
+                          {conversation.lastMessage?.content || 'No messages yet'}
+                        </p>
                       </div>
-                    )}
-
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{getConversationName(conv)}</p>
-                      <p className="text-sm text-gray-500 truncate">
-                        {conv.lastMessage?.content || 'No messages yet'}
-                      </p>
+                      {conversation.members[0] && onlineUsers.has(conversation.members[0].id) ? (
+                        <span className="h-3 w-3 rounded-full bg-emerald-400" />
+                      ) : null}
                     </div>
-
-                    {onlineUsers.has(conv.members[0]?.id) && (
-                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    )}
-                  </div>
+                  </button>
                 ))
               )}
             </div>
           </div>
+        </section>
 
-          {/* Chat area */}
-          <div className="flex-1 flex flex-col">
-            {selectedConv ? (
-              <>
-                {/* Header */}
-                <div className="p-4 border-b flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    {!selectedConv.isGroup && selectedConv.members.length === 1 ? (
-                      <>
-                        {selectedConv.members[0].avatarUrl ? (
-                          <img
-                            src={selectedConv.members[0].avatarUrl}
-                            alt=""
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                            <span className="text-gray-500">
-                              {(selectedConv.members[0].name || 'U')[0].toUpperCase()}
-                            </span>
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-semibold">{getConversationName(selectedConv)}</p>
-                          <p className="text-xs text-gray-500">
-                            {onlineUsers.has(selectedConv.members[0].id) ? 'Online' : 'Offline'}
-                          </p>
-                        </div>
-                      </>
-                    ) : (
-                      <p className="font-semibold">{getConversationName(selectedConv)}</p>
-                    )}
+        <section className="rounded-[32px] border border-white/70 bg-white/82 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.28)] backdrop-blur">
+          {selectedConv ? (
+            <div className="flex h-[70vh] flex-col">
+              <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-4 lg:px-6">
+                <div className="flex items-center gap-3">
+                  <Avatar
+                    src={selectedConv.members[0]?.avatarUrl}
+                    name={selectedConv.members[0]?.name || selectedConv.name}
+                    username={selectedConv.members[0]?.username}
+                    size="lg"
+                  />
+                  <div>
+                    <p className="font-semibold text-slate-900">{getConversationName(selectedConv)}</p>
+                    <p className="text-sm text-slate-500">
+                      {selectedConv.members.some((member) => onlineUsers.has(member.id)) ? 'Someone is online' : 'Offline right now'}
+                    </p>
                   </div>
                 </div>
+              </div>
 
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                  {messages.length === 0 ? (
-                    <p className="text-gray-500 text-center">No messages yet. Start the conversation!</p>
-                  ) : (
-                    messages.map((message) => {
-                      const isMe = message.senderId === user?.id;
+              <div className="flex-1 overflow-y-auto px-5 py-5 lg:px-6">
+                {isLoadingMessages ? (
+                  <StatePanel title="Chat" description="Loading message history." />
+                ) : messages.length === 0 ? (
+                  <StatePanel title="Start" description="No messages yet. Send the first message to open the thread." />
+                ) : (
+                  <div className="space-y-4">
+                    {messages.map((message) => {
+                      const isMine = message.senderId === user?.id;
                       return (
-                        <div key={message.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-xs lg:max-w-md ${isMe ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-900'} rounded-2xl px-4 py-2`}>
-                            {!isMe && selectedConv.members.length === 1 && (
-                              <p className="text-xs opacity-70 mb-1">
-                                {selectedConv.members[0].username ? `@${selectedConv.members[0].username}` : selectedConv.members[0].name}
+                        <div key={message.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-xl rounded-[28px] px-4 py-3 ${isMine ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'}`}>
+                            {!isMine ? (
+                              <p className="text-xs uppercase tracking-[0.2em] opacity-60">
+                                {message.sender?.username ? `@${message.sender.username}` : message.sender?.name || 'Member'}
                               </p>
-                            )}
-                            <p className="break-words">{message.content}</p>
-                            {message.mediaUrl && (
-                              <img src={message.mediaUrl} alt="Attachment" className="mt-2 rounded-lg max-w-full" />
-                            )}
-                            <p className={`text-xs mt-1 ${isMe ? 'text-blue-100' : 'text-gray-500'}`}>
-                              {new Date(message.createdAt).toLocaleTimeString([], {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
+                            ) : null}
+                            <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-7">{message.content}</p>
+                            {message.mediaUrl ? <img src={message.mediaUrl} alt="Message attachment" className="mt-3 max-h-64 rounded-2xl object-cover" /> : null}
+                            <p className={`mt-2 text-xs ${isMine ? 'text-white/60' : 'text-slate-400'}`}>
+                              {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
                         </div>
                       );
-                    })
-                  )}
-
-                  {/* Typing indicator */}
-                  {typingUsers.size > 0 && (
-                    <p className="text-sm text-gray-500 italic">
-                      {selectedConv.members
-                        .filter((m) => typingUsers.has(m.id))
-                        .map((m) => m.username || m.name || 'Someone')
-                        .join(', ')}{' '}
-                      is typing...
-                    </p>
-                  )}
-
-                  <div ref={messagesEndRef} />
-                </div>
-
-                {/* Input */}
-                <form onSubmit={handleSendMessage} className="p-4 border-t">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="text"
-                      value={messageInput}
-                      onChange={(e) => {
-                        setMessageInput(e.target.value);
-                        handleTyping(e.target.value);
-                      }}
-                      placeholder="Type a message..."
-                      className="flex-1 px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!messageInput.trim()}
-                      className="px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 disabled:opacity-50"
-                    >
-                      Send
-                    </button>
+                    })}
                   </div>
-                </form>
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <p className="text-gray-500">Select a conversation to start messaging</p>
+                )}
+
+                {typingSummary ? (
+                  <p className="mt-4 text-sm italic text-slate-500">{typingSummary} is typing...</p>
+                ) : null}
+                <div ref={messagesEndRef} />
               </div>
-            )}
-          </div>
-        </div>
-      </main>
-    </div>
+
+              <form onSubmit={handleSendMessage} className="border-t border-slate-100 px-5 py-4 lg:px-6">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={messageInput}
+                    onChange={(event) => {
+                      setMessageInput(event.target.value);
+                      if (selectedConversation) {
+                        chatSocketService.sendTyping(selectedConversation, event.target.value.length > 0);
+                      }
+                    }}
+                    placeholder="Write a message..."
+                    className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-900/5"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!messageInput.trim()}
+                    className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                  >
+                    Send
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : (
+            <div className="flex h-[70vh] items-center justify-center px-6">
+              <StatePanel title="Select" description="Pick a conversation from the left panel or start a new one." />
+            </div>
+          )}
+        </section>
+      </div>
+    </AppShell>
   );
 };
 

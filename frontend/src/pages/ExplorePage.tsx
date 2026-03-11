@@ -1,32 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { searchService } from '../services/search.service';
-import { User, Hashtag, Post } from '../types';
+import React, { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { AppShell } from '../components/layout/AppShell';
+import { StatePanel } from '../components/common/StatePanel';
+import { Avatar } from '../components/common/Avatar';
+import { searchService } from '../services/search.service';
+import { Hashtag, User } from '../types';
 
 const ExplorePage: React.FC = () => {
-  const { user } = useAuth();
-  const [searchParams] = setSearchParams();
-  const query = searchParams.get('q') || '';
-
+  const [searchParams, setSearchParams] = useSearchParams();
   const [users, setUsers] = useState<User[]>([]);
   const [hashtags, setHashtags] = useState<Hashtag[]>([]);
   const [trendingHashtags, setTrendingHashtags] = useState<Hashtag[]>([]);
-  const [activeTab, setActiveTab] = useState<'users' | 'hashtags' | 'trending'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'hashtags'>('users');
   const [isLoading, setIsLoading] = useState(false);
+  const query = searchParams.get('q') || '';
 
   useEffect(() => {
-    const loadTrending = async () => {
-      try {
-        const data = await searchService.getTrendingHashtags();
-        setTrendingHashtags(data);
-      } catch {
-        console.error('Failed to load trending hashtags');
-      }
-    };
-
-    loadTrending();
+    searchService.getTrendingHashtags(8).then(setTrendingHashtags).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -36,150 +27,172 @@ const ExplorePage: React.FC = () => {
       return;
     }
 
-    const loadResults = async () => {
+    const runSearch = async () => {
       setIsLoading(true);
       try {
-        const [usersData, hashtagsData] = await Promise.all([
+        const [userResults, hashtagResults] = await Promise.all([
           searchService.searchUsers(query),
           searchService.searchHashtags(query),
         ]);
-        setUsers(usersData);
-        setHashtags(hashtagsData);
+        setUsers(userResults);
+        setHashtags(hashtagResults);
       } catch {
-        toast.error('Search failed');
+        toast.error('Search failed.');
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadResults();
+    runSearch();
   }, [query]);
 
   const handleSearch = (value: string) => {
+    const nextParams = new URLSearchParams(searchParams);
     if (value) {
-      searchParams.set('q', value);
+      nextParams.set('q', value);
     } else {
-      searchParams.delete('q');
+      nextParams.delete('q');
     }
+    setSearchParams(nextParams);
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <h1 className="text-xl font-semibold">Explore</h1>
-        </div>
-      </header>
+  const aside = (
+    <div className="rounded-[32px] border border-white/70 bg-white/80 p-5 shadow-[0_30px_80px_-50px_rgba(15,23,42,0.45)] backdrop-blur">
+      <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Discovery radar</p>
+      <h3 className="mt-3 text-xl font-semibold text-slate-900">Trending hashtags</h3>
+      <div className="mt-4 space-y-3">
+        {trendingHashtags.map((tag) => (
+          <Link
+            key={tag.id}
+            to={`/hashtag/${tag.name}`}
+            className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 transition hover:bg-slate-100"
+          >
+            <div>
+              <p className="font-semibold text-slate-900">#{tag.name}</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Conversations</p>
+            </div>
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm">
+              {tag.count}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
 
-      <main className="max-w-4xl mx-auto px-4 py-6">
-        {/* Search */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
+  return (
+    <AppShell
+      title="Explore"
+      description="Search across people and hashtags, then jump into the streams that are gaining momentum."
+      aside={aside}
+    >
+      <section className="rounded-[32px] border border-white/70 bg-white/82 p-5 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.28)] backdrop-blur lg:p-6">
+        <label className="text-xs uppercase tracking-[0.35em] text-slate-400">Search</label>
+        <div className="mt-3 flex flex-col gap-3 lg:flex-row">
           <input
             type="text"
-            placeholder="Search users or hashtags..."
             value={query}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onChange={(event) => handleSearch(event.target.value)}
+            placeholder="Search by username, name, or hashtag"
+            className="flex-1 rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-900/5"
           />
+          <div className="rounded-[24px] bg-slate-100 px-4 py-4 text-sm text-slate-500">
+            {query ? `Results for “${query}”` : 'Start typing to search the workspace.'}
+          </div>
         </div>
+      </section>
 
-        {!query ? (
-          /* Trending Hashtags */
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Trending Hashtags</h2>
-            {trendingHashtags.length === 0 ? (
-              <p className="text-gray-500">No trending hashtags yet</p>
+      {!query ? (
+        <section className="grid gap-5 lg:grid-cols-2">
+          <div className="rounded-[32px] border border-white/70 bg-white/82 p-5 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.28)] backdrop-blur lg:p-6">
+            <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Prompt</p>
+            <h2 className="mt-3 text-2xl font-semibold text-slate-900">Find your next conversation lane.</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-500">
+              Search a username to message them directly, or jump into a hashtag stream when you need public context.
+            </p>
+          </div>
+
+          <div className="rounded-[32px] border border-white/70 bg-white/82 p-5 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.28)] backdrop-blur lg:p-6">
+            <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Top hashtags</p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {trendingHashtags.slice(0, 6).map((tag) => (
+                <Link
+                  key={tag.id}
+                  to={`/hashtag/${tag.name}`}
+                  className="rounded-full bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-100"
+                >
+                  #{tag.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="rounded-[32px] border border-white/70 bg-white/82 p-5 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.28)] backdrop-blur lg:p-6">
+          <div className="mb-5 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setActiveTab('users')}
+              className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+                activeTab === 'users' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              Users ({users.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('hashtags')}
+              className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+                activeTab === 'hashtags' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              Hashtags ({hashtags.length})
+            </button>
+          </div>
+
+          {isLoading ? (
+            <StatePanel title="Search" description="Searching across users and hashtags." />
+          ) : activeTab === 'users' ? (
+            users.length === 0 ? (
+              <StatePanel title="Users" description="No matching users were found for this query." />
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {trendingHashtags.map((tag) => (
-                  <a
-                    key={tag.id}
-                    href={`?q=${encodeURIComponent(tag.name)}`}
-                    className="px-4 py-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors"
+              <div className="space-y-3">
+                {users.map((entry) => (
+                  <Link
+                    key={entry.id}
+                    to={entry.username ? `/${entry.username}` : '/feed'}
+                    className="flex items-center gap-4 rounded-[28px] border border-slate-100 bg-slate-50/80 px-4 py-4 transition hover:bg-white"
                   >
-                    #{tag.name} ({tag.count})
-                  </a>
+                    <Avatar src={entry.avatarUrl} name={entry.name} username={entry.username} size="lg" />
+                    <div>
+                      <p className="font-semibold text-slate-900">{entry.name || entry.username || 'Unnamed user'}</p>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {entry.username ? `@${entry.username}` : entry.email}
+                      </p>
+                    </div>
+                  </Link>
                 ))}
               </div>
-            )}
-          </div>
-        ) : (
-          /* Search Results */
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            {/* Tabs */}
-            <div className="flex border-b">
-              <button
-                onClick={() => setActiveTab('users')}
-                className={`flex-1 py-3 text-center font-medium transition-colors ${
-                  activeTab === 'users' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Users ({users.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('hashtags')}
-                className={`flex-1 py-3 text-center font-medium transition-colors ${
-                  activeTab === 'hashtags' ? 'border-b-2 border-blue-500 text-blue-500' : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Hashtags ({hashtags.length})
-              </button>
+            )
+          ) : hashtags.length === 0 ? (
+            <StatePanel title="Hashtags" description="No matching hashtags were found for this query." />
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {hashtags.map((tag) => (
+                <Link
+                  key={tag.id}
+                  to={`/hashtag/${tag.name}`}
+                  className="rounded-[28px] border border-slate-100 bg-slate-50/80 px-5 py-4 transition hover:bg-white"
+                >
+                  <p className="font-semibold text-slate-900">#{tag.name}</p>
+                  <p className="mt-1 text-sm text-slate-500">{tag.count} tagged posts</p>
+                </Link>
+              ))}
             </div>
-
-            {/* Results */}
-            <div className="p-4">
-              {isLoading ? (
-                <p className="text-gray-500 text-center">Searching...</p>
-              ) : activeTab === 'users' ? (
-                users.length === 0 ? (
-                  <p className="text-gray-500 text-center">No users found</p>
-                ) : (
-                  <div className="space-y-3">
-                    {users.map((u) => (
-                      <a
-                        key={u.id}
-                        href={`/${u.username || ''}`}
-                        className="flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
-                      >
-                        {u.avatarUrl ? (
-                          <img src={u.avatarUrl} alt="" className="w-12 h-12 rounded-full object-cover" />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-                            <span className="text-gray-500">{(u.name || 'U')[0]}</span>
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-semibold">
-                            {u.username ? `@${u.username}` : 'No username'}
-                          </p>
-                          <p className="text-sm text-gray-600">{u.name || ''}</p>
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-                )
-              ) : (
-                hashtags.length === 0 ? (
-                  <p className="text-gray-500 text-center">No hashtags found</p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {hashtags.map((tag) => (
-                      <a
-                        key={tag.id}
-                        href={`/hashtag/${tag.name}`}
-                        className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                      >
-                        #{tag.name}
-                      </a>
-                    ))}
-                  </div>
-                )
-              )}
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
+          )}
+        </section>
+      )}
+    </AppShell>
   );
 };
 

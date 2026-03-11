@@ -30,6 +30,7 @@ A full-featured social media application built with NestJS (backend) and React (
 
 ### Authentication
 - Google OAuth 2.0 login
+- Email/password login and registration
 - JWT-based authentication
 - Protected routes and API endpoints
 - User profile management
@@ -39,20 +40,17 @@ A full-featured social media application built with NestJS (backend) and React (
 - Follow/unfollow functionality
 - Follower/following counts
 - Optimistic UI updates
+- Notification preference toggle
 
 ### Posts
 - Create posts with multiple media (images/videos)
-- Carousel for multiple media items
 - Like/unlike posts
 - Comment system with nested replies
 - Hashtag extraction and linking
 - Cursor-based pagination for feed
 
 ### Engagement
-- Real-time notifications for:
-  - Likes on posts
-  - Comments on posts
-  - New followers
+- Real-time notifications for likes and comments
 - Unread notification count
 - Mark as read functionality
 - Notification preferences (enable/disable)
@@ -74,64 +72,34 @@ A full-featured social media application built with NestJS (backend) and React (
 
 ## Project Structure
 
-```
+```text
 datn-social/
-├── backend/
-│   └── src/
-│       ├── modules/
-│       │   ├── auth/              # Authentication module
-│       │   ├── user/              # User module
-│       │   ├── post/              # Post module
-│       │   ├── follow/            # Follow module
-│       │   ├── like/              # Like module
-│       │   ├── comment/           # Comment module
-│       │   ├── engagement/        # Engagement service
-│       │   ├── notification/      # Notification module + gateway
-│       │   ├── chat/              # Chat module + gateway
-│       │   ├── media/             # Media module
-│       │   ├── hashtag/           # Hashtag module
-│       │   └── search/            # Search module
-│       ├── common/
-│       │   ├── guards/            # JWT guards
-│       │   ├── decorators/        # Custom decorators
-│       │   └── dtos/              # Shared DTOs
-│       ├── main.ts                # Application entry point
-│       └── app.module.ts          # Root module
-│   ├── uploads/                   # Media uploads directory
-│   └── .env                       # Environment variables
-│
-├── frontend/
-│   └── src/
-│       ├── components/            # React components
-│       │   ├── common/            # Shared components
-│       │   ├── PostCard.tsx       # Post display component
-│       │   ├── CreatePost.tsx     # Post creation component
-│       │   ├── NotificationBell.tsx # Notification icon
-│       │   └── ...
-│       ├── contexts/              # React contexts
-│       │   ├── AuthContext.tsx    # Authentication state
-│       │   └── SocketContext.tsx  # Socket state
-│       ├── pages/                 # Page components
-│       │   ├── LoginPage.tsx
-│       │   ├── FeedPage.tsx
-│       │   ├── ProfilePage.tsx
-│       │   ├── ExplorePage.tsx
-│       │   ├── HashtagPage.tsx
-│       │   ├── MessagesPage.tsx
-│       │   └── NotificationsPage.tsx
-│       ├── services/              # API services
-│       │   ├── api.ts             # Axios client
-│       │   ├── auth.service.ts
-│       │   ├── post.service.ts
-│       │   ├── chat.service.ts
-│       │   └── ...
-│       ├── types/                 # TypeScript types
-│       └── main.tsx               # Application entry point
-│
-└── docs/                          # Documentation
-    ├── ARCHITECTURE.md            # System architecture
-    ├── ERD.md                     # Entity relationship diagram
-    └── REALTIME_FLOW.md           # Real-time communication flow
+|-- backend/
+|   |-- src/
+|   |   |-- modules/
+|   |   |   |-- auth/
+|   |   |   |-- user/
+|   |   |   |-- post/
+|   |   |   |-- engagement/
+|   |   |   |-- notification/
+|   |   |   |-- chat/
+|   |   |   `-- search/
+|   |   |-- config/
+|   |   |-- migrations/
+|   |   |-- app.module.ts
+|   |   `-- main.ts
+|   `-- .env
+|-- frontend/
+|   |-- src/
+|   |   |-- components/
+|   |   |-- contexts/
+|   |   |-- pages/
+|   |   |-- services/
+|   |   |-- types/
+|   |   |-- main.tsx
+|   |   `-- App.tsx
+|   `-- .env
+`-- docs/
 ```
 
 ## Setup Instructions
@@ -148,219 +116,142 @@ cd datn-social
 ```
 
 ### 2. Database Setup
-
 Create a PostgreSQL database:
 ```sql
 CREATE DATABASE datn_social;
 ```
 
 ### 3. Backend Setup
-
 ```bash
 cd backend
 npm install
 ```
 
-Create `.env` file in backend directory:
+Create `.env` file in `backend/`:
 ```env
-# Database
 DB_HOST=localhost
 DB_PORT=5432
 DB_USERNAME=your_db_user
 DB_PASSWORD=your_db_password
 DB_DATABASE=datn_social
 
-# JWT
 JWT_SECRET=your_jwt_secret_key_here
+JWT_REFRESH_SECRET=your_refresh_secret_key_here
 JWT_EXPIRES_IN=7d
 
-# Google OAuth
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
-GOOGLE_REDIRECT_URI=http://localhost:5173/login/callback
 
-# Server
 PORT=3000
 NODE_ENV=development
-
-# Upload
+FRONTEND_URL=http://localhost:5173
+API_PREFIX=api/v1
 UPLOAD_DIR=./uploads
 ```
 
-Run database migrations (TypeORM sync):
+Start the backend:
 ```bash
 npm run start:dev
 ```
-The application will automatically sync the database schema on first run.
+
+The current backend config uses `synchronize: false`, so schema changes are not auto-synced at startup. Use the migration scripts when changing entities:
+```bash
+npm run migration:run
+npm run migration:revert
+```
 
 ### 4. Frontend Setup
-
 ```bash
 cd frontend
 npm install
 ```
 
-Create `.env` file in frontend directory:
+Create `.env` file in `frontend/`:
 ```env
 VITE_API_URL=http://localhost:3000
 VITE_GOOGLE_CLIENT_ID=your_google_client_id
 ```
 
 ### 5. Google OAuth Setup
-
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project
-3. Enable Google+ API
+3. Enable Google Identity / OAuth consent configuration as needed
 4. Create OAuth 2.0 credentials
-5. Add authorized redirect URI: `http://localhost:5173/login/callback`
-6. Copy Client ID and Client Secret to `.env` files
+5. Add authorized JavaScript origin: `http://localhost:5173`
+6. Copy Client ID and Client Secret to the environment files
 
 ### 6. Run the Application
-
-**Backend** (from `backend/` directory):
+Backend:
 ```bash
+cd backend
 npm run start:dev
 ```
-Backend will run on `http://localhost:3000`
 
-**Frontend** (from `frontend/` directory):
+Frontend:
 ```bash
+cd frontend
 npm run dev
 ```
-Frontend will run on `http://localhost:5173`
 
 ## API Endpoints
+All HTTP endpoints are served under `/api/v1`.
 
 ### Authentication
-- `POST /api/auth/google` - Login with Google
-- `POST /api/auth/refresh` - Refresh access token
-- `POST /api/auth/logout` - Logout
+- `POST /api/v1/auth/register` - Register with email/password
+- `POST /api/v1/auth/login` - Login with email/password
+- `POST /api/v1/auth/google` - Login with Google
+- `POST /api/v1/auth/refresh` - Refresh access token
+- `GET /api/v1/auth/me` - Get current user
 
 ### Users
-- `GET /api/users/me` - Get current user
-- `GET /api/users/:id` - Get user by ID
-- `GET /api/users/:username` - Get user by username
-- `PATCH /api/users/me` - Update profile
-- `PATCH /api/users/me/notification-settings` - Update notification settings
-- `POST /api/users/:id/follow` - Follow user
-- `DELETE /api/users/:id/follow` - Unfollow user
+- `GET /api/v1/users/me` - Get current user profile
+- `GET /api/v1/users/:username` - Get user by username
+- `PATCH /api/v1/users/me` - Update profile
+- `PATCH /api/v1/users/me/notification` - Update notification settings
+- `POST /api/v1/users/:id/follow` - Follow user
+- `DELETE /api/v1/users/:id/follow` - Unfollow user
+- `GET /api/v1/users/:id/followers` - Get followers
+- `GET /api/v1/users/:id/following` - Get following
 
-### Posts
-- `GET /api/posts/feed` - Get feed posts (cursor pagination)
-- `POST /api/posts` - Create post
-- `GET /api/posts/:id` - Get post by ID
-- `POST /api/posts/:id/like` - Like/unlike post
-- `GET /api/posts/:id/comments` - Get post comments
-
-### Comments
-- `POST /api/comments` - Create comment
-- `POST /api/comments/:id/like` - Like/unlike comment
+### Posts and Engagement
+- `GET /api/v1/posts/feed` - Get feed posts
+- `POST /api/v1/posts` - Create post
+- `GET /api/v1/posts/:id` - Get post by ID
+- `DELETE /api/v1/posts/:id` - Delete post
+- `POST /api/v1/posts/:id/like` - Toggle like
+- `DELETE /api/v1/posts/:id/like` - Toggle unlike
+- `GET /api/v1/posts/:id/comments` - Get post comments
+- `POST /api/v1/posts/:id/comments` - Create comment
+- `DELETE /api/v1/posts/comments/:commentId` - Delete comment
 
 ### Chat
-- `GET /api/chat/conversations` - Get user conversations
-- `POST /api/chat/conversations` - Create conversation
-- `GET /api/chat/conversations/:id/messages` - Get conversation messages
-- `POST /api/chat/conversations/:id/read` - Mark messages as read
+- `POST /api/v1/conversations` - Create or find a conversation
+- `GET /api/v1/conversations` - Get user conversations
+- `GET /api/v1/conversations/:id/messages` - Get conversation messages
+- `GET /api/v1/conversations/unread-count` - Get unread message count
+- `POST /api/v1/conversations/:id/leave` - Leave conversation
 
 ### Notifications
-- `GET /api/notifications` - Get notifications
-- `POST /api/notifications/:id/read` - Mark as read
-- `POST /api/notifications/read-all` - Mark all as read
-- `GET /api/notifications/unread-count` - Get unread count
+- `GET /api/v1/notifications` - Get notifications
+- `GET /api/v1/notifications/unread-count` - Get unread count
+- `POST /api/v1/notifications/:id/read` - Mark one notification as read
+- `POST /api/v1/notifications/read-all` - Mark all notifications as read
 
 ### Search
-- `GET /api/search/users?q=query` - Search users
-- `GET /api/search/hashtags?q=query` - Search hashtags
-- `GET /api/search/hashtags/:name/posts` - Get posts by hashtag
-- `GET /api/search/trending` - Get trending hashtags
+- `GET /api/v1/search/users?q=query` - Search users
+- `GET /api/v1/search/hashtags?q=query` - Search hashtags
+- `GET /api/v1/search/hashtags/:name/posts` - Get posts by hashtag
+- `GET /api/v1/search/global?q=query` - Global search
+- `GET /api/v1/search/trending` - Get trending hashtags
 
-## WebSocket Events
-
-### Notification Namespace (`/notifications`)
-
-**Client → Server:**
-- `markAsRead` - Mark notification as read
-- `markAllAsRead` - Mark all notifications as read
-
-**Server → Client:**
-- `notification` - New notification received
-- `unreadCount` - Updated unread count
-
-### Chat Namespace (`/chat`)
-
-**Client → Server:**
-- `message` - Send message
-- `joinConversation` - Join conversation room
-
-**Server → Client:**
-- `message` - New message received
-- `online` - User came online
-- `offline` - User went offline
-- `typing` - User is typing
-- `stopTyping` - User stopped typing
-
-## Database Schema
-
-See [docs/ERD.md](./docs/ERD.md) for detailed entity relationships.
-
-Key tables:
-- `users` - User accounts
-- `posts` - User posts
-- `media` - Post media files
-- `likes` - Post likes
-- `comments` - Post comments
-- `follows` - User follows
-- `notifications` - User notifications
-- `conversations` - Chat conversations
-- `conversation_members` - Conversation participants
-- `messages` - Chat messages
-- `hashtags` - Hashtags
-- `post_hashtags` - Post-hashtag relationships
-
-## Architecture
-
-See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for system architecture details.
-
-Key patterns:
-- Modular architecture (feature-based modules)
-- Repository pattern for data access
-- Service layer for business logic
-- Guards for authentication
-- WebSockets for real-time features
-- Optimistic UI updates
-
-## Real-time Communication
-
-See [docs/REALTIME_FLOW.md](./docs/REALTIME_FLOW.md) for detailed flow diagrams.
+## WebSocket Namespaces
+- `/chat`
+- `/notifications`
 
 ## Development Notes
-
-### Performance Optimizations
-- Database indexes on frequently queried fields
-- Cursor-based pagination for efficient feed loading
-- Optimistic UI updates for better UX
-- Room-based WebSocket emission (targeted delivery)
-- N+1 query prevention with TypeORM joins
-
-### Security Features
-- JWT authentication with access tokens
-- Google OAuth 2.0 integration
-- Protected routes and endpoints
-- User authorization checks
-- Input validation with class-validator
-- SQL injection prevention via TypeORM
-
-### Code Quality
-- TypeScript for type safety
-- ESLint for code linting
-- Modular architecture for maintainability
-- Clear separation of concerns
-- Comprehensive documentation
+- Backend build currently passes with `npm run build`.
+- Frontend requires Vite env typing and strict TypeScript compliance to build cleanly.
+- The login UI currently links to `/forgot-password`, but that route is not implemented yet.
 
 ## License
-
 This project is developed for DATN (thesis) purposes.
-
-## Author
-
-DATN Social Media Platform - 2025

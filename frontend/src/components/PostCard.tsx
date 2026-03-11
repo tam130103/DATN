@@ -1,13 +1,21 @@
-import React, { useState } from 'react';
-import { Post, Comment } from '../types';
-import { engagementService } from '../services/engagement.service';
+import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { Comment, Post } from '../types';
+import { engagementService } from '../services/engagement.service';
+import { postService } from '../services/post.service';
+import { useAuth } from '../contexts/AuthContext';
+import { Avatar } from './common/Avatar';
 
 interface PostCardProps {
   post: Post;
+  onDeleted?: (postId: string) => void;
 }
 
-export const PostCard: React.FC<PostCardProps> = ({ post }) => {
+const hashtagRegex = /#(\w+)/g;
+
+export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
+  const { user } = useAuth();
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [liked, setLiked] = useState(post.liked || false);
   const [likesCount, setLikesCount] = useState(post.likesCount || 0);
@@ -15,46 +23,43 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState('');
   const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const media = post.media && post.media.length > 0
-    ? post.media.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))
-    : [];
+  const media = useMemo(
+    () => [...(post.media || [])].sort((a, b) => a.orderIndex - b.orderIndex),
+    [post.media],
+  );
 
-  const nextMedia = () => {
-    if (currentMediaIndex < media.length - 1) {
-      setCurrentMediaIndex(currentMediaIndex + 1);
+  const hashtags = useMemo(() => {
+    if (post.postHashtags?.length) {
+      return post.postHashtags.map((item) => item.hashtag.name);
     }
-  };
 
-  const prevMedia = () => {
-    if (currentMediaIndex > 0) {
-      setCurrentMediaIndex(currentMediaIndex - 1);
-    }
-  };
+    return Array.from(new Set((post.caption.match(hashtagRegex) || []).map((tag) => tag.slice(1).toLowerCase())));
+  }, [post.caption, post.postHashtags]);
 
   const handleLikeToggle = async () => {
     const originalLiked = liked;
     const originalCount = likesCount;
+    const nextLiked = !originalLiked;
 
-    // Optimistic update
-    setLiked(!originalLiked);
-    setLikesCount(originalLiked ? originalCount - 1 : originalCount + 1);
+    setLiked(nextLiked);
+    setLikesCount(nextLiked ? originalCount + 1 : Math.max(0, originalCount - 1));
 
     try {
       const result = await engagementService.toggleLike(post.id);
       setLiked(result.liked);
-      setLikesCount(result.liked ? originalCount + 1 : originalCount - 1);
+      setLikesCount(result.liked ? originalCount + 1 : Math.max(0, originalCount - 1));
     } catch {
-      // Revert on error
       setLiked(originalLiked);
       setLikesCount(originalCount);
-      toast.error('Failed to update like');
+      toast.error('Failed to update like.');
     }
   };
 
   const loadComments = async () => {
-    if (comments.length > 0) {
-      setShowComments(!showComments);
+    if (showComments) {
+      setShowComments(false);
       return;
     }
 
@@ -64,213 +69,224 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
       setComments(data);
       setShowComments(true);
     } catch {
-      toast.error('Failed to load comments');
+      toast.error('Failed to load comments.');
     } finally {
       setIsLoadingComments(false);
     }
   };
 
-  const handleSubmitComment = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmitComment = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!commentText.trim()) return;
 
     try {
-      const newComment = await engagementService.createComment(post.id, commentText);
-      setComments([newComment, ...comments]);
+      const newComment = await engagementService.createComment(post.id, commentText.trim());
+      setComments((prev) => [newComment, ...prev]);
+      setShowComments(true);
       setCommentText('');
-      toast.success('Comment added');
     } catch {
-      toast.error('Failed to add comment');
+      toast.error('Failed to add comment.');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Delete this post? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await postService.deletePost(post.id);
+      toast.success('Post deleted.');
+      onDeleted?.(post.id);
+    } catch {
+      toast.error('Failed to delete post.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const renderCaption = (text: string) => {
     const parts = text.split(/(#\w+)/g);
     return parts.map((part, index) => {
-      if (part.startsWith('#')) {
-        return (
-          <span key={index} className="text-blue-600 hover:text-blue-700 hover:underline cursor-pointer transition-colors">
-            {part}
-          </span>
-        );
+      if (!part.startsWith('#')) {
+        return <span key={`${part}-${index}`}>{part}</span>;
       }
-      return <span key={index}>{part}</span>;
+
+      const tag = part.replace('#', '').toLowerCase();
+      return (
+        <Link
+          key={`${tag}-${index}`}
+          to={`/hashtag/${tag}`}
+          className="font-medium text-cyan-700 transition hover:text-cyan-900"
+        >
+          {part}
+        </Link>
+      );
     });
   };
 
+  const createdAt = new Date(post.createdAt).toLocaleString();
+  const profilePath = post.user?.username ? `/${post.user.username}` : '#';
+  const isOwner = user?.id === post.userId;
+
   return (
-    <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden transition-all duration-200 hover:shadow-lg mb-4">
-      {/* Header */}
-      <div className="p-4 flex items-center space-x-3 border-b border-gray-100">
-        {post.user?.avatarUrl ? (
-          <img
-            src={post.user.avatarUrl}
-            alt={post.user.username || 'Avatar'}
-            className="w-12 h-12 rounded-full object-cover border-2 border-gray-100"
-          />
-        ) : (
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
-            <span className="text-white font-semibold text-lg">
-              {(post.user?.name || post.user?.username || 'U')[0]?.toUpperCase() || 'U'}
-            </span>
-          </div>
-        )}
-        <div className="flex-1">
-          <p className="font-semibold text-gray-900">
-            {post.user?.name || (post.user?.username ? `@${post.user.username}` : 'Unknown User')}
-          </p>
-          <p className="text-xs text-gray-500">
-            {new Date(post.createdAt).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
-          </p>
-        </div>
-      </div>
-
-      {/* Media Carousel */}
-      {media.length > 0 && (
-        <div className="relative bg-gray-50">
-          <div className="aspect-[4/5] max-h-[600px] bg-black">
-            {media[currentMediaIndex].type === 'IMAGE' ? (
-              <img
-                src={media[currentMediaIndex].url}
-                alt={`Post media ${currentMediaIndex + 1}`}
-                className="w-full h-full object-contain"
-              />
+    <article className="overflow-hidden rounded-[32px] border border-white/70 bg-white/88 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.28)] backdrop-blur">
+      <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 lg:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar src={post.user?.avatarUrl} name={post.user?.name} username={post.user?.username} size="lg" />
+          <div className="min-w-0">
+            {post.user?.username ? (
+              <Link to={profilePath} className="font-semibold text-slate-900 transition hover:text-slate-700">
+                @{post.user.username}
+              </Link>
             ) : (
-              <video
-                src={media[currentMediaIndex].url}
-                controls
-                className="w-full h-full object-contain"
-              />
+              <p className="font-semibold text-slate-900">{post.user?.name || 'Unknown author'}</p>
             )}
+            <p className="truncate text-sm text-slate-500">{post.user?.name || 'Community member'}</p>
           </div>
-
-          {media.length > 1 && (
-            <>
-              <button
-                onClick={prevMedia}
-                disabled={currentMediaIndex === 0}
-                aria-label="Previous media"
-                className="absolute left-3 top-1/2 -translate-y-1/2 bg-white bg-opacity-90 hover:bg-opacity-100 rounded-full w-10 h-10 flex items-center justify-center shadow-md transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <button
-                onClick={nextMedia}
-                disabled={currentMediaIndex === media.length - 1}
-                aria-label="Next media"
-                className="absolute right-3 top-1/2 -translate-y-1/2 bg-white bg-opacity-90 hover:bg-opacity-100 rounded-full w-10 h-10 flex items-center justify-center shadow-md transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-1.5">
-                {media.map((_, index) => (
-                  <span
-                    key={index}
-                    className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                      index === currentMediaIndex ? 'bg-white' : 'bg-white bg-opacity-50'
-                    }`}
-                  />
-                ))}
-              </div>
-            </>
-          )}
         </div>
-      )}
 
-      {/* Actions */}
-      <div className="p-4 flex items-center space-x-4 border-b border-gray-100">
-        <button
-          onClick={handleLikeToggle}
-          className="flex items-center space-x-2 group transition-all duration-200"
-          aria-label={liked ? 'Unlike post' : 'Like post'}
-        >
-          <span className={`text-2xl transition-transform duration-200 active:scale-110 ${liked ? 'text-red-500' : 'text-gray-700 group-hover:text-red-500'}`}>
-            {liked ? '❤️' : '🤍'}
-          </span>
-          <span className="text-sm font-medium text-gray-600">
-            {likesCount} {likesCount === 1 ? 'like' : 'likes'}
-          </span>
-        </button>
-
-        <button
-          onClick={loadComments}
-          className="ml-auto text-blue-600 hover:text-blue-700 font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-auto"
-          disabled={isLoadingComments}
-        >
-          {isLoadingComments ? 'Loading...' : showComments ? 'Hide' : 'View'} comments
-        </button>
-      </div>
-
-      {/* Caption */}
-      <div className="p-4">
-        <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{renderCaption(post.caption)}</p>
-      </div>
-
-      {/* Comments */}
-      {showComments && (
-        <div className="p-4 border-t border-gray-100 bg-gray-50">
-          <form onSubmit={handleSubmitComment} className="flex space-x-3 mb-4">
-            <input
-              type="text"
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              placeholder="Add a comment..."
-              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-            />
+        <div className="flex items-center gap-3">
+          <p className="text-xs uppercase tracking-[0.28em] text-slate-400">{createdAt}</p>
+          {isOwner ? (
             <button
-              type="submit"
-              disabled={!commentText.trim()}
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="rounded-2xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-rose-600 transition hover:border-rose-200 hover:bg-rose-100 disabled:opacity-60"
             >
-              Post
+              {isDeleting ? '...' : 'Delete'}
             </button>
-          </form>
+          ) : null}
+        </div>
+      </div>
 
-          <div className="space-y-3 max-h-60 overflow-y-auto">
-            {comments.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">No comments yet. Be the first to comment!</p>
+      {media.length > 0 ? (
+        <div className="border-b border-slate-100 bg-slate-950">
+          <div className="relative aspect-[4/5] max-h-[640px]">
+            {media[currentMediaIndex].type === 'IMAGE' ? (
+              <img src={media[currentMediaIndex].url} alt={`Post media ${currentMediaIndex + 1}`} className="h-full w-full object-contain" />
             ) : (
-              comments.map((comment) => (
-                <div key={comment.id} className="flex space-x-3">
-                  {comment.user?.avatarUrl ? (
-                    <img
-                      src={comment.user.avatarUrl}
-                      alt=""
-                      className="w-10 h-10 rounded-full object-cover border border-gray-200"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-400 flex items-center justify-center">
-                      <span className="text-white text-sm font-semibold">
-                        {(comment.user?.name || comment.user?.username || 'U')[0]?.toUpperCase() || 'U'}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <p className="text-sm">
-                      <span className="font-semibold text-gray-900">
-                        {comment.user?.name || (comment.user?.username ? `@${comment.user.username}` : 'Unknown')}
-                      </span>{' '}
-                      <span className="text-gray-700">{comment.content}</span>
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {new Date(comment.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              ))
+              <video src={media[currentMediaIndex].url} controls className="h-full w-full object-contain" />
             )}
+
+            {media.length > 1 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setCurrentMediaIndex((prev) => Math.max(0, prev - 1))}
+                  disabled={currentMediaIndex === 0}
+                  className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-lg font-semibold text-slate-900 shadow-lg transition hover:bg-white disabled:opacity-35"
+                >
+                  {'<'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentMediaIndex((prev) => Math.min(media.length - 1, prev + 1))}
+                  disabled={currentMediaIndex === media.length - 1}
+                  className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-lg font-semibold text-slate-900 shadow-lg transition hover:bg-white disabled:opacity-35"
+                >
+                  {'>'}
+                </button>
+                <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2 rounded-full bg-black/35 px-3 py-2 backdrop-blur">
+                  {media.map((item, index) => (
+                    <span
+                      key={item.id}
+                      className={`h-2.5 w-2.5 rounded-full ${index === currentMediaIndex ? 'bg-white' : 'bg-white/35'}`}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
-      )}
-    </div>
+      ) : null}
+
+      <div className="space-y-5 px-5 py-5 lg:px-6 lg:py-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleLikeToggle}
+            className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+              liked
+                ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/25'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            {liked ? 'Liked' : 'Like'} � {likesCount}
+          </button>
+          <button
+            type="button"
+            onClick={loadComments}
+            disabled={isLoadingComments}
+            className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:opacity-60"
+          >
+            {isLoadingComments ? 'Loading...' : showComments ? 'Hide comments' : 'Comments'}
+          </button>
+          {hashtags.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {hashtags.map((tag) => (
+                <Link
+                  key={tag}
+                  to={`/hashtag/${tag}`}
+                  className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-700 transition hover:bg-cyan-100"
+                >
+                  #{tag}
+                </Link>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-sm leading-7 text-slate-700">{renderCaption(post.caption)}</p>
+        </div>
+
+        {showComments ? (
+          <div className="rounded-[28px] border border-slate-100 bg-slate-50/80 p-4">
+            <form onSubmit={handleSubmitComment} className="flex flex-col gap-3 md:flex-row">
+              <input
+                type="text"
+                value={commentText}
+                onChange={(event) => setCommentText(event.target.value)}
+                placeholder="Add a thoughtful reply..."
+                className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-300 focus:ring-4 focus:ring-slate-900/5"
+              />
+              <button
+                type="submit"
+                disabled={!commentText.trim()}
+                className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+              >
+                Send
+              </button>
+            </form>
+
+            <div className="mt-4 space-y-3">
+              {comments.length === 0 ? (
+                <p className="rounded-2xl bg-white px-4 py-3 text-sm text-slate-500">No comments yet.</p>
+              ) : (
+                comments.map((comment) => (
+                  <div key={comment.id} className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <Avatar src={comment.user?.avatarUrl} name={comment.user?.name} username={comment.user?.username} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-slate-700">
+                          <span className="font-semibold text-slate-900">
+                            {comment.user?.username ? `@${comment.user.username}` : comment.user?.name || 'Member'}
+                          </span>{' '}
+                          {comment.content}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-400">{new Date(comment.createdAt).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </article>
   );
 };

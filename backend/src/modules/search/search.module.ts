@@ -6,9 +6,10 @@ import { User } from '../user/entities/user.entity';
 import { Hashtag } from './entities/hashtag.entity';
 import { Post } from '../post/entities/post.entity';
 import { PostHashtag } from '../post/entities/post-hashtag.entity';
+import { PostModule } from '../post/post.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Hashtag, Post, PostHashtag])],
+  imports: [TypeOrmModule.forFeature([User, Hashtag, Post, PostHashtag]), PostModule],
   controllers: [SearchController],
   providers: [SearchService],
   exports: [SearchService],

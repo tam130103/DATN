@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { User } from '../user/entities/user.entity';
 import { Hashtag } from './entities/hashtag.entity';
 import { Post } from '../post/entities/post.entity';
 import { PostHashtag } from '../post/entities/post-hashtag.entity';
+import { PostService } from '../post/post.service';
 
 @Injectable()
 export class SearchService {
@@ -17,6 +18,7 @@ export class SearchService {
     private readonly postRepository: Repository<Post>,
     @InjectRepository(PostHashtag)
     private readonly postHashtagRepository: Repository<PostHashtag>,
+    private readonly postService: PostService,
   ) {}
 
   async searchUsers(query: string, page = 1, limit = 20): Promise<User[]> {
@@ -39,22 +41,35 @@ export class SearchService {
       .getMany();
   }
 
-  async getHashtagPosts(name: string, page = 1, limit = 20): Promise<Post[]> {
-    const hashtag = await this.hashtagRepository.findOne({
-      where: { name },
-    });
+  async getHashtagPosts(name: string, viewerId: string, page = 1, limit = 20): Promise<Post[]> {
+    const hashtag = await this.hashtagRepository.findOne({ where: { name } });
 
-    if (!hashtag) return [];
+    if (!hashtag) {
+      return [];
+    }
 
     const postHashtags = await this.postHashtagRepository.find({
       where: { hashtagId: hashtag.id },
-      relations: ['post'],
       take: limit,
       skip: (page - 1) * limit,
       order: { id: 'DESC' },
     });
 
-    return postHashtags.map((ph) => ph.post);
+    const postIds = postHashtags.map((item) => item.postId);
+    if (postIds.length === 0) {
+      return [];
+    }
+
+    const posts = await this.postRepository.find({
+      where: { id: In(postIds) },
+    });
+
+    const postsById = new Map(posts.map((post) => [post.id, post]));
+    const orderedPosts = postIds
+      .map((id) => postsById.get(id))
+      .filter((post): post is Post => Boolean(post));
+
+    return this.postService.enrichPosts(orderedPosts, viewerId);
   }
 
   async globalSearch(query: string, page = 1, limit = 10): Promise<{
