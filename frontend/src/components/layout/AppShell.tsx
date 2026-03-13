@@ -12,15 +12,48 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
-const navItems = [
-  { to: '/feed', label: 'Feed', badge: 'FD' },
-  { to: '/explore', label: 'Explore', badge: 'EX' },
-  { to: '/messages', label: 'Messages', badge: 'MS' },
-  { to: '/notifications', label: 'Alerts', badge: 'AL' },
-];
-
 const joinClasses = (...values: Array<string | false | null | undefined>) =>
   values.filter(Boolean).join(' ');
+
+const HomeIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <path d="M3 10.5L12 3l9 7.5" />
+    <path d="M5 10v10h14V10" />
+  </svg>
+);
+
+const ExploreIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <circle cx="11" cy="11" r="7" />
+    <path d="M20 20l-3.5-3.5" />
+  </svg>
+);
+
+const MessageIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+  </svg>
+);
+
+const HeartIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.6l-1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.8 7.8 7.8-7.8 1-1a5.5 5.5 0 000-7.8z" />
+  </svg>
+);
+
+const ProfileIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21a8 8 0 0116 0" />
+  </svg>
+);
+
+const navItems = [
+  { to: '/feed', label: 'Home', icon: HomeIcon },
+  { to: '/explore', label: 'Search', icon: ExploreIcon },
+  { to: '/messages', label: 'Messages', icon: MessageIcon },
+  { to: '/notifications', label: 'Notifications', icon: HeartIcon },
+];
 
 export const AppShell: React.FC<AppShellProps> = ({
   title,
@@ -30,142 +63,136 @@ export const AppShell: React.FC<AppShellProps> = ({
   children,
 }) => {
   const { user, logout } = useAuth();
-  const profilePath = user?.username ? `/${user.username}` : '/feed';
+  const profilePath = user ? '/profile' : '/feed';
 
   return (
-    <div className="min-h-screen text-slate-900">
-      <div className="mx-auto max-w-7xl px-4 py-4 lg:px-6 lg:py-6">
-        <div className="grid gap-6 xl:grid-cols-[280px,minmax(0,1fr),320px]">
-          <aside className="xl:sticky xl:top-6 xl:self-start">
-            <div className="rounded-[32px] border border-white/70 bg-white/80 p-5 shadow-[0_30px_80px_-50px_rgba(15,23,42,0.45)] backdrop-blur">
-              <div className="rounded-[28px] bg-[radial-gradient(circle_at_top_left,_rgba(251,146,60,0.18),_transparent_45%),radial-gradient(circle_at_bottom_right,_rgba(34,211,238,0.16),_transparent_45%),linear-gradient(135deg,_rgba(255,255,255,0.94),_rgba(248,250,252,0.92))] p-5">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-sm font-semibold tracking-[0.2em] text-white">
-                    DS
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Social Thesis</p>
-                    <h2 className="text-xl font-semibold text-slate-900">DATN Social</h2>
-                  </div>
-                </div>
+    <div className="min-h-screen bg-neutral-50 text-neutral-900">
+      <div className="lg:flex">
+        <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-60 lg:flex-col lg:border-r lg:border-neutral-200 lg:bg-white">
+          <div className="px-6 py-6">
+            <Link to="/feed" className="text-xl font-semibold tracking-tight">
+              DATN Social
+            </Link>
+          </div>
 
-                <nav className="mt-6 space-y-2">
-                  {navItems.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      className={({ isActive }) =>
-                        joinClasses(
-                          'flex items-center justify-between rounded-2xl px-4 py-3 transition-all duration-200',
-                          isActive
-                            ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/15'
-                            : 'bg-white/80 text-slate-600 hover:bg-white hover:text-slate-900',
-                        )
-                      }
-                    >
-                      <span className="font-medium">{item.label}</span>
-                      <span className="rounded-xl border border-current/10 px-2 py-1 text-[10px] font-semibold tracking-[0.2em] opacity-80">
-                        {item.badge}
-                      </span>
-                    </NavLink>
-                  ))}
+          <nav className="flex-1 space-y-1 px-3">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    joinClasses(
+                      'flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition',
+                      isActive
+                        ? 'bg-neutral-100 text-neutral-900'
+                        : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900',
+                    )
+                  }
+                >
+                  <Icon className="h-5 w-5" />
+                  <span>{item.label}</span>
+                </NavLink>
+              );
+            })}
 
-                  <NavLink
-                    to={profilePath}
-                    className={({ isActive }) =>
-                      joinClasses(
-                        'flex items-center justify-between rounded-2xl px-4 py-3 transition-all duration-200',
-                        isActive
-                          ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/15'
-                          : 'bg-white/80 text-slate-600 hover:bg-white hover:text-slate-900',
-                      )
-                    }
-                  >
-                    <span className="font-medium">Profile</span>
-                    <span className="rounded-xl border border-current/10 px-2 py-1 text-[10px] font-semibold tracking-[0.2em] opacity-80">
-                      PF
-                    </span>
-                  </NavLink>
-                </nav>
+            <NavLink
+              to={profilePath}
+              className={({ isActive }) =>
+                joinClasses(
+                  'flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition',
+                  isActive
+                    ? 'bg-neutral-100 text-neutral-900'
+                    : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900',
+                )
+              }
+            >
+              <ProfileIcon className="h-5 w-5" />
+              <span>Profile</span>
+            </NavLink>
+          </nav>
 
-                <div className="mt-6 rounded-[24px] border border-slate-200/70 bg-white/90 p-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar src={user?.avatarUrl} name={user?.name} username={user?.username} size="lg" />
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-slate-900">{user?.name || user?.username || 'You'}</p>
-                      <p className="truncate text-sm text-slate-500">
-                        {user?.username ? `@${user.username}` : user?.email || 'Profile is still being set up'}
-                      </p>
-                    </div>
-                  </div>
+          <div className="mt-auto space-y-3 px-4 pb-6">
+            <Link
+              to={profilePath}
+              className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
+            >
+              <Avatar src={user?.avatarUrl} name={user?.name} username={user?.username} size="sm" />
+              <span className="truncate">{user?.username || user?.name || 'Profile'}</span>
+            </Link>
+            <button
+              onClick={logout}
+              className="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-600 transition hover:border-neutral-300 hover:text-neutral-900"
+            >
+              Log out
+            </button>
+          </div>
+        </aside>
 
-                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-slate-600">
-                    <div className="rounded-2xl bg-slate-50 p-3">
-                      <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Followers</p>
-                      <p className="mt-1 text-lg font-semibold text-slate-900">{user?.followersCount ?? 0}</p>
-                    </div>
-                    <div className="rounded-2xl bg-slate-50 p-3">
-                      <p className="text-xs uppercase tracking-[0.25em] text-slate-400">Following</p>
-                      <p className="mt-1 text-lg font-semibold text-slate-900">{user?.followingCount ?? 0}</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <Link
-                      to={profilePath}
-                      className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
-                    >
-                      Open profile
-                    </Link>
-                    <button
-                      onClick={logout}
-                      className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
-                    >
-                      Sign out
-                    </button>
-                  </div>
-                </div>
+        <div className="flex min-h-screen flex-1 flex-col lg:ml-60">
+          <header className="sticky top-0 z-20 border-b border-neutral-200 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
+            <div className="flex items-center justify-between">
+              <Link to="/feed" className="text-lg font-semibold">
+                DATN Social
+              </Link>
+              <div className="flex items-center gap-3">
+                <NotificationBell />
+                <Link to={profilePath} aria-label="Profile">
+                  <Avatar src={user?.avatarUrl} name={user?.name} username={user?.username} size="sm" />
+                </Link>
               </div>
             </div>
-          </aside>
+          </header>
 
-          <div className="space-y-6">
-            <header className="rounded-[32px] border border-white/70 bg-white/80 p-5 shadow-[0_30px_80px_-50px_rgba(15,23,42,0.45)] backdrop-blur lg:p-6">
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Workspace</p>
-                  <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{title}</h1>
-                  {description ? (
-                    <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">{description}</p>
-                  ) : null}
-                </div>
-                <div className="flex items-center gap-3 self-start">
-                  {action}
+          <main className="mx-auto w-full max-w-[935px] px-4 pb-24 pt-6 lg:px-8 lg:pt-8">
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h1 className="text-lg font-semibold text-neutral-900">{title}</h1>
+                {description ? (
+                  <p className="mt-1 text-sm text-neutral-500">{description}</p>
+                ) : null}
+              </div>
+              <div className="flex items-center gap-3">
+                {action}
+                <div className="hidden sm:block">
                   <NotificationBell />
                 </div>
               </div>
-            </header>
+            </div>
 
-            <div className="space-y-6">{children}</div>
-          </div>
-
-          <aside className="hidden xl:block xl:sticky xl:top-6 xl:self-start">
             {aside ? (
-              aside
-            ) : (
-              <div className="rounded-[32px] border border-white/70 bg-white/80 p-5 shadow-[0_30px_80px_-50px_rgba(15,23,42,0.45)] backdrop-blur">
-                <div className="rounded-[28px] bg-slate-900 p-6 text-white">
-                  <p className="text-xs uppercase tracking-[0.35em] text-white/60">Control room</p>
-                  <h3 className="mt-3 text-2xl font-semibold">Keep the project moving.</h3>
-                  <p className="mt-3 text-sm leading-6 text-white/70">
-                    Use the feed to publish, explore to discover users and hashtags, alerts for engagement, and messages to keep conversations live.
-                  </p>
-                </div>
+              <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr),320px]">
+                <div className="space-y-6">{children}</div>
+                <aside className="hidden xl:block">{aside}</aside>
               </div>
+            ) : (
+              <div className="space-y-6">{children}</div>
             )}
-          </aside>
+          </main>
+
+          <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-neutral-200 bg-white lg:hidden">
+            <div className="mx-auto flex max-w-[935px] items-center justify-around px-4 py-2">
+              <NavLink to="/feed" className="p-2 text-neutral-600">
+                <HomeIcon className="h-6 w-6" />
+              </NavLink>
+              <NavLink to="/explore" className="p-2 text-neutral-600">
+                <ExploreIcon className="h-6 w-6" />
+              </NavLink>
+              <NavLink to="/messages" className="p-2 text-neutral-600">
+                <MessageIcon className="h-6 w-6" />
+              </NavLink>
+              <NavLink to="/notifications" className="p-2 text-neutral-600">
+                <HeartIcon className="h-6 w-6" />
+              </NavLink>
+              <NavLink to={profilePath} className="p-2 text-neutral-600" aria-label="Profile">
+                <ProfileIcon className="h-6 w-6" />
+              </NavLink>
+            </div>
+          </nav>
         </div>
       </div>
     </div>
   );
 };
+

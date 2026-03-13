@@ -1,40 +1,37 @@
 import { apiClient } from './api';
 import { Post, FeedResponse } from '../types';
 
-export interface UploadedMedia {
-  url: string;
-  type: 'IMAGE' | 'VIDEO';
-  originalName?: string;
-}
-
 export interface CreatePostInput {
   caption: string;
   media?: { url: string; type: 'IMAGE' | 'VIDEO' }[];
 }
 
 export const postService = {
-  uploadMedia: async (files: File[]): Promise<UploadedMedia[]> => {
-    const formData = new FormData();
-    files.forEach((file) => formData.append('files', file));
-
-    const response = await apiClient.post<UploadedMedia[]>('/posts/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-
-    return response.data;
-  },
-
   createPost: async (data: CreatePostInput): Promise<Post> => {
     const response = await apiClient.post<Post>('/posts', data);
     return response.data;
+  },
+
+  uploadMedia: async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post<{ url: string }>('/posts/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.url;
   },
 
   getFeed: async (cursor?: string, limit = 20): Promise<FeedResponse> => {
     const params: Record<string, string | number> = { limit };
     if (cursor) params.cursor = cursor;
     const response = await apiClient.get<FeedResponse>('/posts/feed', { params });
+    return response.data;
+  },
+
+  getPostsByUser: async (userId: string, cursor?: string, limit = 24): Promise<FeedResponse> => {
+    const params: Record<string, string | number> = { limit };
+    if (cursor) params.cursor = cursor;
+    const response = await apiClient.get<FeedResponse>(`/posts/user/${userId}`, { params });
     return response.data;
   },
 

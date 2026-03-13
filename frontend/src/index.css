@@ -1,15 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bg: #f4efe6;
-  --bg-2: #eef5f2;
-  --surface: rgba(255, 255, 255, 0.8);
-  --text: #0f172a;
-  --muted: #64748b;
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --text: #111111;
+  --muted: #737373;
+  --border: #dbdbdb;
+  --accent: #0095f6;
 }
 
 * {
@@ -23,12 +24,12 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+  font-family: 'Instrument Sans', 'Manrope', 'Segoe UI', sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at top left, rgba(251, 146, 60, 0.16), transparent 28%),
-    radial-gradient(circle at 85% 12%, rgba(56, 189, 248, 0.14), transparent 22%),
-    linear-gradient(180deg, var(--bg), var(--bg-2));
+    radial-gradient(circle at top, rgba(0, 0, 0, 0.02), transparent 45%),
+    radial-gradient(circle at 12% 15%, rgba(0, 149, 246, 0.04), transparent 35%),
+    var(--bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -39,7 +40,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
+  font-family: 'Instrument Sans', 'Manrope', sans-serif;
 }
 
 button,
@@ -61,7 +62,7 @@ video {
 }
 
 ::selection {
-  background: rgba(15, 23, 42, 0.12);
+  background: rgba(0, 149, 246, 0.18);
 }
 
 ::-webkit-scrollbar {
@@ -72,7 +73,7 @@ video {
 ::-webkit-scrollbar-thumb {
   border-radius: 999px;
   border: 2px solid transparent;
-  background: rgba(100, 116, 139, 0.28);
+  background: rgba(17, 17, 17, 0.18);
   background-clip: padding-box;
 }
 

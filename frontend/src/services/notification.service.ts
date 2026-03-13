@@ -17,6 +17,7 @@ class NotificationService {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
+      withCredentials: true,
     });
 
     this.socket.on('notification', (notification: Notification) => {

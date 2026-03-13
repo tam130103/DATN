@@ -3,7 +3,7 @@ import { MediaType } from '../entities/media.entity';
 import { Type } from 'class-transformer';
 
 export class CreateMediaDto {
-  @IsUrl({}, { message: 'url must be a valid URL' })
+  @IsUrl({ require_tld: false }, { message: 'url must be a valid URL' })
   url: string;
 
   @IsEnum(MediaType)
@@ -22,3 +22,4 @@ export class CreatePostDto {
   @Type(() => CreateMediaDto)
   media?: CreateMediaDto[];
 }
+

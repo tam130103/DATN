@@ -9,6 +9,7 @@ import ExplorePage from './pages/ExplorePage';
 import HashtagPage from './pages/HashtagPage';
 import MessagesPage from './pages/MessagesPage';
 import NotificationsPage from './pages/NotificationsPage';
+import PostDetailPage from './pages/PostDetailPage';
 
 function App() {
   return (
@@ -25,6 +26,14 @@ function App() {
           }
         />
         <Route path="/" element={<Navigate to="/feed" replace />} />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/:username"
           element={
@@ -70,6 +79,14 @@ function App() {
           element={
             <ProtectedRoute>
               <NotificationsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/posts/:postId"
+          element={
+            <ProtectedRoute>
+              <PostDetailPage />
             </ProtectedRoute>
           }
         />

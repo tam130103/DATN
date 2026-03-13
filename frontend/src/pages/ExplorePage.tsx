@@ -97,7 +97,7 @@ const ExplorePage: React.FC = () => {
             className="flex-1 rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-900/5"
           />
           <div className="rounded-[24px] bg-slate-100 px-4 py-4 text-sm text-slate-500">
-            {query ? `Results for “${query}”` : 'Start typing to search the workspace.'}
+            {query ? `Results for '${query}'` : 'Start typing to search the workspace.'}
           </div>
         </div>
       </section>
@@ -160,7 +160,7 @@ const ExplorePage: React.FC = () => {
                 {users.map((entry) => (
                   <Link
                     key={entry.id}
-                    to={entry.username ? `/${entry.username}` : '/feed'}
+                    to={entry.username ? `/${entry.username}` : `/${entry.id}`}
                     className="flex items-center gap-4 rounded-[28px] border border-slate-100 bg-slate-50/80 px-4 py-4 transition hover:bg-white"
                   >
                     <Avatar src={entry.avatarUrl} name={entry.name} username={entry.username} size="lg" />
@@ -197,3 +197,4 @@ const ExplorePage: React.FC = () => {
 };
 
 export default ExplorePage;
+

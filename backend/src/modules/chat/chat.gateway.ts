@@ -18,7 +18,7 @@ const onlineUsers = new Map<string, Set<string>>();
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
     credentials: true,
   },
   namespace: '/chat',
@@ -40,44 +40,50 @@ export class ChatGateway
   }
 
   async handleConnection(client: Socket) {
+    const token =
+      client.handshake.auth.token ||
+      client.handshake.headers.authorization?.replace('Bearer ', '');
+
+    if (!token) {
+      client.disconnect();
+      return;
+    }
+
+    let payload: { sub: string };
     try {
-      const token =
-        client.handshake.auth.token ||
-        client.handshake.headers.authorization?.replace('Bearer ', '');
-
-      if (!token) {
-        client.disconnect();
-        return;
-      }
-
-      const payload = this.jwtService.verify(token, {
+      payload = this.jwtService.verify(token, {
         secret: this.configService.get<string>('JWT_SECRET'),
-      });
+      }) as { sub: string };
+    } catch (error) {
+      console.error('Chat auth error:', error);
+      client.disconnect();
+      return;
+    }
 
-      const userId = payload.sub;
-      client.data.userId = userId;
+    const userId = payload.sub;
+    client.data.userId = userId;
 
-      // Add to online users
-      if (!onlineUsers.has(userId)) {
-        onlineUsers.set(userId, new Set());
-      }
-      onlineUsers.get(userId)!.add(client.id);
+    // Add to online users
+    if (!onlineUsers.has(userId)) {
+      onlineUsers.set(userId, new Set());
+    }
+    onlineUsers.get(userId)!.add(client.id);
 
-      // Join user's personal room for direct messages
-      client.join(`user:${userId}`);
+    // Join user's personal room for direct messages
+    client.join(`user:${userId}`);
 
-      // Notify others that user is online
-      client.broadcast.emit('userOnline', { userId });
+    // Notify others that user is online
+    client.broadcast.emit('userOnline', { userId });
 
-      // Send unread count
+    // Send unread count (non-blocking)
+    try {
       const unreadCount = await this.chatService.getUnreadCount(userId);
       client.emit('unreadCount', unreadCount);
-
-      console.log(`User ${userId} connected to chat`);
     } catch (error) {
-      console.error('Chat connection error:', error);
-      client.disconnect();
+      console.error('Chat unread count error:', error);
     }
+
+    console.log(`User ${userId} connected to chat`);
   }
 
   handleDisconnect(client: Socket) {
@@ -149,6 +155,11 @@ export class ChatGateway
 
       // Broadcast to conversation room (members who joined)
       this.server.to(data.conversationId).emit('newMessage', message);
+
+      // Ensure sender sees their message even if not yet joined to the room
+      if (!client.rooms.has(data.conversationId)) {
+        client.emit('newMessage', message);
+      }
     } catch (error) {
       client.emit('error', { message: error.message });
     }

@@ -40,12 +40,11 @@ export class Notification {
   @CreateDateColumn()
   createdAt: Date;
 
-  // Relations
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'recipient_id' })
+  @JoinColumn({ name: 'recipientId' })
   recipient: User;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'sender_id' })
+  @JoinColumn({ name: 'senderId' })
   sender: User;
 }

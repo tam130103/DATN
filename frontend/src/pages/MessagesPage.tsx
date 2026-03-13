@@ -81,7 +81,11 @@ const MessagesPage: React.FC = () => {
 
     const unsubscribeNewMessage = chatSocketService.on('newMessage', (message: Message) => {
       if (message.conversationId === selectedConversation) {
-        setMessages((prev) => [...prev, message]);
+        setMessages((prev) => {
+          // Prevent duplicate: HTTP response may have already added this message
+          if (prev.some((m) => m.id === message.id)) return prev;
+          return [...prev, message];
+        });
       }
       loadConversations();
     });
@@ -172,12 +176,21 @@ const MessagesPage: React.FC = () => {
     navigate(`/messages/${id}`);
   };
 
-  const handleSendMessage = (event: React.FormEvent) => {
+  const handleSendMessage = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!messageInput.trim() || !selectedConversation) return;
 
-    chatSocketService.sendMessage(selectedConversation, messageInput.trim());
+    const content = messageInput.trim();
     setMessageInput('');
+    
+    try {
+      // Send via HTTP â€” the backend will broadcast via WebSocket,
+      // and the WebSocket listener will add the message to state.
+      // We don't add here to avoid duplicate messages.
+      await chatService.sendMessage(selectedConversation, content);
+    } catch {
+      toast.error('Failed to send message');
+    }
   };
 
   const handleStartDirectConversation = async (participant: User) => {
@@ -291,7 +304,7 @@ const MessagesPage: React.FC = () => {
                     onClick={() => toggleParticipant(participant)}
                     className="rounded-full bg-cyan-50 px-3 py-1.5 text-sm font-medium text-cyan-700 transition hover:bg-cyan-100"
                   >
-                    {participant.name || participant.username || 'Participant'} ×
+                    {participant.name || participant.username || 'Participant'} 
                   </button>
                 ))}
               </div>
@@ -411,11 +424,11 @@ const MessagesPage: React.FC = () => {
                         <div key={message.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                           <div className={`max-w-xl rounded-[28px] px-4 py-3 ${isMine ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'}`}>
                             {!isMine ? (
-                              <p className="text-xs uppercase tracking-[0.2em] opacity-60">
+                              <p className="mb-1 text-xs uppercase tracking-[0.2em] opacity-60">
                                 {message.sender?.username ? `@${message.sender.username}` : message.sender?.name || 'Member'}
                               </p>
                             ) : null}
-                            <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-7">{message.content}</p>
+                            <p className="whitespace-pre-wrap break-words text-sm leading-7">{message.content}</p>
                             {message.mediaUrl ? <img src={message.mediaUrl} alt="Message attachment" className="mt-3 max-h-64 rounded-2xl object-cover" /> : null}
                             <p className={`mt-2 text-xs ${isMine ? 'text-white/60' : 'text-slate-400'}`}>
                               {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -449,7 +462,6 @@ const MessagesPage: React.FC = () => {
                   />
                   <button
                     type="submit"
-                    disabled={!messageInput.trim()}
                     className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
                   >
                     Send

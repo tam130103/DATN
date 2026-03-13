@@ -16,10 +16,10 @@ export class Message {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column('uuid')
   conversationId: string;
 
-  @Column()
+  @Column('uuid')
   @Index()
   senderId: string;
 
@@ -37,10 +37,10 @@ export class Message {
 
   // Relations
   @ManyToOne(() => Conversation, (conversation) => conversation.messages, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'conversation_id' })
+  @JoinColumn({ name: 'conversationId' })
   conversation: Conversation;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'sender_id' })
+  @JoinColumn({ name: 'senderId' })
   sender: User;
 }

@@ -69,16 +69,27 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
-    const { email, password } = loginDto;
+    const { email: identifier, password } = loginDto;
+    const normalized = identifier.trim();
+    const lower = normalized.toLowerCase();
 
-    // Find user by email
-    const user = await this.userService.findByEmail(email);
+    let user: User | null = null;
+
+    if (normalized.includes('@')) {
+      user = (await this.userService.findByEmail(normalized)) ?? (await this.userService.findByEmail(lower));
+    } else {
+      user = (await this.userService.findByUsername(normalized)) ?? (await this.userService.findByUsername(lower));
+      if (!user) {
+        user = (await this.userService.findByEmail(normalized)) ?? (await this.userService.findByEmail(lower));
+      }
+    }
+
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Check if user is local provider
-    if (user.provider !== UserProvider.LOCAL) {
+    // Check if user is local provider (treat null as local)
+    if (user.provider && user.provider !== UserProvider.LOCAL) {
       throw new BadRequestException('Please use Google OAuth to login');
     }
 

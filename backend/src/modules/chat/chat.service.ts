@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, In } from 'typeorm';
 import { Conversation } from './entities/conversation.entity';
 import { ConversationMember } from './entities/conversation-member.entity';
 import { Message } from './entities/message.entity';
 import { CreateConversationDto } from './dto/create-conversation.dto';
+import { User } from '../user/entities/user.entity';
 
 @Injectable()
 export class ChatService {
@@ -15,6 +16,8 @@ export class ChatService {
     private readonly memberRepository: Repository<ConversationMember>,
     @InjectRepository(Message)
     private readonly messageRepository: Repository<Message>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -30,9 +33,9 @@ export class ChatService {
         `(
           SELECT COUNT(*)
           FROM conversation_members cm
-          WHERE cm.conversation_id = conversation.id
-          AND cm.has_left = false
-          AND cm.user_id IN (:...userIds)
+          WHERE cm."conversationId" = conversation.id
+          AND cm."hasLeft" = false
+          AND cm."userId" IN (:...userIds)
         ) = 2`,
         { userIds: [userId, otherUserId] },
       )
@@ -40,7 +43,7 @@ export class ChatService {
 
     if (existing) return existing;
 
-    return this.dataSource.transaction(async (manager) => {
+    const conversationId = await this.dataSource.transaction(async (manager) => {
       const conversation = manager.create(Conversation, {
         isGroup: false,
       });
@@ -52,22 +55,24 @@ export class ChatService {
       ];
       await manager.save(members);
 
-      return this.findById(savedConv.id);
+      return savedConv.id;
     });
+
+    return this.findById(conversationId);
   }
 
   async createGroupConversation(
     userId: string,
     dto: CreateConversationDto,
   ): Promise<Conversation> {
-    return this.dataSource.transaction(async (manager) => {
+    const conversationId = await this.dataSource.transaction(async (manager) => {
       const participantIds = Array.from(new Set([userId, ...dto.participantIds]));
       const conversation = manager.create(Conversation, {
         isGroup: true,
         name: dto.name,
       });
       const savedConv = await manager.save(conversation);
-
+      
       const members = participantIds.map((participantId) =>
         manager.create(ConversationMember, {
           conversationId: savedConv.id,
@@ -76,23 +81,41 @@ export class ChatService {
       );
       await manager.save(members);
 
-      return this.findById(savedConv.id);
+      return savedConv.id;
     });
+
+    return this.findById(conversationId);
   }
 
   async getConversations(userId: string): Promise<any[]> {
-    const conversations = await this.conversationRepository
-      .createQueryBuilder('conversation')
-      .leftJoinAndSelect('conversation.members', 'member')
-      .leftJoinAndSelect('member.user', 'user')
-      .innerJoin(
-        'conversation.members',
-        'myMember',
-        'myMember.userId = :userId AND myMember.hasLeft = false',
-        { userId },
-      )
-      .orderBy('conversation.updatedAt', 'DESC')
-      .getMany();
+    const memberships = await this.memberRepository.find({
+      where: { userId, hasLeft: false },
+    });
+
+    if (memberships.length === 0) {
+      return [];
+    }
+
+    const conversationIds = Array.from(new Set(memberships.map((member) => member.conversationId)));
+    const conversations = await this.conversationRepository.find({
+      where: { id: In(conversationIds) },
+      order: { updatedAt: 'DESC' },
+    });
+
+    const members = await this.memberRepository.find({
+      where: { conversationId: In(conversationIds), hasLeft: false },
+    });
+
+    const userIds = Array.from(new Set(members.map((member) => member.userId)));
+    const users = await this.userRepository.find({ where: { id: In(userIds) } });
+    const usersById = new Map(users.map((user) => [user.id, user]));
+
+    const membersByConversation = new Map<string, ConversationMember[]>();
+    members.forEach((member) => {
+      const existing = membersByConversation.get(member.conversationId) ?? [];
+      existing.push(member);
+      membersByConversation.set(member.conversationId, existing);
+    });
 
     const result = await Promise.all(
       conversations.map(async (conv) => {
@@ -101,7 +124,8 @@ export class ChatService {
           order: { createdAt: 'DESC' },
         });
 
-        const otherMembers = conv.members.filter((m) => m.userId !== userId && !m.hasLeft);
+        const convMembers = membersByConversation.get(conv.id) ?? [];
+        const otherMembers = convMembers.filter((m) => m.userId !== userId);
 
         return {
           id: conv.id,
@@ -111,10 +135,10 @@ export class ChatService {
           updatedAt: conv.updatedAt,
           lastMessage,
           members: otherMembers.map((m) => ({
-            id: m.user.id,
-            username: m.user.username,
-            name: m.user.name,
-            avatarUrl: m.user.avatarUrl,
+            id: usersById.get(m.userId)?.id ?? m.userId,
+            username: usersById.get(m.userId)?.username ?? null,
+            name: usersById.get(m.userId)?.name ?? null,
+            avatarUrl: usersById.get(m.userId)?.avatarUrl ?? null,
           })),
         };
       }),
@@ -152,7 +176,7 @@ export class ChatService {
       throw new ForbiddenException('You are not a member of this conversation');
     }
 
-    return this.dataSource.transaction(async (manager) => {
+    const savedId = await this.dataSource.transaction(async (manager) => {
       const message = manager.create(Message, {
         conversationId,
         senderId,
@@ -167,10 +191,12 @@ export class ChatService {
         { updatedAt: new Date() },
       );
 
-      return this.messageRepository.findOneOrFail({
-        where: { id: saved.id },
-        relations: ['sender'],
-      });
+      return saved.id;
+    });
+
+    return this.messageRepository.findOneOrFail({
+      where: { id: savedId },
+      relations: ['sender'],
     });
   }
 
@@ -211,7 +237,7 @@ export class ChatService {
       .innerJoin(
         'conversation_members',
         'cm',
-        'cm.conversation_id = message.conversation_id AND cm.user_id = :userId AND cm.has_left = false',
+        'cm."conversationId" = message."conversationId" AND cm."userId" = :userId AND cm."hasLeft" = false',
         { userId },
       )
       .where('message.senderId != :userId', { userId })
@@ -232,3 +258,4 @@ export class ChatService {
     await this.memberRepository.save(member);
   }
 }
+

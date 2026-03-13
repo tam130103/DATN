@@ -47,4 +47,9 @@ export const chatService = {
   leaveConversation: async (conversationId: string): Promise<void> => {
     await apiClient.post(`/conversations/${conversationId}/leave`);
   },
+
+  sendMessage: async (conversationId: string, content: string): Promise<Message> => {
+    const response = await apiClient.post<Message>(`/conversations/${conversationId}/messages`, { content });
+    return response.data;
+  },
 };

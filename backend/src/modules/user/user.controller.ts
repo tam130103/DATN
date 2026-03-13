@@ -9,29 +9,86 @@ import {
   Query,
   UseGuards,
   ParseIntPipe,
+  UseInterceptors,
+  UploadedFile,
+  Req,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname, join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
+import { Request } from 'express';
 import { UserService } from './user.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationGateway } from '../notification/notification.gateway';
+
+const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+const avatarUploadDir = join(process.cwd(), process.env.UPLOAD_DIR || 'uploads', 'avatars');
+if (!existsSync(avatarUploadDir)) {
+  mkdirSync(avatarUploadDir, { recursive: true });
+}
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly notificationService: NotificationService,
+    private readonly notificationGateway: NotificationGateway,
+  ) {}
 
   @Get('me')
   getMe(@CurrentUser() user: any) {
     return this.userService.findById(user.id);
   }
 
+  @Post('me/avatar')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: avatarUploadDir,
+        filename: (_req, file, cb) => {
+          const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname)}`;
+          cb(null, uniqueName);
+        },
+      }),
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
+  uploadAvatar(@UploadedFile() file: { filename: string; mimetype: string }, @Req() req: Request) {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+
+    if (!file.mimetype.startsWith('image/')) {
+      throw new BadRequestException('Only image files are allowed');
+    }
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    return { url: `${baseUrl}/uploads/avatars/${file.filename}` };
+  }
+
   @Get(':username')
   async getByUsername(@Param('username') username: string, @CurrentUser() currentUser: any) {
-    const user = await this.userService.findByUsername(username);
+    let user = await this.userService.findByUsername(username);
+
+    if (!user && isUuid(username)) {
+      try {
+        user = await this.userService.findById(username);
+      } catch {
+        user = null;
+      }
+    }
+
     if (!user) {
       return null;
     }
+
     const isFollowing = await this.userService.isFollowing(currentUser.id, user.id);
     return { ...user, isFollowing };
   }
@@ -47,8 +104,13 @@ export class UserController {
   }
 
   @Post(':id/follow')
-  follow(@CurrentUser() user: any, @Param('id') id: string) {
-    return this.userService.follow(user.id, id);
+  async follow(@CurrentUser() user: any, @Param('id') id: string) {
+    await this.userService.follow(user.id, id);
+    const notification = await this.notificationService.createFollowNotification(user.id, id);
+    if (notification) {
+      this.notificationGateway.emitToUser(id, 'notification', notification);
+    }
+    return { success: true };
   }
 
   @Delete(':id/follow')

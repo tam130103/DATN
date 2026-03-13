@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Notification, NotificationType } from './entities/notification.entity';
 import { User } from '../user/entities/user.entity';
 import { UserService } from '../user/user.service';
@@ -10,6 +10,8 @@ export class NotificationService {
   constructor(
     @InjectRepository(Notification)
     private readonly notificationRepository: Repository<Notification>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly userService: UserService,
   ) {}
 
@@ -19,14 +21,12 @@ export class NotificationService {
     type: NotificationType,
     data?: Record<string, any>,
   ): Promise<Notification | null> {
-    // Don't notify yourself
     if (recipientId === senderId) {
       return null;
     }
 
-    // Check if recipient has notifications enabled
     const recipient = await this.userService.findById(recipientId);
-    if (!recipient.notificationEnabled) {
+    if (recipient.notificationEnabled === false) {
       return null;
     }
 
@@ -40,13 +40,25 @@ export class NotificationService {
   }
 
   async findByUser(userId: string, page = 1, limit = 20): Promise<Notification[]> {
-    return this.notificationRepository.find({
+    const notifications = await this.notificationRepository.find({
       where: { recipientId: userId },
-      relations: ['sender'],
       order: { createdAt: 'DESC' },
       take: limit,
       skip: (page - 1) * limit,
     });
+
+    if (notifications.length === 0) {
+      return [];
+    }
+
+    const senderIds = Array.from(new Set(notifications.map((item) => item.senderId)));
+    const users = await this.userRepository.find({ where: { id: In(senderIds) } });
+    const senderMap = new Map(users.map((user) => [user.id, user]));
+
+    return notifications.map((notification) => ({
+      ...notification,
+      sender: senderMap.get(notification.senderId),
+    }));
   }
 
   async markAsRead(notificationId: string): Promise<void> {
@@ -66,7 +78,6 @@ export class NotificationService {
     });
   }
 
-  // Helper methods
   async createLikeNotification(likerId: string, postAuthorId: string, postId: string): Promise<Notification | null> {
     return this.create(postAuthorId, likerId, 'LIKE', { postId });
   }

@@ -18,11 +18,11 @@ export class ConversationMember {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column('uuid')
   @Index()
   conversationId: string;
 
-  @Column()
+  @Column('uuid')
   userId: string;
 
   @Column({ default: false })
@@ -33,10 +33,10 @@ export class ConversationMember {
 
   // Relations
   @ManyToOne(() => Conversation, (conversation) => conversation.members, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'conversation_id' })
+  @JoinColumn({ name: 'conversationId' })
   conversation: Conversation;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'user_id' })
+  @JoinColumn({ name: 'userId' })
   user: User;
 }

@@ -28,6 +28,7 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:3000', {
         auth: { token },
         transports: ['websocket'],
+        autoConnect: false, // Do not connect to root namespace, use chat/notification services instead
       });
 
       newSocket.on('connect', () => {
@@ -41,7 +42,7 @@ export const SocketProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       setSocket(newSocket);
 
       return () => {
-        newSocket.disconnect();
+        // Do nothing stringency hook
       };
     } else {
       setSocket(null);

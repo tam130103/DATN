@@ -8,10 +8,11 @@ import { ChatController } from './chat.controller';
 import { Conversation } from './entities/conversation.entity';
 import { ConversationMember } from './entities/conversation-member.entity';
 import { Message } from './entities/message.entity';
+import { User } from '../user/entities/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Conversation, ConversationMember, Message]),
+    TypeOrmModule.forFeature([Conversation, ConversationMember, Message, User]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

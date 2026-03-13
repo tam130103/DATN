@@ -90,7 +90,7 @@ export const NotificationBell: React.FC = () => {
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-white/70 bg-white/90 text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:text-slate-900"
+        className="relative flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 transition hover:border-neutral-300 hover:text-neutral-900"
         aria-label="Open notifications"
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -98,7 +98,7 @@ export const NotificationBell: React.FC = () => {
           <path d="M10 18a2 2 0 004 0" />
         </svg>
         {unreadCount > 0 ? (
-          <span className="absolute -right-1 -top-1 flex min-h-6 min-w-6 items-center justify-center rounded-full bg-rose-500 px-1.5 text-xs font-semibold text-white shadow-lg">
+          <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         ) : null}
@@ -112,17 +112,14 @@ export const NotificationBell: React.FC = () => {
             onClick={() => setIsOpen(false)}
             aria-label="Close notifications"
           />
-          <div className="absolute right-0 top-14 z-20 w-[360px] overflow-hidden rounded-[28px] border border-white/70 bg-white/95 shadow-[0_30px_80px_-40px_rgba(15,23,42,0.42)] backdrop-blur">
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Realtime</p>
-                <h3 className="mt-1 text-lg font-semibold text-slate-900">Notifications</h3>
-              </div>
+          <div className="absolute right-0 top-12 z-20 w-[340px] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg">
+            <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
+              <h3 className="text-sm font-semibold text-neutral-900">Notifications</h3>
               {unreadCount > 0 ? (
                 <button
                   type="button"
                   onClick={handleMarkAllAsRead}
-                  className="rounded-2xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+                  className="text-xs font-semibold text-blue-500"
                 >
                   Mark all read
                 </button>
@@ -131,9 +128,9 @@ export const NotificationBell: React.FC = () => {
 
             <div className="max-h-[420px] overflow-y-auto px-3 py-3">
               {isLoading ? (
-                <div className="rounded-[24px] bg-slate-50 p-6 text-center text-sm text-slate-500">Loading alerts...</div>
+                <div className="rounded-lg bg-neutral-50 p-4 text-center text-xs text-neutral-500">Loading...</div>
               ) : notifications.length === 0 ? (
-                <div className="rounded-[24px] bg-slate-50 p-6 text-center text-sm text-slate-500">No notifications yet.</div>
+                <div className="rounded-lg bg-neutral-50 p-4 text-center text-xs text-neutral-500">No notifications yet.</div>
               ) : (
                 <div className="space-y-2">
                   {notifications.map((notification) => (
@@ -141,10 +138,10 @@ export const NotificationBell: React.FC = () => {
                       key={notification.id}
                       type="button"
                       onClick={() => handleMarkAsRead(notification.id, notification.isRead)}
-                      className={`w-full rounded-[24px] border px-4 py-3 text-left transition ${
+                      className={`w-full rounded-lg px-3 py-2 text-left transition ${
                         notification.isRead
-                          ? 'border-transparent bg-transparent hover:bg-slate-50'
-                          : 'border-cyan-100 bg-cyan-50/70 hover:bg-cyan-50'
+                          ? 'bg-transparent hover:bg-neutral-50'
+                          : 'bg-blue-50/60 hover:bg-blue-50'
                       }`}
                     >
                       <div className="flex items-start gap-3">
@@ -152,17 +149,17 @@ export const NotificationBell: React.FC = () => {
                           src={notification.sender.avatarUrl}
                           name={notification.sender.name}
                           username={notification.sender.username}
-                          size="md"
+                          size="sm"
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium leading-6 text-slate-900">
+                          <p className="text-sm font-medium text-neutral-900">
                             {renderNotificationText(notification)}
                           </p>
-                          <p className="mt-1 text-xs text-slate-500">
+                          <p className="mt-1 text-xs text-neutral-500">
                             {new Date(notification.createdAt).toLocaleString()}
                           </p>
                         </div>
-                        {!notification.isRead ? <span className="mt-2 h-2.5 w-2.5 rounded-full bg-cyan-500" /> : null}
+                        {!notification.isRead ? <span className="mt-2 h-2 w-2 rounded-full bg-blue-500" /> : null}
                       </div>
                     </button>
                   ))}
@@ -170,13 +167,13 @@ export const NotificationBell: React.FC = () => {
               )}
             </div>
 
-            <div className="border-t border-slate-100 px-5 py-4">
+            <div className="border-t border-neutral-200 px-4 py-3">
               <Link
                 to="/notifications"
                 onClick={() => setIsOpen(false)}
-                className="block rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-200 hover:text-slate-900"
+                className="block text-center text-sm font-medium text-neutral-700 hover:text-neutral-900"
               >
-                Open notifications center
+                View all
               </Link>
             </div>
           </div>

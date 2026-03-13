@@ -44,6 +44,7 @@
     "@types/passport-jwt": "^4.0.0",
     "@types/passport-google-oauth20": "^2.0.14",
     "@types/bcrypt": "^5.0.2",
+    "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   }
 }

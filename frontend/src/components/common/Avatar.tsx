@@ -9,9 +9,9 @@ interface AvatarProps {
 }
 
 const sizeMap = {
-  sm: 'h-9 w-9 text-sm',
-  md: 'h-11 w-11 text-base',
-  lg: 'h-16 w-16 text-lg',
+  sm: 'h-8 w-8 text-xs',
+  md: 'h-10 w-10 text-sm',
+  lg: 'h-14 w-14 text-base',
   xl: 'h-24 w-24 text-2xl',
 };
 
@@ -34,7 +34,7 @@ export const Avatar: React.FC<AvatarProps> = ({
         src={src}
         alt={label}
         className={joinClasses(
-          'rounded-[22px] object-cover ring-1 ring-black/5',
+          'rounded-full object-cover ring-1 ring-black/5',
           sizeMap[size],
           className,
         )}
@@ -45,7 +45,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   return (
     <div
       className={joinClasses(
-        'flex items-center justify-center rounded-[22px] bg-gradient-to-br from-orange-300 via-rose-300 to-cyan-300 font-semibold text-slate-900 shadow-sm ring-1 ring-black/5',
+        'flex items-center justify-center rounded-full bg-neutral-200 font-semibold text-neutral-700 ring-1 ring-black/5',
         sizeMap[size],
         className,
       )}

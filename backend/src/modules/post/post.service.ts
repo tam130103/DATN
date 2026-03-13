@@ -174,6 +174,33 @@ export class PostService {
     return { posts, nextCursor };
   }
 
+  async getPostsByUser(
+    targetUserId: string,
+    viewerId?: string,
+    cursor?: string,
+    limit = 24,
+  ): Promise<{ posts: Post[]; nextCursor: string | null }> {
+    let query = this.postRepository
+      .createQueryBuilder('post')
+      .where('post.userId = :userId', { userId: targetUserId })
+      .orderBy('post.createdAt', 'DESC')
+      .limit(limit + 1);
+
+    if (cursor) {
+      query = query.andWhere('post.createdAt < :cursor', { cursor: new Date(cursor) });
+    }
+
+    const rawPosts = await query.getMany();
+    const hasMore = rawPosts.length > limit;
+    const visiblePosts = hasMore ? rawPosts.slice(0, limit) : rawPosts;
+    const posts = await this.enrichPosts(visiblePosts, viewerId);
+    const nextCursor = hasMore
+      ? visiblePosts[visiblePosts.length - 1].createdAt.toISOString()
+      : null;
+
+    return { posts, nextCursor };
+  }
+
   async findById(id: string, viewerId?: string): Promise<Post> {
     const post = await this.postRepository.findOne({
       where: { id },

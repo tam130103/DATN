@@ -9,32 +9,24 @@ import {
   UseGuards,
   ParseIntPipe,
   UseInterceptors,
-  UploadedFiles,
-  BadRequestException,
+  UploadedFile,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import type { Request } from 'express';
+import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
-import { extname, isAbsolute, join } from 'path';
+import { Request } from 'express';
 import { PostService } from './post.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
-const resolveUploadDir = () => {
-  const configuredPath = process.env.UPLOAD_DIR || 'uploads';
-  const uploadDir = isAbsolute(configuredPath)
-    ? configuredPath
-    : join(process.cwd(), configuredPath);
-
-  if (!existsSync(uploadDir)) {
-    mkdirSync(uploadDir, { recursive: true });
-  }
-
-  return uploadDir;
-};
+const uploadDir = join(process.cwd(), process.env.UPLOAD_DIR || 'uploads');
+if (!existsSync(uploadDir)) {
+  mkdirSync(uploadDir, { recursive: true });
+}
 
 @Controller('posts')
 @UseGuards(JwtAuthGuard)
@@ -43,37 +35,28 @@ export class PostController {
 
   @Post('upload')
   @UseInterceptors(
-    FilesInterceptor('files', 10, {
+    FileInterceptor('file', {
       storage: diskStorage({
-        destination: (_req, _file, callback) => callback(null, resolveUploadDir()),
-        filename: (_req, file, callback) => {
-          const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-          callback(null, `${uniqueSuffix}${extname(file.originalname).toLowerCase()}`);
+        destination: uploadDir,
+        filename: (_req, file, cb) => {
+          const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname)}`;
+          cb(null, uniqueName);
         },
       }),
-      limits: {
-        fileSize: 25 * 1024 * 1024,
-      },
-      fileFilter: (_req, file, callback) => {
-        if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
-          callback(null, true);
-          return;
-        }
-
-        callback(new Error('Only image and video files are allowed'), false);
-      },
+      limits: { fileSize: 20 * 1024 * 1024 },
     }),
   )
-  uploadMedia(@UploadedFiles() files: Array<{ filename: string; mimetype: string; originalname: string }>, @Req() request: Request) {
-    if (!files || files.length === 0) {
-      throw new BadRequestException('No files uploaded');
+  uploadMedia(@UploadedFile() file: { filename: string; mimetype: string }, @Req() req: Request) {
+    if (!file) {
+      throw new BadRequestException('File is required');
     }
 
-    return files.map((file) => ({
-      url: `${request.protocol}://${request.get('host')}/uploads/${file.filename}`,
-      type: file.mimetype.startsWith('video/') ? 'VIDEO' : 'IMAGE',
-      originalName: file.originalname,
-    }));
+    if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('video/')) {
+      throw new BadRequestException('Only image or video files are allowed');
+    }
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    return { url: `${baseUrl}/uploads/${file.filename}` };
   }
 
   @Post()
@@ -90,9 +73,19 @@ export class PostController {
     return this.postService.getFeed(user.id, cursor, limit);
   }
 
+  @Get('user/:id')
+  getByUser(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit = 24,
+  ) {
+    return this.postService.getPostsByUser(id, user.id, cursor, limit);
+  }
+
   @Get(':id')
-  getById(@CurrentUser() user: any, @Param('id') id: string) {
-    return this.postService.findById(id, user.id);
+  getById(@Param('id') id: string) {
+    return this.postService.findById(id);
   }
 
   @Delete(':id')

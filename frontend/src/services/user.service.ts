@@ -22,6 +22,15 @@ export const userService = {
     return response.data;
   },
 
+  uploadAvatar: async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post<{ url: string }>('/users/me/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.url;
+  },
+
   updateNotificationSettings: async (notificationEnabled: boolean): Promise<void> => {
     await apiClient.patch('/users/me/notification', { notificationEnabled });
   },
