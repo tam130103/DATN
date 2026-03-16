@@ -5,10 +5,12 @@ import { Post } from './entities/post.entity';
 import { Media } from './entities/media.entity';
 import { Hashtag } from './entities/hashtag.entity';
 import { PostHashtag } from './entities/post-hashtag.entity';
+import { PostMention } from './entities/post-mention.entity';
 import { CreatePostDto } from './dto/create-post.dto';
 import { Follow } from '../user/entities/follow.entity';
 import { User } from '../user/entities/user.entity';
 import { Like } from '../engagement/entities/like.entity';
+import { Comment } from '../engagement/entities/comment.entity';
 
 @Injectable()
 export class PostService {
@@ -21,12 +23,16 @@ export class PostService {
     private readonly hashtagRepository: Repository<Hashtag>,
     @InjectRepository(PostHashtag)
     private readonly postHashtagRepository: Repository<PostHashtag>,
+    @InjectRepository(PostMention)
+    private readonly postMentionRepository: Repository<PostMention>,
     @InjectRepository(Follow)
     private readonly followRepository: Repository<Follow>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(Like)
     private readonly likeRepository: Repository<Like>,
+    @InjectRepository(Comment)
+    private readonly commentRepository: Repository<Comment>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -42,6 +48,18 @@ export class PostService {
     return Array.from(hashtags);
   }
 
+  private extractMentions(caption: string): string[] {
+    const regex = /@([a-zA-Z0-9_.]+)/g;
+    const mentions = new Set<string>();
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(caption)) !== null) {
+      mentions.add(match[1].toLowerCase());
+    }
+
+    return Array.from(mentions);
+  }
+
   async enrichPosts(posts: Post[], viewerId?: string): Promise<Post[]> {
     if (posts.length === 0) {
       return [];
@@ -50,7 +68,7 @@ export class PostService {
     const postIds = posts.map((post) => post.id);
     const userIds = Array.from(new Set(posts.map((post) => post.userId)));
 
-    const [users, media, postHashtags, likes] = await Promise.all([
+    const [users, media, postHashtags, likes, commentsList] = await Promise.all([
       this.userRepository.find({ where: { id: In(userIds) } }),
       this.mediaRepository.find({
         where: { postId: In(postIds) },
@@ -61,12 +79,17 @@ export class PostService {
         relations: ['hashtag'],
       }),
       this.likeRepository.find({ where: { postId: In(postIds) } }),
+      this.commentRepository.find({
+        where: { postId: In(postIds) },
+        select: ['id', 'postId'],
+      }),
     ]);
 
     const userMap = new Map(users.map((user) => [user.id, user]));
     const mediaMap = new Map<string, Media[]>();
     const hashtagMap = new Map<string, PostHashtag[]>();
     const likesCountMap = new Map<string, number>();
+    const commentsCountMap = new Map<string, number>();
     const likedPostIds = new Set<string>();
 
     media.forEach((item) => {
@@ -88,12 +111,17 @@ export class PostService {
       }
     });
 
+    commentsList.forEach((comment) => {
+      commentsCountMap.set(comment.postId, (commentsCountMap.get(comment.postId) ?? 0) + 1);
+    });
+
     return posts.map((post) => ({
       ...post,
       user: userMap.get(post.userId) ?? (post.user as User),
       media: mediaMap.get(post.id) ?? [],
       postHashtags: hashtagMap.get(post.id) ?? [],
       likesCount: likesCountMap.get(post.id) ?? 0,
+      commentsCount: commentsCountMap.get(post.id) ?? 0,
       liked: viewerId ? likedPostIds.has(post.id) : false,
     } as Post));
   }
@@ -132,6 +160,21 @@ export class PostService {
           hashtagId: hashtag.id,
         });
         await manager.save(postHashtag);
+      }
+
+      // Extract and save mentions
+      const mentionUsernames = this.extractMentions(caption);
+      if (mentionUsernames.length > 0) {
+        const mentionedUsers = await manager.find(User, {
+          where: mentionUsernames.map(username => ({ username })),
+        });
+        for (const mentionedUser of mentionedUsers) {
+          const postMention = manager.create(PostMention, {
+            postId: createdPost.id,
+            userId: mentionedUser.id,
+          });
+          await manager.save(postMention);
+        }
       }
 
       return createdPost;
@@ -228,5 +271,34 @@ export class PostService {
 
       await manager.delete(Post, { id });
     });
+  }
+
+  async getTaggedPosts(
+    userId: string,
+    viewerId?: string,
+    cursor?: string,
+    limit = 24,
+  ): Promise<{ posts: Post[]; nextCursor: string | null }> {
+    let query = this.postMentionRepository
+      .createQueryBuilder('mention')
+      .where('mention.userId = :userId', { userId })
+      .leftJoinAndSelect('mention.post', 'post')
+      .orderBy('post.createdAt', 'DESC')
+      .limit(limit + 1);
+
+    if (cursor) {
+      query = query.andWhere('post.createdAt < :cursor', { cursor: new Date(cursor) });
+    }
+
+    const rawMentions = await query.getMany();
+    const rawPosts = rawMentions.map(m => m.post).filter(Boolean);
+    const hasMore = rawPosts.length > limit;
+    const visiblePosts = hasMore ? rawPosts.slice(0, limit) : rawPosts;
+    const posts = await this.enrichPosts(visiblePosts, viewerId);
+    const nextCursor = hasMore
+      ? visiblePosts[visiblePosts.length - 1].createdAt.toISOString()
+      : null;
+
+    return { posts, nextCursor };
   }
 }

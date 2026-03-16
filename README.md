@@ -1,76 +1,27 @@
-# DATN Social - Instagram-like Social Media Platform
+# DATN Social
 
-A full-featured social media application built with NestJS (backend) and React (frontend), featuring real-time notifications, messaging, and a modern responsive UI.
+Mang xa hoi kieu Instagram, gom backend NestJS + frontend React, co xac thuc JWT, bai viet, binh luan, theo doi nguoi dung, chat realtime va thong bao realtime.
 
-## Tech Stack
+## 1) Cong nghe su dung
 
 ### Backend
-- **Framework**: [NestJS](https://nestjs.com/) - Progressive Node.js framework
-- **Database**: [PostgreSQL](https://www.postgresql.org/) - Relational database
-- **ORM**: [TypeORM](https://typeorm.io/) - TypeScript ORM
-- **Authentication**: JWT (JSON Web Tokens), Google OAuth 2.0
-- **Real-time**: [Socket.IO](https://socket.io/) - WebSocket library
-- **Validation**: class-validator
-- **File Upload**: Multer (local storage)
-- **Language**: TypeScript
+- NestJS 10
+- TypeORM + PostgreSQL
+- JWT auth (email/password + Google ID token)
+- Socket.IO (chat, notifications)
+- class-validator
+- Multer (upload anh/video cuc bo)
 
 ### Frontend
-- **Framework**: [React 18](https://react.dev/)
-- **Build Tool**: [Vite](https://vitejs.dev/)
-- **Routing**: [React Router v6](https://reactrouter.com/)
-- **State Management**: React Context API
-- **Real-time**: Socket.IO Client
-- **HTTP Client**: Axios
-- **Styling**: Tailwind CSS
-- **Authentication**: Google Identity Services
-- **Notifications**: React Hot Toast
-- **Language**: TypeScript
+- React 18 + TypeScript
+- Vite
+- React Router v6
+- Axios
+- Socket.IO Client
+- Tailwind CSS
+- React Hot Toast
 
-## Features
-
-### Authentication
-- Google OAuth 2.0 login
-- Email/password login and registration
-- JWT-based authentication
-- Protected routes and API endpoints
-- User profile management
-
-### User System
-- User profiles with avatar, bio, username
-- Follow/unfollow functionality
-- Follower/following counts
-- Optimistic UI updates
-- Notification preference toggle
-
-### Posts
-- Create posts with multiple media (images/videos)
-- Like/unlike posts
-- Comment system with nested replies
-- Hashtag extraction and linking
-- Cursor-based pagination for feed
-
-### Engagement
-- Real-time notifications for likes and comments
-- Unread notification count
-- Mark as read functionality
-- Notification preferences (enable/disable)
-
-### Real-time Chat
-- Direct messaging between users
-- Group conversations
-- Online status tracking
-- Real-time message delivery
-- Message history
-- Typing indicators
-
-### Search & Explore
-- Search users by username/name
-- Search hashtags
-- Trending hashtags page
-- Hashtag feed page
-- DB indexing for fast searches
-
-## Project Structure
+## 2) Cau truc thu muc
 
 ```text
 datn-social/
@@ -84,174 +35,223 @@ datn-social/
 |   |   |   |-- notification/
 |   |   |   |-- chat/
 |   |   |   `-- search/
-|   |   |-- config/
 |   |   |-- migrations/
+|   |   |-- config/
 |   |   |-- app.module.ts
 |   |   `-- main.ts
-|   `-- .env
+|   |-- package.json
+|   `-- uploads/
 |-- frontend/
 |   |-- src/
 |   |   |-- components/
 |   |   |-- contexts/
 |   |   |-- pages/
 |   |   |-- services/
-|   |   |-- types/
-|   |   |-- main.tsx
-|   |   `-- App.tsx
-|   `-- .env
+|   |   `-- types/
+|   `-- package.json
 `-- docs/
 ```
 
-## Setup Instructions
+## 3) Yeu cau moi truong
 
-### Prerequisites
-- Node.js (v18+)
-- PostgreSQL (v14+)
-- Google Cloud Console account (for OAuth)
+- Node.js 18+
+- npm 9+
+- PostgreSQL 14+
 
-### 1. Clone the Repository
+## 4) Cai dat nhanh
+
+### Buoc 1: Clone du an
+
 ```bash
 git clone <repository-url>
 cd datn-social
 ```
 
-### 2. Database Setup
-Create a PostgreSQL database:
+### Buoc 2: Cai dependencies
+
+```bash
+cd backend
+npm install
+
+cd ../frontend
+npm install
+```
+
+### Buoc 3: Tao database
+
 ```sql
 CREATE DATABASE datn_social;
 ```
 
-### 3. Backend Setup
-```bash
-cd backend
-npm install
-```
+### Buoc 4: Tao bien moi truong backend
 
-Create `.env` file in `backend/`:
+Tao file `backend/.env`:
+
 ```env
 DB_HOST=localhost
 DB_PORT=5432
-DB_USERNAME=your_db_user
-DB_PASSWORD=your_db_password
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
 DB_DATABASE=datn_social
 
-JWT_SECRET=your_jwt_secret_key_here
-JWT_REFRESH_SECRET=your_refresh_secret_key_here
-JWT_EXPIRES_IN=7d
-
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
+JWT_SECRET=replace_with_strong_secret
+JWT_REFRESH_SECRET=replace_with_strong_refresh_secret
+JWT_EXPIRATION=15m
 
 PORT=3000
-NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
 API_PREFIX=api/v1
-UPLOAD_DIR=./uploads
+UPLOAD_DIR=uploads
+
+# Optional
+DATABASE_LOGGING=false
 ```
 
-Start the backend:
-```bash
-npm run start:dev
-```
+Luu y:
+- `JWT_EXPIRATION` la ten bien backend dang doc.
+- `synchronize=false`, vi vay can chay migration de cap nhat schema.
 
-The current backend config uses `synchronize: false`, so schema changes are not auto-synced at startup. Use the migration scripts when changing entities:
-```bash
-npm run migration:run
-npm run migration:revert
-```
+### Buoc 5: Tao bien moi truong frontend
 
-### 4. Frontend Setup
-```bash
-cd frontend
-npm install
-```
+Tao file `frontend/.env`:
 
-Create `.env` file in `frontend/`:
 ```env
 VITE_API_URL=http://localhost:3000
 VITE_GOOGLE_CLIENT_ID=your_google_client_id
 ```
 
-### 5. Google OAuth Setup
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project
-3. Enable Google Identity / OAuth consent configuration as needed
-4. Create OAuth 2.0 credentials
-5. Add authorized JavaScript origin: `http://localhost:5173`
-6. Copy Client ID and Client Secret to the environment files
+## 5) Chay du an
 
-### 6. Run the Application
-Backend:
+### Backend
+
 ```bash
 cd backend
+npm run migration:run
 npm run start:dev
 ```
 
-Frontend:
+### Frontend
+
 ```bash
 cd frontend
 npm run dev
 ```
 
-## API Endpoints
-All HTTP endpoints are served under `/api/v1`.
+Sau khi chay:
+- Backend: `http://localhost:3000`
+- API prefix mac dinh: `http://localhost:3000/api/v1`
+- Frontend: `http://localhost:5173`
 
-### Authentication
-- `POST /api/v1/auth/register` - Register with email/password
-- `POST /api/v1/auth/login` - Login with email/password
-- `POST /api/v1/auth/google` - Login with Google
-- `POST /api/v1/auth/refresh` - Refresh access token
-- `GET /api/v1/auth/me` - Get current user
+## 6) Scripts quan trong
+
+### Backend (`backend/package.json`)
+- `npm run build`: build NestJS
+- `npm run start`: start thuong
+- `npm run start:dev`: start watch mode
+- `npm run start:prod`: chay ban build dist
+- `npm run migration:run`: chay migration
+- `npm run migration:revert`: rollback migration gan nhat
+
+### Frontend (`frontend/package.json`)
+- `npm run dev`: chay local
+- `npm run build`: kiem tra type + build Vite
+- `npm run preview`: preview ban build
+- `npm run lint`: chay ESLint
+
+## 7) API hien co
+
+Tat ca endpoint HTTP dung prefix `/api/v1`.
+
+### Auth
+- `POST /auth/register`
+- `POST /auth/login`
+- `POST /auth/google`
+- `POST /auth/refresh`
+- `GET /auth/me`
 
 ### Users
-- `GET /api/v1/users/me` - Get current user profile
-- `GET /api/v1/users/:username` - Get user by username
-- `PATCH /api/v1/users/me` - Update profile
-- `PATCH /api/v1/users/me/notification` - Update notification settings
-- `POST /api/v1/users/:id/follow` - Follow user
-- `DELETE /api/v1/users/:id/follow` - Unfollow user
-- `GET /api/v1/users/:id/followers` - Get followers
-- `GET /api/v1/users/:id/following` - Get following
+- `GET /users/me`
+- `POST /users/me/avatar`
+- `GET /users/:id/followers`
+- `GET /users/:id/following`
+- `GET /users/:username`
+- `PATCH /users/me`
+- `PATCH /users/me/notification`
+- `POST /users/:id/follow`
+- `DELETE /users/:id/follow`
 
-### Posts and Engagement
-- `GET /api/v1/posts/feed` - Get feed posts
-- `POST /api/v1/posts` - Create post
-- `GET /api/v1/posts/:id` - Get post by ID
-- `DELETE /api/v1/posts/:id` - Delete post
-- `POST /api/v1/posts/:id/like` - Toggle like
-- `DELETE /api/v1/posts/:id/like` - Toggle unlike
-- `GET /api/v1/posts/:id/comments` - Get post comments
-- `POST /api/v1/posts/:id/comments` - Create comment
-- `DELETE /api/v1/posts/comments/:commentId` - Delete comment
+### Posts + Engagement
+- `POST /posts/upload`
+- `POST /posts`
+- `GET /posts/feed`
+- `GET /posts/user/:id`
+- `GET /posts/:id`
+- `DELETE /posts/:id`
+- `POST /posts/:id/like`
+- `DELETE /posts/:id/like`
+- `POST /posts/:id/comments`
+- `GET /posts/:id/comments`
+- `DELETE /posts/comments/:commentId`
 
 ### Chat
-- `POST /api/v1/conversations` - Create or find a conversation
-- `GET /api/v1/conversations` - Get user conversations
-- `GET /api/v1/conversations/:id/messages` - Get conversation messages
-- `GET /api/v1/conversations/unread-count` - Get unread message count
-- `POST /api/v1/conversations/:id/leave` - Leave conversation
+- `POST /conversations`
+- `GET /conversations`
+- `GET /conversations/:id/messages`
+- `GET /conversations/unread-count`
+- `POST /conversations/:id/leave`
+- `POST /conversations/:id/messages`
 
 ### Notifications
-- `GET /api/v1/notifications` - Get notifications
-- `GET /api/v1/notifications/unread-count` - Get unread count
-- `POST /api/v1/notifications/:id/read` - Mark one notification as read
-- `POST /api/v1/notifications/read-all` - Mark all notifications as read
+- `GET /notifications`
+- `GET /notifications/unread-count`
+- `POST /notifications/:id/read`
+- `POST /notifications/read-all`
 
 ### Search
-- `GET /api/v1/search/users?q=query` - Search users
-- `GET /api/v1/search/hashtags?q=query` - Search hashtags
-- `GET /api/v1/search/hashtags/:name/posts` - Get posts by hashtag
-- `GET /api/v1/search/global?q=query` - Global search
-- `GET /api/v1/search/trending` - Get trending hashtags
+- `GET /search/users?q=...`
+- `GET /search/hashtags?q=...`
+- `GET /search/hashtags/:name/posts`
+- `GET /search/global?q=...`
+- `GET /search/trending`
 
-## WebSocket Namespaces
-- `/chat`
+## 8) Realtime Socket.IO
+
+### Namespace `/chat`
+Su kien chinh:
+- Client emit: `joinConversation`, `leaveConversation`, `sendMessage`, `markAsRead`, `typing`
+- Server emit: `newMessage`, `conversationRead`, `userTyping`, `userOnline`, `userOffline`, `membersOnline`, `unreadCount`
+
+### Namespace `/notifications`
+Su kien chinh:
+- Client emit: `markAsRead`, `markAllAsRead`
+- Server emit: `notification`, `unreadCount`
+
+## 9) Frontend routes hien co
+
+- `/login`
+- `/register`
+- `/feed`
+- `/profile`
+- `/:username`
+- `/explore`
+- `/hashtag/:name`
+- `/messages`
+- `/messages/:conversationId`
 - `/notifications`
+- `/posts/:postId`
 
-## Development Notes
-- Backend build currently passes with `npm run build`.
-- Frontend requires Vite env typing and strict TypeScript compliance to build cleanly.
-- The login UI currently links to `/forgot-password`, but that route is not implemented yet.
+## 10) Luu y khi phat trien
 
-## License
-This project is developed for DATN (thesis) purposes.
+- Backend dang dung `synchronize=false`, schema DB phai duoc dong bo qua migration.
+- Co script `backend/reset-db.js` de reset DB local, nhung dang hardcode thong tin ket noi. Nen sua lai cho an toan truoc khi dung.
+- Link "Forgot password?" tren trang login hien chua tro den route chuc nang quen mat khau.
+
+## 11) Tai lieu bo sung
+
+- `docs/ARCHITECTURE.md`
+- `docs/ERD.md`
+- `docs/REALTIME_FLOW.md`
+
+## 12) License
+
+Du an duoc thuc hien phuc vu DATN (do an tot nghiep).

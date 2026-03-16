@@ -147,8 +147,8 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose }) => 
   const isVideo = cover?.type === 'VIDEO';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-6" onClick={handleBackdropClick}>
-      <div className="relative flex w-full max-w-[1200px] overflow-hidden rounded-2xl bg-black shadow-2xl md:h-[80vh] md:max-h-[820px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-2 sm:p-6" onClick={handleBackdropClick}>
+      <div className="relative flex h-[90vh] w-full max-w-[1200px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl md:h-[80vh] md:max-h-[820px] md:flex-row">
         <button
           type="button"
           onClick={onClose}
@@ -158,12 +158,20 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose }) => 
           <CloseIcon className="h-5 w-5" />
         </button>
 
-        <div className="relative hidden flex-1 items-center justify-center bg-black md:flex">
+        <div className="relative flex w-full items-center justify-center bg-black md:flex-1">
           {cover ? (
             isVideo ? (
-              <video src={cover.url} controls className="h-full w-full object-contain" />
+              <video
+                src={cover.url}
+                controls
+                className="h-auto max-h-[60vh] w-full object-contain md:h-full md:max-h-full"
+              />
             ) : (
-              <img src={cover.url} alt={post.caption || 'Post media'} className="h-full w-full object-contain" />
+              <img
+                src={cover.url}
+                alt={post.caption || 'Post media'}
+                className="h-auto max-h-[60vh] w-full object-contain md:h-full md:max-h-full"
+              />
             )
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-white/70">No media available</div>
@@ -193,7 +201,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose }) => 
           ) : null}
         </div>
 
-        <div className="flex w-full flex-col bg-white text-neutral-900 md:w-[420px]">
+        <div className="flex w-full flex-col bg-white text-neutral-900 md:w-[420px] md:border-l md:border-neutral-200">
           <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
             <div className="flex items-center gap-3">
               <Avatar src={post.user?.avatarUrl} name={post.user?.name} username={post.user?.username} size="sm" />

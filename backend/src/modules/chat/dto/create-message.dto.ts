@@ -2,7 +2,8 @@ import { IsString, IsOptional, IsUrl } from 'class-validator';
 
 export class CreateMessageDto {
   @IsString()
-  conversationId: string;
+  @IsOptional()
+  conversationId?: string;
 
   @IsString()
   content: string;

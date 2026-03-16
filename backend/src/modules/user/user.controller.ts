@@ -73,6 +73,24 @@ export class UserController {
     return { url: `${baseUrl}/uploads/avatars/${file.filename}` };
   }
 
+  @Get(':id/followers')
+  getFollowers(
+    @Param('id') id: string,
+    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
+  ) {
+    return this.userService.getFollowers(id, page, limit);
+  }
+
+  @Get(':id/following')
+  getFollowing(
+    @Param('id') id: string,
+    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
+  ) {
+    return this.userService.getFollowing(id, page, limit);
+  }
+
   @Get(':username')
   async getByUsername(@Param('username') username: string, @CurrentUser() currentUser: any) {
     let user = await this.userService.findByUsername(username);
@@ -116,23 +134,5 @@ export class UserController {
   @Delete(':id/follow')
   unfollow(@CurrentUser() user: any, @Param('id') id: string) {
     return this.userService.unfollow(user.id, id);
-  }
-
-  @Get(':id/followers')
-  getFollowers(
-    @Param('id') id: string,
-    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
-  ) {
-    return this.userService.getFollowers(id, page, limit);
-  }
-
-  @Get(':id/following')
-  getFollowing(
-    @Param('id') id: string,
-    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
-  ) {
-    return this.userService.getFollowing(id, page, limit);
   }
 }

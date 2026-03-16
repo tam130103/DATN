@@ -43,4 +43,11 @@ export const postService = {
   deletePost: async (id: string): Promise<void> => {
     await apiClient.delete(`/posts/${id}`);
   },
+
+  getTaggedPosts: async (userId: string, cursor?: string, limit = 24): Promise<FeedResponse> => {
+    const params: Record<string, string | number> = { limit };
+    if (cursor) params.cursor = cursor;
+    const response = await apiClient.get<FeedResponse>(`/posts/user/${userId}/tagged`, { params });
+    return response.data;
+  },
 };

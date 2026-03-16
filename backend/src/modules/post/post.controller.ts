@@ -83,6 +83,16 @@ export class PostController {
     return this.postService.getPostsByUser(id, user.id, cursor, limit);
   }
 
+  @Get('user/:id/tagged')
+  getTaggedPosts(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit = 24,
+  ) {
+    return this.postService.getTaggedPosts(id, user.id, cursor, limit);
+  }
+
   @Get(':id')
   getById(@Param('id') id: string) {
     return this.postService.findById(id);

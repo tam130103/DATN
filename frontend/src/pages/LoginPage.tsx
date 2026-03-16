@@ -4,9 +4,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 
 declare global {
-  interface Window {
-    google: any;
-  }
+  interface Window { google: any; }
 }
 
 const LoginPage: React.FC = () => {
@@ -20,132 +18,92 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     const initializeGoogleButton = () => {
       if (!window.google) return;
-
       window.google.accounts.id.initialize({
         client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID',
         callback: async (response: any) => {
           setIsGoogleLoading(true);
-          try {
-            await loginWithGoogle(response.credential);
-            navigate('/feed');
-          } catch {
-            toast.error('Google login failed.');
-          } finally {
-            setIsGoogleLoading(false);
-          }
+          try { await loginWithGoogle(response.credential); navigate('/feed'); }
+          catch { toast.error('Google login failed.'); }
+          finally { setIsGoogleLoading(false); }
         },
         auto_select: false,
       });
-
       window.google.accounts.id.renderButton(document.getElementById('google-signin-button'), {
-        theme: 'outline',
-        size: 'large',
-        text: 'signin_with',
+        theme: 'outline', size: 'large', text: 'signin_with',
       });
     };
-
     const existingScript = document.querySelector('script[data-google-gsi="true"]');
-    if (existingScript) {
-      initializeGoogleButton();
-      return;
-    }
-
+    if (existingScript) { initializeGoogleButton(); return; }
     const script = document.createElement('script');
     script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
+    script.async = true; script.defer = true;
     script.dataset.googleGsi = 'true';
     script.onload = initializeGoogleButton;
     document.body.appendChild(script);
   }, [loginWithGoogle, navigate]);
 
-  if (!isLoading && isAuthenticated) {
-    return <Navigate to="/feed" replace />;
-  }
+  if (!isLoading && isAuthenticated) return <Navigate to="/feed" replace />;
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!email || !password) {
-      toast.error('Please fill in both email and password.');
-      return;
-    }
-
+    if (!email || !password) { toast.error('Please fill in all fields.'); return; }
     setIsLoggingIn(true);
-    try {
-      await login(email, password);
-      navigate('/feed');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Login failed.');
-    } finally {
-      setIsLoggingIn(false);
-    }
+    try { await login(email, password); navigate('/feed'); }
+    catch (error: any) { toast.error(error.response?.data?.message || 'Login failed.'); }
+    finally { setIsLoggingIn(false); }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="w-full max-w-5xl overflow-hidden rounded-[36px] border border-white/70 bg-white/88 shadow-[0_30px_80px_-40px_rgba(15,23,42,0.35)] backdrop-blur lg:grid lg:grid-cols-[1.1fr,0.9fr]">
-        <div className="bg-slate-900 px-8 py-10 text-white lg:px-10 lg:py-12">
-          <p className="text-xs uppercase tracking-[0.35em] text-white/50">DATN Social</p>
-          <h1 className="mt-4 text-4xl font-semibold leading-tight">Build a thesis-grade social experience around content, chat, and discovery.</h1>
-          <p className="mt-5 max-w-lg text-sm leading-7 text-white/70">
-            Sign in to manage your profile, publish media posts, react in realtime, follow people, and keep conversations active through direct or group messaging.
-          </p>
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-[28px] border border-white/10 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.25em] text-white/45">Modules</p>
-              <p className="mt-2 text-lg font-semibold">Feed, chat, alerts</p>
-            </div>
-            <div className="rounded-[28px] border border-white/10 bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-[0.25em] text-white/45">Realtime</p>
-              <p className="mt-2 text-lg font-semibold">Notifications and typing state</p>
-            </div>
-          </div>
-        </div>
+    <div className="flex min-h-screen items-center justify-center bg-[#fafafa] px-4 py-10">
+      <div className="w-full max-w-[350px] space-y-3">
+        {/* Card */}
+        <div className="border border-[#dbdbdb] bg-white px-10 py-10 text-center">
+          {/* Logo */}
+          <h1 className="mb-8 font-['Segoe_Script',_cursive] text-4xl tracking-tight text-black">
+            DATN Social
+          </h1>
 
-        <div className="px-8 py-10 lg:px-10 lg:py-12">
-          <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Session</p>
-          <h2 className="mt-3 text-3xl font-semibold text-slate-900">Sign in</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-500">Use email/password or continue with Google.</p>
-
-          <form onSubmit={handleLogin} className="mt-8 space-y-4">
+          <form onSubmit={handleLogin} className="space-y-2">
             <input
               type="email"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="Email"
-              className="w-full rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4 outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-900/5"
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Phone number, username, or email"
+              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none transition focus:border-[#a8a8a8]"
             />
             <input
               type="password"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="w-full rounded-[24px] border border-slate-200 bg-slate-50 px-4 py-4 outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-900/5"
+              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none transition focus:border-[#a8a8a8]"
             />
             <button
               type="submit"
-              disabled={isLoggingIn || isLoading}
-              className="w-full rounded-[24px] bg-slate-900 px-4 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+              disabled={isLoggingIn || isLoading || !email || !password}
+              className="mt-2 w-full rounded-lg bg-[#0095f6] py-1.5 text-sm font-semibold text-white transition hover:bg-[#1877f2] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isLoggingIn ? 'Signing in...' : 'Sign in'}
+              {isLoggingIn ? 'Logging in...' : 'Log in'}
             </button>
           </form>
 
-          <div className="my-6 flex items-center gap-4 text-xs uppercase tracking-[0.3em] text-slate-300">
-            <span className="h-px flex-1 bg-slate-200" />
-            <span>or</span>
-            <span className="h-px flex-1 bg-slate-200" />
+          {/* OR divider */}
+          <div className="my-4 flex items-center gap-3">
+            <div className="h-px flex-1 bg-[#dbdbdb]" />
+            <span className="text-[13px] font-semibold text-[#8e8e8e]">OR</span>
+            <div className="h-px flex-1 bg-[#dbdbdb]" />
           </div>
 
           <div id="google-signin-button" className="flex justify-center" />
-          {isGoogleLoading ? <p className="mt-3 text-center text-sm text-slate-500">Signing in with Google...</p> : null}
+          {isGoogleLoading && <p className="mt-2 text-xs text-[#8e8e8e]">Signing in...</p>}
 
-          <p className="mt-8 text-sm text-slate-500">
-            Need an account?{' '}
-            <Link to="/register" className="font-semibold text-slate-900 transition hover:text-cyan-700">
-              Create one now
-            </Link>
-          </p>
+          <Link to="#" className="mt-4 block text-xs text-[#00376b]">Forgot password?</Link>
+        </div>
+
+        {/* Sign up */}
+        <div className="border border-[#dbdbdb] bg-white px-10 py-5 text-center text-sm">
+          Don't have an account?{' '}
+          <Link to="/register" className="font-semibold text-[#0095f6]">Sign up</Link>
         </div>
       </div>
     </div>

@@ -1,20 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bg: #fafafa;
-  --surface: #ffffff;
-  --text: #111111;
-  --muted: #737373;
-  --border: #dbdbdb;
-  --accent: #0095f6;
+  --ig-primary: #000000;
+  --ig-secondary: #262626;
+  --ig-tertiary: #8e8e8e;
+  --ig-blue: #0095f6;
+  --ig-blue-hover: #1877f2;
+  --ig-bg: #fafafa;
+  --ig-surface: #ffffff;
+  --ig-separator: #dbdbdb;
+  --ig-error: #ed4956;
+  --ig-link: #00376b;
+  --app-header-height: 52px;
+  --app-bottom-nav-height: 56px;
+  --app-safe-top: env(safe-area-inset-top, 0px);
+  --app-safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html {
@@ -24,29 +31,21 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: 'Instrument Sans', 'Manrope', 'Segoe UI', sans-serif;
-  color: var(--text);
-  background:
-    radial-gradient(circle at top, rgba(0, 0, 0, 0.02), transparent 45%),
-    radial-gradient(circle at 12% 15%, rgba(0, 149, 246, 0.04), transparent 35%),
-    var(--bg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 18px;
+  color: var(--ig-primary);
+  background-color: var(--ig-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-family: 'Instrument Sans', 'Manrope', sans-serif;
+h1, h2, h3, h4, h5, h6 {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
-button,
-input,
-textarea,
-select {
+button, input, textarea, select {
   font: inherit;
 }
 
@@ -55,8 +54,7 @@ a {
   text-decoration: none;
 }
 
-img,
-video {
+img, video {
   display: block;
   max-width: 100%;
 }
@@ -65,18 +63,65 @@ video {
   background: rgba(0, 149, 246, 0.18);
 }
 
+/* Hide scrollbar for cleaner IG look */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  border: 2px solid transparent;
-  background: rgba(17, 17, 17, 0.18);
-  background-clip: padding-box;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.15);
 }
 
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* Instagram-style focus ring */
+input:focus, textarea:focus {
+  outline: none;
+}
+
+/* IG-style placeholder */
+::placeholder {
+  color: var(--ig-tertiary);
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-header {
+  padding-top: var(--app-safe-top);
+  min-height: calc(var(--app-header-height) + var(--app-safe-top));
+}
+
+.app-main {
+  padding-bottom: calc(var(--app-bottom-nav-height) + var(--app-safe-bottom));
+}
+
+.app-bottom-nav {
+  padding-bottom: var(--app-safe-bottom);
+  min-height: calc(var(--app-bottom-nav-height) + var(--app-safe-bottom));
+}
+
+.messages-shell {
+  min-height: calc(100vh - var(--app-header-height) - var(--app-bottom-nav-height));
+  height: calc(100vh - var(--app-header-height) - var(--app-bottom-nav-height));
+}
+
+@media (min-width: 1024px) {
+  .app-main {
+    padding-bottom: 1rem;
+  }
+
+  .app-main--full {
+    padding-bottom: 0;
+  }
+
+  .messages-shell {
+    min-height: 100vh;
+    height: 100vh;
+  }
 }

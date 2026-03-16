@@ -8,11 +8,16 @@ class ChatSocketService {
   private listeners = new Map<string, Set<Function>>();
 
   connect(token: string) {
-    if (this.socket?.connected) return;
+    if (this.socket) {
+      this.socket.auth = { token };
+      if (!this.socket.connected) {
+        this.socket.connect();
+      }
+      return;
+    }
 
     this.socket = io(`${API_URL}/chat`, {
       auth: { token },
-      transports: ['websocket'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
@@ -25,6 +30,10 @@ class ChatSocketService {
 
     this.socket.on('disconnect', () => {
       console.log('Disconnected from chat');
+    });
+
+    this.socket.on('connect_error', (error: Error) => {
+      console.error('Chat socket connection error:', error.message);
     });
 
     this.socket.on('newMessage', (message: Message) => {
@@ -66,6 +75,10 @@ class ChatSocketService {
     return () => {
       this.listeners.get(event)?.delete(callback);
     };
+  }
+
+  isConnected() {
+    return !!this.socket?.connected;
   }
 
   private emit(event: string, data: any) {

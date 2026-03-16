@@ -22,7 +22,16 @@ async function bootstrap() {
   app.setGlobalPrefix(configService.get<string>('API_PREFIX', 'api/v1'));
 
   app.enableCors({
-    origin: frontendUrl,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+      // Allow any localhost port (5173, 5174, etc.) and the configured FRONTEND_URL
+      const allowed = [frontendUrl, /^http:\/\/localhost:\d+$/];
+      const isAllowed = allowed.some((o) =>
+        typeof o === 'string' ? o === origin : o.test(origin),
+      );
+      callback(isAllowed ? null : new Error('Not allowed by CORS'), isAllowed);
+    },
     credentials: true,
   });
 

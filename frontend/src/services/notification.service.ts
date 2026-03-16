@@ -9,11 +9,16 @@ class NotificationService {
   private listeners = new Map<string, Set<Function>>();
 
   connect(token: string) {
-    if (this.socket?.connected) return;
+    if (this.socket) {
+      this.socket.auth = { token };
+      if (!this.socket.connected) {
+        this.socket.connect();
+      }
+      return;
+    }
 
     this.socket = io(`${API_URL}/notifications`, {
       auth: { token },
-      transports: ['websocket'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 5,
@@ -26,6 +31,10 @@ class NotificationService {
 
     this.socket.on('unreadCount', (count: number) => {
       this.emit('unreadCount', count);
+    });
+
+    this.socket.on('connect_error', (error: Error) => {
+      console.error('Notification socket connection error:', error.message);
     });
   }
 

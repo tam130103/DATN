@@ -37,6 +37,7 @@ export interface Post {
   postHashtags: PostHashtag[];
   liked?: boolean;
   likesCount?: number;
+  commentsCount?: number;
 }
 
 export interface Comment {

@@ -11,6 +11,7 @@ import {
 import { User } from '../../user/entities/user.entity';
 import { Media } from './media.entity';
 import { PostHashtag } from './post-hashtag.entity';
+import { PostMention } from './post-mention.entity';
 
 @Entity('posts')
 @Index(['userId', 'createdAt'])
@@ -38,4 +39,7 @@ export class Post {
 
   @OneToMany(() => PostHashtag, (postHashtag) => postHashtag.post, { cascade: true })
   postHashtags: PostHashtag[];
+
+  @OneToMany(() => PostMention, (mention) => mention.post, { cascade: true })
+  mentions: PostMention[];
 }

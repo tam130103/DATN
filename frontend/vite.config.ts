@@ -15,6 +15,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    host: true, // Expose to LAN — allows access from other devices via IP
     proxy: {
       '/api': {
         target: 'http://localhost:3000',

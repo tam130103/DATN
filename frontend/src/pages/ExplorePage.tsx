@@ -2,10 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AppShell } from '../components/layout/AppShell';
-import { StatePanel } from '../components/common/StatePanel';
 import { Avatar } from '../components/common/Avatar';
 import { searchService } from '../services/search.service';
 import { Hashtag, User } from '../types';
+
+const SearchIcon = () => (
+  <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#8e8e8e]" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+);
 
 const ExplorePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -21,13 +26,8 @@ const ExplorePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!query) {
-      setUsers([]);
-      setHashtags([]);
-      return;
-    }
-
-    const runSearch = async () => {
+    if (!query) { setUsers([]); setHashtags([]); return; }
+    const run = async () => {
       setIsLoading(true);
       try {
         const [userResults, hashtagResults] = await Promise.all([
@@ -42,159 +42,114 @@ const ExplorePage: React.FC = () => {
         setIsLoading(false);
       }
     };
-
-    runSearch();
+    run();
   }, [query]);
 
   const handleSearch = (value: string) => {
     const nextParams = new URLSearchParams(searchParams);
-    if (value) {
-      nextParams.set('q', value);
-    } else {
-      nextParams.delete('q');
-    }
+    if (value) nextParams.set('q', value);
+    else nextParams.delete('q');
     setSearchParams(nextParams);
   };
 
-  const aside = (
-    <div className="rounded-[32px] border border-white/70 bg-white/80 p-5 shadow-[0_30px_80px_-50px_rgba(15,23,42,0.45)] backdrop-blur">
-      <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Discovery radar</p>
-      <h3 className="mt-3 text-xl font-semibold text-slate-900">Trending hashtags</h3>
-      <div className="mt-4 space-y-3">
-        {trendingHashtags.map((tag) => (
-          <Link
-            key={tag.id}
-            to={`/hashtag/${tag.name}`}
-            className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 transition hover:bg-slate-100"
-          >
-            <div>
-              <p className="font-semibold text-slate-900">#{tag.name}</p>
-              <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Conversations</p>
-            </div>
-            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm">
-              {tag.count}
-            </span>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-
   return (
-    <AppShell
-      title="Explore"
-      description="Search across people and hashtags, then jump into the streams that are gaining momentum."
-      aside={aside}
-    >
-      <section className="rounded-[32px] border border-white/70 bg-white/82 p-5 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.28)] backdrop-blur lg:p-6">
-        <label className="text-xs uppercase tracking-[0.35em] text-slate-400">Search</label>
-        <div className="mt-3 flex flex-col gap-3 lg:flex-row">
-          <input
-            type="text"
-            value={query}
-            onChange={(event) => handleSearch(event.target.value)}
-            placeholder="Search by username, name, or hashtag"
-            className="flex-1 rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-4 text-sm outline-none transition focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-900/5"
-          />
-          <div className="rounded-[24px] bg-slate-100 px-4 py-4 text-sm text-slate-500">
-            {query ? `Results for '${query}'` : 'Start typing to search the workspace.'}
+    <AppShell>
+      <div className="mx-auto w-full max-w-[614px]">
+        {/* Search Bar */}
+        <div className="px-4 pb-4 pt-2">
+          <div className="flex items-center gap-2 rounded-lg bg-[#efefef] px-4 py-2.5">
+            <SearchIcon />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Search"
+              className="flex-1 bg-transparent text-sm outline-none"
+            />
           </div>
         </div>
-      </section>
 
-      {!query ? (
-        <section className="grid gap-5 lg:grid-cols-2">
-          <div className="rounded-[32px] border border-white/70 bg-white/82 p-5 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.28)] backdrop-blur lg:p-6">
-            <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Prompt</p>
-            <h2 className="mt-3 text-2xl font-semibold text-slate-900">Find your next conversation lane.</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-500">
-              Search a username to message them directly, or jump into a hashtag stream when you need public context.
-            </p>
-          </div>
-
-          <div className="rounded-[32px] border border-white/70 bg-white/82 p-5 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.28)] backdrop-blur lg:p-6">
-            <p className="text-xs uppercase tracking-[0.35em] text-slate-400">Top hashtags</p>
-            <div className="mt-4 flex flex-wrap gap-3">
-              {trendingHashtags.slice(0, 6).map((tag) => (
-                <Link
-                  key={tag.id}
-                  to={`/hashtag/${tag.name}`}
-                  className="rounded-full bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-100"
-                >
-                  #{tag.name}
+        {/* No query → Trending */}
+        {!query && (
+          <div className="px-4">
+            <h3 className="mb-4 font-semibold text-[#262626]">Trending</h3>
+            <div className="space-y-4">
+              {trendingHashtags.map((tag) => (
+                <Link key={tag.id} to={`/hashtag/${tag.name}`} className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#efefef] text-lg">#</div>
+                  <div>
+                    <p className="text-sm font-semibold">#{tag.name}</p>
+                    <p className="text-xs text-[#8e8e8e]">{tag.count} posts</p>
+                  </div>
                 </Link>
               ))}
+              {trendingHashtags.length === 0 && (
+                <p className="text-sm text-[#8e8e8e]">No trending hashtags yet.</p>
+              )}
             </div>
           </div>
-        </section>
-      ) : (
-        <section className="rounded-[32px] border border-white/70 bg-white/82 p-5 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.28)] backdrop-blur lg:p-6">
-          <div className="mb-5 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setActiveTab('users')}
-              className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
-                activeTab === 'users' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              Users ({users.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('hashtags')}
-              className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
-                activeTab === 'hashtags' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              Hashtags ({hashtags.length})
-            </button>
-          </div>
+        )}
 
-          {isLoading ? (
-            <StatePanel title="Search" description="Searching across users and hashtags." />
-          ) : activeTab === 'users' ? (
-            users.length === 0 ? (
-              <StatePanel title="Users" description="No matching users were found for this query." />
-            ) : (
-              <div className="space-y-3">
-                {users.map((entry) => (
-                  <Link
-                    key={entry.id}
-                    to={entry.username ? `/${entry.username}` : `/${entry.id}`}
-                    className="flex items-center gap-4 rounded-[28px] border border-slate-100 bg-slate-50/80 px-4 py-4 transition hover:bg-white"
+        {/* Query → Tabs + Results */}
+        {query && (
+          <>
+            {/* Tabs */}
+            <div className="border-b border-[#dbdbdb]">
+              <div className="flex">
+                {(['users', 'hashtags'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`flex-1 border-b-2 py-2.5 text-xs font-semibold uppercase tracking-[1px] transition ${
+                      activeTab === tab ? 'border-[#262626] text-[#262626]' : 'border-transparent text-[#8e8e8e]'
+                    }`}
                   >
-                    <Avatar src={entry.avatarUrl} name={entry.name} username={entry.username} size="lg" />
-                    <div>
-                      <p className="font-semibold text-slate-900">{entry.name || entry.username || 'Unnamed user'}</p>
-                      <p className="mt-1 text-sm text-slate-500">
-                        {entry.username ? `@${entry.username}` : entry.email}
-                      </p>
-                    </div>
-                  </Link>
+                    {tab}
+                  </button>
                 ))}
               </div>
-            )
-          ) : hashtags.length === 0 ? (
-            <StatePanel title="Hashtags" description="No matching hashtags were found for this query." />
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {hashtags.map((tag) => (
-                <Link
-                  key={tag.id}
-                  to={`/hashtag/${tag.name}`}
-                  className="rounded-[28px] border border-slate-100 bg-slate-50/80 px-5 py-4 transition hover:bg-white"
-                >
-                  <p className="font-semibold text-slate-900">#{tag.name}</p>
-                  <p className="mt-1 text-sm text-slate-500">{tag.count} tagged posts</p>
-                </Link>
-              ))}
             </div>
-          )}
-        </section>
-      )}
+
+            {isLoading ? (
+              <div className="py-10 text-center text-sm text-[#8e8e8e]">Searching...</div>
+            ) : activeTab === 'users' ? (
+              <div>
+                {users.length === 0 ? (
+                  <div className="py-10 text-center text-sm text-[#8e8e8e]">No users found for "{query}"</div>
+                ) : (
+                  users.map((user) => (
+                    <Link key={user.id} to={user.username ? `/${user.username}` : '#'} className="flex items-center gap-3 px-4 py-3 hover:bg-[#fafafa]">
+                      <Avatar src={user.avatarUrl} name={user.name} username={user.username} size="md" />
+                      <div>
+                        <p className="text-sm font-semibold">{user.username || user.name || 'user'}</p>
+                        {user.name && user.username && <p className="text-xs text-[#8e8e8e]">{user.name}</p>}
+                      </div>
+                    </Link>
+                  ))
+                )}
+              </div>
+            ) : (
+              <div>
+                {hashtags.length === 0 ? (
+                  <div className="py-10 text-center text-sm text-[#8e8e8e]">No hashtags found for "{query}"</div>
+                ) : (
+                  hashtags.map((tag) => (
+                    <Link key={tag.id} to={`/hashtag/${tag.name}`} className="flex items-center gap-3 px-4 py-3 hover:bg-[#fafafa]">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#efefef] font-bold text-[#262626]">#</div>
+                      <div>
+                        <p className="text-sm font-semibold">#{tag.name}</p>
+                        <p className="text-xs text-[#8e8e8e]">{tag.count} posts</p>
+                      </div>
+                    </Link>
+                  ))
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </AppShell>
   );
 };
 
 export default ExplorePage;
-
