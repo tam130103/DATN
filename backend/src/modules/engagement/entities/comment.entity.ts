@@ -1,17 +1,16 @@
 import {
   Entity,
-  Column,
   PrimaryGeneratedColumn,
-  CreateDateColumn,
+  Column,
   ManyToOne,
   JoinColumn,
+  CreateDateColumn,
   Index,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { Post } from '../../post/entities/post.entity';
 
 @Entity('comments')
-@Index(['postId'])
 export class Comment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -19,14 +18,14 @@ export class Comment {
   @Column('text')
   content: string;
 
-  @Column()
+  @Column({ type: 'uuid', name: 'user_id' })
   @Index()
   userId: string;
 
-  @Column()
+  @Column({ type: 'uuid', name: 'post_id' })
   postId: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'uuid', name: 'parent_id', nullable: true })
   parentId: string;
 
   @CreateDateColumn()

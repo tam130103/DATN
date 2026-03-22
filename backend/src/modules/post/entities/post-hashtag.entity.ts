@@ -1,27 +1,16 @@
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  ManyToOne,
-  JoinColumn,
-  Unique,
-  Index,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Post } from './post.entity';
 import { Hashtag } from './hashtag.entity';
 
 @Entity('post_hashtags')
-@Unique(['postId', 'hashtagId'])
-@Index(['postId'])
-@Index(['hashtagId'])
 export class PostHashtag {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ type: 'uuid', name: 'post_id' })
   postId: string;
 
-  @Column()
+  @Column({ type: 'uuid', name: 'hashtag_id' })
   hashtagId: string;
 
   // Relations

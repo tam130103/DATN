@@ -1,9 +1,11 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, Not } from 'typeorm';
 import { User, UserProvider } from './entities/user.entity';
 import { Follow } from './entities/follow.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -13,11 +15,16 @@ export class UserService {
     @InjectRepository(Follow)
     private readonly followRepository: Repository<Follow>,
     private readonly dataSource: DataSource,
+    private readonly configService: ConfigService,
   ) {}
 
-  async create(data: Partial<User>): Promise<User> {
+  async create(data: Partial<User>, options?: { skipAutoFollow?: boolean }): Promise<User> {
     const user = this.userRepository.create(data);
-    return this.userRepository.save(user);
+    const saved = await this.userRepository.save(user);
+    if (!options?.skipAutoFollow) {
+      await this.ensureUserFollowsFacebookBot(saved.id).catch(() => undefined);
+    }
+    return saved;
   }
 
   async findById(id: string): Promise<User> {
@@ -57,6 +64,95 @@ export class UserService {
       });
     }
     return user;
+  }
+
+  async ensureFacebookBotUser(): Promise<User> {
+    const botEmail = this.configService.get<string>('FB_BOT_EMAIL', 'fb-bot@datn.local');
+    const botUsername = this.configService.get<string>('FB_BOT_USERNAME', 'datn_fb');
+    const botName = this.configService.get<string>('FB_BOT_NAME', 'DATN Social');
+
+    let existing = await this.userRepository.findOne({
+      where: [{ email: botEmail }, { username: botUsername }],
+    });
+    if (existing) {
+      return existing;
+    }
+
+    const rawPassword =
+      this.configService.get<string>('FB_BOT_PASSWORD') || `${Date.now()}-${Math.random()}`;
+    const hashedPassword = await bcrypt.hash(rawPassword, 10);
+
+    existing = await this.create(
+      {
+        email: botEmail,
+        username: botUsername,
+        name: botName,
+        password: hashedPassword,
+        provider: UserProvider.LOCAL,
+        notificationEnabled: false,
+      },
+      { skipAutoFollow: true },
+    );
+
+    return existing;
+  }
+
+  async ensureUserFollowsFacebookBot(userId: string): Promise<void> {
+    const bot = await this.ensureFacebookBotUser();
+    if (bot.id === userId) return;
+
+    const existing = await this.followRepository.findOne({
+      where: { followerId: userId, followingId: bot.id },
+    });
+    if (existing) return;
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.save(Follow, { followerId: userId, followingId: bot.id });
+      await manager.increment(User, { id: bot.id }, 'followersCount', 1);
+      await manager.increment(User, { id: userId }, 'followingCount', 1);
+    });
+  }
+
+  async ensureAllUsersFollowFacebookBot(): Promise<void> {
+    const bot = await this.ensureFacebookBotUser();
+    const users = await this.userRepository.find({
+      where: { id: Not(bot.id) },
+      select: ['id'],
+    });
+    if (users.length === 0) return;
+
+    const existing = await this.followRepository.find({
+      where: { followingId: bot.id },
+      select: ['followerId'],
+    });
+    const existingIds = new Set(existing.map((f) => f.followerId));
+    const missingIds = users.map((u) => u.id).filter((id) => !existingIds.has(id));
+
+    if (missingIds.length === 0) return;
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager
+        .createQueryBuilder()
+        .insert()
+        .into(Follow)
+        .values(missingIds.map((followerId) => ({ followerId, followingId: bot.id })))
+        .orIgnore()
+        .execute();
+
+      await manager
+        .createQueryBuilder()
+        .update(User)
+        .set({ followingCount: () => '"followingCount" + 1' })
+        .where('id IN (:...ids)', { ids: missingIds })
+        .execute();
+
+      await manager
+        .createQueryBuilder()
+        .update(User)
+        .set({ followersCount: () => `"followersCount" + ${missingIds.length}` })
+        .where('id = :id', { id: bot.id })
+        .execute();
+    });
   }
 
   async update(userId: string, updateProfileDto: UpdateProfileDto): Promise<User> {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { BrandLogo } from '../components/branding/BrandLogo';
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -29,40 +30,48 @@ const RegisterPage: React.FC = () => {
     <div className="flex min-h-screen items-center justify-center bg-[#fafafa] px-4 py-10">
       <div className="w-full max-w-[350px] space-y-3">
         <div className="border border-[#dbdbdb] bg-white px-10 py-10 text-center">
-          <h1 className="mb-2 font-['Segoe_Script',_cursive] text-4xl tracking-tight text-black">
-            DATN Social
-          </h1>
+          <div className="mb-3 flex justify-center">
+            <BrandLogo variant="full" className="h-auto w-[220px] max-w-full" />
+          </div>
           <p className="mb-6 text-base font-semibold text-[#8e8e8e]">
             Sign up to see photos and videos from your friends.
           </p>
 
-          <form onSubmit={handleRegister} className="space-y-2">
+          <form onSubmit={handleRegister} className="space-y-2" data-testid="register-form">
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               type="email"
               placeholder="Mobile Number or Email"
-              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none focus:border-[#a8a8a8]"
+              data-testid="register-email"
+              autoComplete="email"
+              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-[#0095f6]"
             />
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Full Name"
-              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none focus:border-[#a8a8a8]"
+              data-testid="register-name"
+              autoComplete="name"
+              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-[#0095f6]"
             />
             <input
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               type="password"
               placeholder="Password"
-              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none focus:border-[#a8a8a8]"
+              data-testid="register-password"
+              autoComplete="new-password"
+              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-[#0095f6]"
             />
             <input
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               type="password"
               placeholder="Confirm Password"
-              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none focus:border-[#a8a8a8]"
+              data-testid="register-confirm-password"
+              autoComplete="new-password"
+              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-[#0095f6]"
             />
             <p className="py-2 text-[11px] text-[#8e8e8e]">
               By signing up, you agree to our <span className="font-semibold text-[#262626]">Terms</span>,{' '}
@@ -72,7 +81,8 @@ const RegisterPage: React.FC = () => {
             <button
               type="submit"
               disabled={isRegistering || isLoading || !email || !password}
-              className="w-full rounded-lg bg-[#0095f6] py-1.5 text-sm font-semibold text-white transition hover:bg-[#1877f2] disabled:opacity-50"
+              data-testid="register-submit"
+              className="w-full min-h-[44px] sm:min-h-0 rounded-lg bg-[#0095f6] py-1.5 text-sm font-semibold text-white transition hover:bg-[#1877f2] disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#0095f6] focus-visible:outline-none"
             >
               {isRegistering ? 'Signing up...' : 'Sign up'}
             </button>

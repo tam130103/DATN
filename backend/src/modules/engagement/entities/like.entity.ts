@@ -1,28 +1,26 @@
 import {
   Entity,
-  Column,
   PrimaryGeneratedColumn,
-  CreateDateColumn,
+  Column,
   ManyToOne,
   JoinColumn,
-  Unique,
+  CreateDateColumn,
   Index,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { Post } from '../../post/entities/post.entity';
 
 @Entity('likes')
-@Unique(['userId', 'postId'])
-@Index(['postId'])
+@Index(['userId', 'postId'], { unique: true })
 export class Like {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ type: 'uuid', name: 'user_id' })
   @Index()
   userId: string;
 
-  @Column()
+  @Column({ type: 'uuid', name: 'post_id' })
   postId: string;
 
   @CreateDateColumn()

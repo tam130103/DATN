@@ -5,6 +5,7 @@ import { chatService } from '../../services/chat.service';
 import { chatSocketService } from '../../services/chat-socket.service';
 import { notificationService } from '../../services/notification.service';
 import { Avatar } from '../common/Avatar';
+import { BrandLogo } from '../branding/BrandLogo';
 
 interface AppShellProps {
   title?: string;
@@ -44,11 +45,13 @@ const SearchIcon = ({ filled }: { filled?: boolean }) =>
 const MessengerIcon = ({ filled }: { filled?: boolean }) =>
   filled ? (
     <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
-      <path d="M12.003 2.001a9.705 9.705 0 110 19.41 10.99 10.99 0 01-2.981-.381l-3.27.969a.75.75 0 01-.939-.94l.97-3.269A9.706 9.706 0 0112.002 2zm0 1.5a8.205 8.205 0 105.386 14.398.75.75 0 01.607-.108l2.016-.597-.598 2.015a.75.75 0 01-.108.607A8.205 8.205 0 0012.003 3.5zM9.75 11.5a1.25 1.25 0 110 2.5 1.25 1.25 0 010-2.5zm2.25 0a1.25 1.25 0 110 2.5 1.25 1.25 0 010-2.5zm2.25 0a1.25 1.25 0 110 2.5 1.25 1.25 0 010-2.5z" />
+      <path d="M22 2L15 22l-4-9-9-4 20-7z" />
+      <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" fill="none" />
     </svg>
   ) : (
     <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M12 3a9 9 0 00-5.78 15.88l-.6 2.02 2.02-.6A9 9 0 1012 3z" strokeLinejoin="round" />
+      <path d="M22 2L11 13" />
+      <path d="M22 2L15 22l-4-9-9-4 20-7z" />
     </svg>
   );
 
@@ -79,6 +82,20 @@ const navItems = [
   { to: '/messages', label: 'Messages', icon: MessengerIcon },
   { to: '/notifications', label: 'Notifications', icon: HeartIcon },
 ];
+
+const desktopNavItemClass = (isActive: boolean) =>
+  `group flex items-center gap-4 rounded-2xl px-3 py-3 text-[#262626] transition-[background-color,transform] duration-200 ease-out hover:bg-[#f4f4f5] hover:scale-[1.01] active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:scale-100 ${
+    isActive ? 'font-bold' : 'font-normal'
+  }`;
+
+const desktopIconWrapClass =
+  'relative transition-transform duration-200 ease-out group-hover:scale-110 motion-reduce:transition-none motion-reduce:transform-none';
+
+const desktopLabelClass =
+  'text-base tracking-[-0.01em] transition-transform duration-200 ease-out group-hover:translate-x-[1px] motion-reduce:transition-none motion-reduce:transform-none';
+
+const compactNavItemClass =
+  'group flex items-center justify-center rounded-2xl p-3 text-[#262626] transition-[background-color,transform] duration-200 ease-out hover:bg-[#f4f4f5] hover:scale-[1.03] active:scale-[0.99] motion-reduce:transition-none motion-reduce:hover:scale-100';
 
 export const AppShell: React.FC<AppShellProps> = ({
   title,
@@ -112,14 +129,26 @@ export const AppShell: React.FC<AppShellProps> = ({
     };
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+    if (location.pathname.startsWith('/messages')) {
+      setUnreadMessages(0);
+    }
+    if (location.pathname.startsWith('/notifications')) {
+      setUnreadNotifications(0);
+      notificationService.markAllAsRead();
+      notificationService.markAllAsReadHttp().catch(() => {});
+    }
+  }, [location.pathname, user]);
+
   return (
     <div className="app-shell min-h-screen bg-[#fafafa]">
       {/* ── Desktop Sidebar ── */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[244px] flex-col border-r border-[#dbdbdb] bg-white xl:flex">
         {/* Logo */}
-        <div className="px-6 pb-4 pt-8">
-          <Link to="/feed" className="text-2xl font-semibold tracking-tight text-black" style={{ fontFamily: "'Segoe UI', sans-serif" }}>
-            DATN Social
+        <div className="px-6 pb-6 pt-6">
+          <Link to="/feed" className="inline-flex items-center">
+            <BrandLogo variant="full" className="h-auto w-[92px] object-contain" />
           </Link>
         </div>
 
@@ -135,9 +164,9 @@ export const AppShell: React.FC<AppShellProps> = ({
               <NavLink
                 key={item.to}
                 to={item.to}
-                className="group flex items-center gap-4 rounded-lg px-3 py-3 transition-colors hover:bg-gray-100"
+                className={desktopNavItemClass(isActive)}
               >
-                <div className="relative">
+                <div className={desktopIconWrapClass}>
                   <Icon filled={isActive} />
                   {badge > 0 && (
                     <div className="absolute -right-2 -top-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
@@ -145,7 +174,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                     </div>
                   )}
                 </div>
-                <span className={`text-base ${isActive ? 'font-bold' : 'font-normal'}`}>
+                <span className={desktopLabelClass}>
                   {item.label}
                 </span>
               </NavLink>
@@ -156,12 +185,16 @@ export const AppShell: React.FC<AppShellProps> = ({
           {/* Profile */}
           <NavLink
             to={profilePath}
-            className="group flex items-center gap-4 rounded-lg px-3 py-3 transition-colors hover:bg-gray-100"
+            className={desktopNavItemClass(location.pathname === profilePath)}
           >
-            <div className={`h-6 w-6 overflow-hidden rounded-full ${location.pathname === profilePath ? 'ring-2 ring-black' : ''}`}>
+            <div
+              className={`${desktopIconWrapClass} h-6 w-6 overflow-hidden rounded-full ${
+                location.pathname === profilePath ? 'ring-2 ring-black' : ''
+              }`}
+            >
               <Avatar src={user?.avatarUrl} name={user?.name} username={user?.username} size="sm" />
             </div>
-            <span className={`text-base ${location.pathname === profilePath ? 'font-bold' : 'font-normal'}`}>
+            <span className={desktopLabelClass}>
               Profile
             </span>
           </NavLink>
@@ -171,18 +204,22 @@ export const AppShell: React.FC<AppShellProps> = ({
         <div className="px-3 pb-6">
           <button
             onClick={logout}
-            className="flex w-full items-center gap-4 rounded-lg px-3 py-3 transition-colors hover:bg-gray-100"
+            className={desktopNavItemClass(false)}
           >
-            <MenuIcon />
-            <span className="text-base font-normal">Log out</span>
+            <div className={desktopIconWrapClass}>
+              <MenuIcon />
+            </div>
+            <span className={desktopLabelClass}>Log out</span>
           </button>
         </div>
       </aside>
 
       {/* ── Narrow Sidebar (laptop) ── */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[72px] flex-col items-center border-r border-[#dbdbdb] bg-white lg:flex xl:hidden">
-        <div className="pb-4 pt-8">
-          <Link to="/feed" className="text-xl font-bold">D</Link>
+        <div className="pb-5 pt-6">
+          <Link to="/feed" className="inline-flex items-center justify-center">
+            <BrandLogo variant="mark" className="h-8 w-8 rounded-2xl object-contain" />
+          </Link>
         </div>
         <nav className="flex-1 space-y-1 pt-2">
           {navItems.map((item) => {
@@ -192,8 +229,8 @@ export const AppShell: React.FC<AppShellProps> = ({
             if (item.to === '/messages') badge = unreadMessages;
             if (item.to === '/notifications') badge = unreadNotifications;
             return (
-              <NavLink key={item.to} to={item.to} className="flex items-center justify-center rounded-lg p-3 hover:bg-gray-100" title={item.label}>
-                <div className="relative">
+              <NavLink key={item.to} to={item.to} className={compactNavItemClass} title={item.label}>
+                <div className={desktopIconWrapClass}>
                   <Icon filled={isActive} />
                   {badge > 0 && (
                     <div className="absolute -right-2 -top-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
@@ -204,23 +241,29 @@ export const AppShell: React.FC<AppShellProps> = ({
               </NavLink>
             );
           })}
-          <NavLink to={profilePath} className="flex items-center justify-center rounded-lg p-3 hover:bg-gray-100" title="Profile">
-            <div className={`h-6 w-6 overflow-hidden rounded-full ${location.pathname === profilePath ? 'ring-2 ring-black' : ''}`}>
+          <NavLink to={profilePath} className={compactNavItemClass} title="Profile">
+            <div
+              className={`${desktopIconWrapClass} h-6 w-6 overflow-hidden rounded-full ${
+                location.pathname === profilePath ? 'ring-2 ring-black' : ''
+              }`}
+            >
               <Avatar src={user?.avatarUrl} name={user?.name} username={user?.username} size="sm" />
             </div>
           </NavLink>
         </nav>
         <div className="pb-6">
-          <button onClick={logout} className="rounded-lg p-3 hover:bg-gray-100" title="Log out">
-            <MenuIcon />
+          <button onClick={logout} className={compactNavItemClass} title="Log out">
+            <div className={desktopIconWrapClass}>
+              <MenuIcon />
+            </div>
           </button>
         </div>
       </aside>
 
       {/* ── Mobile Header ── */}
       <header className="app-header sticky top-0 z-20 flex items-center justify-between border-b border-[#dbdbdb] bg-white px-4 py-2 lg:hidden">
-        <Link to="/feed" className="text-xl font-semibold tracking-tight text-black">
-          DATN Social
+        <Link to="/feed" className="inline-flex items-center">
+          <BrandLogo variant="full" className="h-auto w-[112px]" />
         </Link>
       </header>
 

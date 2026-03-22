@@ -9,6 +9,7 @@ Mạng xã hội lấy cảm hứng từ Instagram, được xây dựng với k
 - **Realtime Chat**: Nhắn tin tức thời giữa các người dùng với trạng thái online/offline và thông báo tin nhắn chưa đọc.
 - **Hệ thống Thông báo**: Thông báo thời gian thực cho lượt thích, bình luận, người theo dõi mới và tag.
 - **Luồng Bài viết (Feed)**: Hiển thị bài viết từ những người đang theo dõi, hỗ trợ hình ảnh và video.
+- **Facebook Import**: Nhập bài viết trực tiếp từ Facebook Page thông qua Graph API.
 - **Khám phá (Explore)**: Tìm kiếm người dùng, hashtag và xem các hashtag đang thịnh hành.
 
 ## 🛠 Công nghệ sử dụng
@@ -18,6 +19,7 @@ Mạng xã hội lấy cảm hứng từ Instagram, được xây dựng với k
 - **Database**: PostgreSQL với TypeORM
 - **Authentication**: JWT (Email/Password & Google Login)
 - **Realtime**: Socket.IO
+- **External Integration**: Facebook Graph API (v19.0)
 - **Validation**: class-validator & class-transformer
 - **Media**: Multer (Local storage)
 
@@ -36,13 +38,13 @@ datn-social/
 |   |-- src/
 |   |   |-- modules/  # Auth, User, Post, Chat, Notification, Search...
 |   |   `-- main.ts   # Entry point
-|   `-- uploads/      # Media storage
+|   `-- uploads/      # Media storage (Avatar, Posts)
 |-- frontend/         # React SPA
 |   |-- src/
 |   |   |-- components/
 |   |   |-- pages/
 |   |   `-- services/
-`-- docs/             # Tài liệu kiến trúc & ERD
+|`-- docs/             # Tài liệu kiến trúc & ERD
 ```
 
 ## 🚀 Cài đặt nhanh
@@ -62,6 +64,8 @@ cd ../frontend && npm install
 
 ### 3. Cấu hình Biến môi trường
 Tạo file `.env` trong cả hai thư mục `backend/` và `frontend/` dựa theo mẫu trong documentation.
+- **Backend**: `FB_PAGE_ID`, `FB_PAGE_ACCESS_TOKEN`, `DB_HOST`, ...
+- **Frontend**: `VITE_API_URL`, `VITE_SOCKET_URL`, ...
 
 ### 4. Chạy dự án
 ```bash
@@ -76,16 +80,18 @@ cd frontend && npm run dev
 
 Hệ thống cung cấp đầy đủ các API RESTful cho các tài nguyên:
 - `/auth`: Đăng ký, đăng nhập (Local & Google), làm mới token.
-- `/users`: Quản lý hồ sơ, theo dõi, tìm kiếm.
-- `/posts`: Tạo, xóa, xem feed, xử lý hashtag & mention.
+- `/users`: Quản lý hồ sơ, theo dõi, tìm kiếm, upload avatar.
+- `/posts`: Tạo, xóa, xem feed, xử lý hashtag & mention, import từ Facebook.
+- `/posts/tagged/:userId`: Xem bài viết được gắn thẻ.
 - `/engagement`: Like, comment.
 - `/conversations`: Quản lý tin nhắn.
-- `/notifications`: Quản lý thông báo.
+- `/notifications`: Quản lý thông báo (Real-time).
 
 ## 📄 Tài liệu chi tiết
 Xem thêm các tài liệu thiết kế tại thư mục `docs/`:
-- `ARCHITECTURE.md`: Kiến trúc hệ thống.
-- `ERD.md`: Sơ đồ thực thể quan hệ.
+- `ARCHITECTURE.md`: Kiến trúc hệ thống chi tiết.
+- `ERD.md`: Sơ đồ thực thể quan hệ (Database Schema).
+- `REALTIME_FLOW.md`: Mô tả luồng xử lý thời gian thực qua WebSockets.
 
 ---
 *Dự án được thực hiện phục vụ Đồ án tốt nghiệp (DATN).*

@@ -7,7 +7,7 @@ import * as express from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
@@ -25,8 +25,8 @@ async function bootstrap() {
     origin: (origin, callback) => {
       // Allow requests with no origin (mobile apps, curl, etc.)
       if (!origin) return callback(null, true);
-      // Allow any localhost port (5173, 5174, etc.) and the configured FRONTEND_URL
-      const allowed = [frontendUrl, /^http:\/\/localhost:\d+$/];
+      // Allow common local dev origins and the configured FRONTEND_URL.
+      const allowed = [frontendUrl, /^http:\/\/localhost:\d+$/, /^http:\/\/127\.0\.0\.1:\d+$/];
       const isAllowed = allowed.some((o) =>
         typeof o === 'string' ? o === origin : o.test(origin),
       );

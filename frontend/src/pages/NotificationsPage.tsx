@@ -27,7 +27,15 @@ const NotificationsPage: React.FC = () => {
     if (!user) return;
     setIsLoading(true);
     notificationService.getNotifications()
-      .then(setNotifications)
+      .then((data) => {
+        setNotifications(data);
+        if (data.some((n) => !n.isRead)) {
+          notificationService.markAllAsRead();
+          notificationService.markAllAsReadHttp()
+            .then(() => setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true }))))
+            .catch(() => {});
+        }
+      })
       .catch(() => toast.error('Failed to load notifications.'))
       .finally(() => setIsLoading(false));
   }, [user]);

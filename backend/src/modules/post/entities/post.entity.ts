@@ -15,23 +15,30 @@ import { PostMention } from './post-mention.entity';
 
 @Entity('posts')
 @Index(['userId', 'createdAt'])
+@Index(['userId', 'source', 'sourceId'], { unique: true })
 export class Post {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ type: 'uuid', name: 'user_id' })
   @Index()
   userId: string;
 
   @Column('text')
   caption: string;
 
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  source: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  sourceId: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 
   // Relations
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId' })
+  @JoinColumn({ name: 'user_id' })
   user: User;
 
   @OneToMany(() => Media, (media) => media.post, { cascade: true })

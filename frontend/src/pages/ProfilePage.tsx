@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AppShell } from '../components/layout/AppShell';
@@ -97,7 +97,7 @@ const ProfilePage: React.FC = () => {
 
   const isOwnProfile = currentUser?.id === profile?.id;
   const isFollowing = !!profile?.isFollowing;
-  const postsWithMedia = useMemo(() => posts.filter((p) => (p.media?.length ?? 0) > 0), [posts]);
+  const postsWithMedia = posts;
 
   const handleFollowToggle = async () => {
     if (!profile || isOwnProfile) return;
@@ -194,7 +194,7 @@ const ProfilePage: React.FC = () => {
                 <>
                   <button
                     onClick={() => setIsEditing(!isEditing)}
-                    className="w-full rounded-lg border border-[#dbdbdb] bg-transparent px-4 py-1.5 text-sm font-semibold hover:bg-[#fafafa] sm:w-auto"
+                    className="w-full min-h-[44px] sm:min-h-[36px] rounded-lg border border-[#dbdbdb] bg-transparent px-4 py-1.5 text-sm font-semibold transition-colors duration-200 hover:bg-[#fafafa] sm:w-auto focus-visible:ring-2 focus-visible:ring-[#0095f6] focus-visible:outline-none cursor-pointer"
                   >
                     Edit profile
                   </button>
@@ -203,7 +203,7 @@ const ProfilePage: React.FC = () => {
                 <>
                   <button
                     onClick={handleFollowToggle}
-                    className={`w-full rounded-lg px-4 py-1.5 text-sm font-semibold transition sm:w-auto ${
+                    className={`w-full min-h-[44px] sm:min-h-[36px] cursor-pointer rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-[#0095f6] focus-visible:outline-none sm:w-auto ${
                       isFollowing
                         ? 'border border-[#dbdbdb] bg-transparent text-[#262626] hover:bg-[#fafafa]'
                         : 'bg-[#0095f6] text-white hover:bg-[#1877f2]'
@@ -211,7 +211,7 @@ const ProfilePage: React.FC = () => {
                   >
                     {isFollowing ? 'Following' : 'Follow'}
                   </button>
-                  <button onClick={handleMessage} className="w-full rounded-lg border border-[#dbdbdb] px-4 py-1.5 text-sm font-semibold hover:bg-[#fafafa] sm:w-auto">Message</button>
+                  <button onClick={handleMessage} className="w-full min-h-[44px] sm:min-h-[36px] cursor-pointer rounded-lg border border-[#dbdbdb] px-4 py-1.5 text-sm font-semibold transition-colors duration-200 hover:bg-[#fafafa] focus-visible:ring-2 focus-visible:ring-[#0095f6] focus-visible:outline-none sm:w-auto">Message</button>
                 </>
               )}
             </div>
@@ -284,7 +284,7 @@ const ProfilePage: React.FC = () => {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key as any)}
-                className={`flex items-center gap-1.5 border-t-2 py-3 text-[11px] font-semibold uppercase tracking-[1.5px] transition ${
+                className={`flex items-center gap-1.5 border-t-2 py-3 min-h-[44px] text-[11px] font-semibold uppercase tracking-[1.5px] cursor-pointer transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-[#0095f6] focus-visible:outline-none ${
                   activeTab === tab.key ? 'border-[#262626] text-[#262626]' : 'border-transparent text-[#8e8e8e] hover:text-[#262626]'
                 }`}
               >
@@ -317,12 +317,16 @@ const ProfilePage: React.FC = () => {
                       key={post.id}
                       type="button"
                       onClick={() => setActivePost(post)}
-                      className="group relative aspect-square overflow-hidden bg-[#fafafa]"
+                      className="group relative aspect-square overflow-hidden bg-[#fafafa] cursor-pointer transition-opacity duration-200 hover:opacity-[0.85] focus-visible:ring-2 focus-visible:ring-[#0095f6] focus-visible:outline-none"
                     >
                       {cover?.type === 'VIDEO' ? (
                         <video src={cover.url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                      ) : cover ? (
+                        <img src={cover.url} alt="" className="h-full w-full object-cover" />
                       ) : (
-                        <img src={cover?.url} alt="" className="h-full w-full object-cover" />
+                        <div className="flex h-full w-full items-center justify-center bg-gray-100 p-4 text-xs text-[#8e8e8e]">
+                          {post.caption?.slice(0, 80) || 'Text post'}
+                        </div>
                       )}
                       <div className="absolute inset-0 hidden items-center justify-center gap-4 bg-black/30 text-white group-hover:flex">
                         <span className="flex items-center gap-1 text-sm font-bold">
@@ -354,7 +358,7 @@ const ProfilePage: React.FC = () => {
                       key={post.id}
                       type="button"
                       onClick={() => setActivePost(post)}
-                      className="group relative aspect-square overflow-hidden bg-[#fafafa]"
+                      className="group relative aspect-square overflow-hidden bg-[#fafafa] cursor-pointer transition-opacity duration-200 hover:opacity-[0.85] focus-visible:ring-2 focus-visible:ring-[#0095f6] focus-visible:outline-none"
                     >
                       {cover?.type === 'VIDEO' ? (
                         <video src={cover.url} muted playsInline preload="metadata" className="h-full w-full object-cover" />

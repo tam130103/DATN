@@ -7,10 +7,10 @@ export class PostMention {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'post_id' })
+  @Column({ type: 'uuid', name: 'post_id' })
   postId: string;
 
-  @Column({ name: 'user_id' })
+  @Column({ type: 'uuid', name: 'user_id' })
   userId: string;
 
   @ManyToOne(() => Post, (post) => post.mentions, { onDelete: 'CASCADE' })

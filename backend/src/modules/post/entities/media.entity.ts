@@ -19,7 +19,7 @@ export class Media {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ type: 'uuid', name: 'post_id' })
   @Index()
   postId: string;
 
@@ -38,6 +38,6 @@ export class Media {
 
   // Relations
   @ManyToOne(() => Post, (post) => post.media, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'postId' })
+  @JoinColumn({ name: 'post_id' })
   post: Post;
 }

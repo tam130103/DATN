@@ -115,11 +115,22 @@ const MessagesPage: React.FC = () => {
     if (!selectedConversation) return;
     setIsLoadingMessages(true);
     chatService.getMessages(selectedConversation)
-      .then((data) => { setMessages(data.reverse()); chatSocketService.joinConversation(selectedConversation); chatSocketService.markAsRead(selectedConversation); })
+      .then((data) => {
+        setMessages(data.reverse());
+        chatSocketService.joinConversation(selectedConversation);
+        chatSocketService.markAsRead(selectedConversation);
+        setConversations((prev) =>
+          prev.map((conv) => {
+            if (conv.id !== selectedConversation || !conv.lastMessage) return conv;
+            if (conv.lastMessage.senderId === user?.id) return conv;
+            return { ...conv, lastMessage: { ...conv.lastMessage, isRead: true } };
+          }),
+        );
+      })
       .catch(() => toast.error('Failed to load messages.'))
       .finally(() => setIsLoadingMessages(false));
     return () => { chatSocketService.leaveConversation(selectedConversation); };
-  }, [selectedConversation]);
+  }, [selectedConversation, user?.id]);
 
   // Auto scroll
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, typingUsers]);
@@ -192,7 +203,7 @@ const MessagesPage: React.FC = () => {
 
   return (
     <AppShell fullWidth>
-      <div className="messages-shell flex overflow-hidden">
+      <div className="messages-shell flex overflow-hidden" data-testid="messages-page">
         {/* ── Sidebar ── */}
         <div className={`flex-shrink-0 flex-col border-r border-[#dbdbdb] bg-white lg:w-[397px] ${selectedConversation ? 'hidden lg:flex' : 'flex w-full lg:w-[397px]'}`}>
           <div className="flex flex-col h-full">
@@ -253,6 +264,7 @@ const MessagesPage: React.FC = () => {
                   const avatarMember = getConversationAvatar(conv);
                   const isOnline = conv.members.some((m) => onlineUsers.has(m.id));
                   const isActive = selectedConversation === conv.id;
+                  const hasUnread = !!conv.lastMessage && conv.lastMessage.senderId !== user?.id && !conv.lastMessage.isRead;
                   return (
                     <button key={conv.id} onClick={() => handleSelectConversation(conv.id)}
                       className={`flex w-full items-center gap-3 px-6 py-3 text-left transition ${isActive ? 'bg-[#fafafa]' : 'hover:bg-[#fafafa]'}`}>
@@ -261,9 +273,12 @@ const MessagesPage: React.FC = () => {
                         {isOnline && <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-green-500" />}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className={`truncate text-sm ${isActive ? 'font-bold' : 'font-semibold'}`}>{getConversationName(conv)}</p>
-                        <p className="truncate text-xs text-[#8e8e8e]">{conv.lastMessage?.content || 'No messages yet'}</p>
+                        <p className={`truncate text-sm ${isActive || hasUnread ? 'font-bold' : 'font-semibold'}`}>{getConversationName(conv)}</p>
+                        <p className={`truncate text-xs ${hasUnread ? 'font-semibold text-[#262626]' : 'text-[#8e8e8e]'}`}>
+                          {conv.lastMessage?.content || 'No messages yet'}
+                        </p>
                       </div>
+                      {hasUnread && <span className="ml-2 h-2 w-2 flex-shrink-0 rounded-full bg-[#0095f6]" />}
                     </button>
                   );
                 })

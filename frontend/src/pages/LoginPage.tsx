@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { BrandLogo } from '../components/branding/BrandLogo';
 
 declare global {
   interface Window { google: any; }
@@ -59,29 +60,34 @@ const LoginPage: React.FC = () => {
         {/* Card */}
         <div className="border border-[#dbdbdb] bg-white px-10 py-10 text-center">
           {/* Logo */}
-          <h1 className="mb-8 font-['Segoe_Script',_cursive] text-4xl tracking-tight text-black">
-            DATN Social
-          </h1>
+          <div className="mb-8 flex justify-center">
+            <BrandLogo variant="full" className="h-auto w-[220px] max-w-full" />
+          </div>
 
-          <form onSubmit={handleLogin} className="space-y-2">
+          <form onSubmit={handleLogin} className="space-y-2" data-testid="login-form">
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Phone number, username, or email"
-              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none transition focus:border-[#a8a8a8]"
+              data-testid="login-email"
+              autoComplete="username"
+              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-[#0095f6]"
             />
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none transition focus:border-[#a8a8a8]"
+              data-testid="login-password"
+              autoComplete="current-password"
+              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-[#0095f6]"
             />
             <button
               type="submit"
               disabled={isLoggingIn || isLoading || !email || !password}
-              className="mt-2 w-full rounded-lg bg-[#0095f6] py-1.5 text-sm font-semibold text-white transition hover:bg-[#1877f2] disabled:cursor-not-allowed disabled:opacity-50"
+              data-testid="login-submit"
+              className="mt-2 w-full min-h-[44px] sm:min-h-0 rounded-lg bg-[#0095f6] py-1.5 text-sm font-semibold text-white transition hover:bg-[#1877f2] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#0095f6] focus-visible:outline-none"
             >
               {isLoggingIn ? 'Logging in...' : 'Log in'}
             </button>

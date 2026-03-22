@@ -18,11 +18,11 @@ export class Notification {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column({ type: 'uuid', name: 'recipient_id' })
   @Index()
   recipientId: string;
 
-  @Column()
+  @Column({ type: 'uuid', name: 'sender_id' })
   senderId: string;
 
   @Column({
@@ -41,10 +41,10 @@ export class Notification {
   createdAt: Date;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'recipientId' })
+  @JoinColumn({ name: 'recipient_id' })
   recipient: User;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'senderId' })
+  @JoinColumn({ name: 'sender_id' })
   sender: User;
 }

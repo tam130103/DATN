@@ -13,11 +13,11 @@ export class Follow {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
+  @Column('uuid')
   @Index()
   followerId: string;
 
-  @Column()
+  @Column('uuid')
   @Index()
   followingId: string;
 

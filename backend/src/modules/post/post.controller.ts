@@ -64,6 +64,14 @@ export class PostController {
     return this.postService.create(user.id, createPostDto);
   }
 
+  @Post('import/facebook')
+  importFromFacebook(
+    @CurrentUser() user: any,
+    @Body() body: { pageId?: string; accessToken?: string; limit?: number },
+  ) {
+    return this.postService.importFromFacebookPage(user.id, body);
+  }
+
   @Get('feed')
   getFeed(
     @CurrentUser() user: any,

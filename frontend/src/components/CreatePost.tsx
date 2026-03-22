@@ -122,7 +122,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
 
   return (
     <div className="border-b border-[#dbdbdb] bg-white transition-shadow md:rounded-lg md:border md:shadow-sm">
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} data-testid="create-post-form">
         <div className="relative flex items-start gap-3 p-3">
           <Avatar src={user?.avatarUrl} name={user?.name} username={user?.username} size="sm" />
           <div className="relative w-full">
@@ -130,6 +130,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
               value={caption}
               onChange={handleTextChange}
               placeholder="What's on your mind?"
+              data-testid="create-post-caption"
               className="min-h-[56px] w-full resize-none bg-transparent text-sm outline-none placeholder:text-[#8e8e8e]"
               rows={2}
             />
@@ -175,7 +176,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
         )}
 
         <div className="flex items-center justify-between border-t border-[#efefef] px-3 py-2">
-          <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple onChange={handleFileSelect} className="hidden" />
+          <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple onChange={handleFileSelect} className="hidden" data-testid="create-post-media-input" />
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -191,6 +192,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
           <button
             type="submit"
             disabled={isLoading || !caption.trim()}
+            data-testid="create-post-submit"
             className="rounded-lg bg-[#0095f6] px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-[#1877f2] disabled:opacity-40"
           >
             {isLoading ? 'Sharing...' : 'Share'}
