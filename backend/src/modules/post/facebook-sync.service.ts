@@ -27,6 +27,7 @@ export class FacebookSyncService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     if (!this.isEnabled()) return;
     await this.ensureBotAndFollowers();
+    await this.ensureAppWebhookSubscription();
     await this.ensureWebhookSubscription();
     await this.syncNow();
     this.startInterval();
@@ -218,6 +219,94 @@ export class FacebookSyncService implements OnModuleInit, OnModuleDestroy {
         : String(error);
       this.logger.warn(`Failed to subscribe page webhook: ${message}`);
     }
+  }
+
+  private async ensureAppWebhookSubscription() {
+    if (!this.isWebhookEnabled()) return;
+
+    const autoSubscribe = this.configService.get<string>('FB_WEBHOOK_AUTO_SUBSCRIBE', 'false');
+    if (autoSubscribe.toLowerCase() === 'false') return;
+
+    const pageId = this.configService.get<string>('FB_PAGE_ID');
+    const accessToken = this.configService.get<string>('FB_PAGE_ACCESS_TOKEN');
+    const appSecret = this.configService.get<string>('FB_APP_SECRET');
+    const verifyToken = this.configService.get<string>('FB_WEBHOOK_VERIFY_TOKEN');
+    const version = this.configService.get<string>('FB_GRAPH_VERSION', 'v19.0');
+
+    if (!pageId || !accessToken || !appSecret || !verifyToken) {
+      return;
+    }
+
+    try {
+      const appId = await this.resolveFacebookAppId(pageId, accessToken, version);
+      const appAccessToken = `${appId}|${appSecret}`;
+      const subscriptionsResponse = await axios.get(`https://graph.facebook.com/${version}/${appId}/subscriptions`, {
+        params: { access_token: appAccessToken },
+      });
+
+      const subscriptions = Array.isArray(subscriptionsResponse.data?.data)
+        ? subscriptionsResponse.data.data
+        : [];
+      const callbackUrl =
+        this.configService.get<string>('FB_WEBHOOK_CALLBACK_URL') ||
+        subscriptions.find((subscription: any) => typeof subscription?.callback_url === 'string')?.callback_url;
+
+      if (!callbackUrl) {
+        this.logger.warn('Missing Facebook webhook callback URL. Set FB_WEBHOOK_CALLBACK_URL to auto-register page feed webhook.');
+        return;
+      }
+
+      const hasPageFeedSubscription = subscriptions.some((subscription: any) => {
+        if (subscription?.object !== 'page' || !subscription?.active) {
+          return false;
+        }
+
+        const fields = Array.isArray(subscription?.fields) ? subscription.fields : [];
+        return fields.some((field: any) =>
+          typeof field === 'string' ? field === 'feed' : field?.name === 'feed',
+        );
+      });
+
+      if (hasPageFeedSubscription) {
+        return;
+      }
+
+      await axios.post(`https://graph.facebook.com/${version}/${appId}/subscriptions`, null, {
+        params: {
+          access_token: appAccessToken,
+          object: 'page',
+          callback_url: callbackUrl,
+          verify_token: verifyToken,
+          fields: 'feed',
+          include_values: true,
+        },
+      });
+
+      this.logger.log('Facebook app subscribed to page feed webhook updates.');
+    } catch (error) {
+      const message = axios.isAxiosError(error)
+        ? ((error.response?.data as any)?.error?.message || error.message)
+        : String(error);
+      this.logger.warn(`Failed to ensure app page webhook subscription: ${message}`);
+    }
+  }
+
+  private async resolveFacebookAppId(pageId: string, accessToken: string, version: string): Promise<string> {
+    const configuredAppId = this.configService.get<string>('FB_APP_ID');
+    if (configuredAppId) {
+      return configuredAppId;
+    }
+
+    const response = await axios.get(`https://graph.facebook.com/${version}/${pageId}/subscribed_apps`, {
+      params: { access_token: accessToken },
+    });
+
+    const appId = response.data?.data?.[0]?.id;
+    if (!appId) {
+      throw new Error('Could not resolve Facebook app id from page subscriptions.');
+    }
+
+    return appId;
   }
 
   private async ensureBotAndFollowers() {
