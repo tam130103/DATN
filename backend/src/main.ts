@@ -23,14 +23,26 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl, etc.)
       if (!origin) return callback(null, true);
-      // Allow common local dev origins and the configured FRONTEND_URL.
-      const allowed = [frontendUrl, /^http:\/\/localhost:\d+$/, /^http:\/\/127\.0\.0\.1:\d+$/];
-      const isAllowed = allowed.some((o) =>
+      
+      const allowedOrigins = [
+        frontendUrl,
+        'https://datn-mu-six.vercel.app',
+        /^https:\/\/.*\.vercel\.app$/,
+        /^http:\/\/localhost:\d+$/,
+        /^http:\/\/127\.0\.0\.1:\d+$/
+      ];
+
+      const isAllowed = allowedOrigins.some((o) =>
         typeof o === 'string' ? o === origin : o.test(origin),
       );
-      callback(isAllowed ? null : new Error('Not allowed by CORS'), isAllowed);
+
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        console.error(`CORS blocked for origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'), false);
+      }
     },
     credentials: true,
   });
