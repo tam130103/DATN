@@ -26,7 +26,7 @@ import { SearchModule } from './modules/search/search.module';
         password: configService.get('DB_PASSWORD', 'postgres'),
         database: configService.get('DB_DATABASE', 'datn_social'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: false, // Disable auto-sync to avoid conflicts
+        synchronize: false, // Disable auto-sync for safety in production
         logging: configService.get('DATABASE_LOGGING') === 'true',
       }),
     }),
