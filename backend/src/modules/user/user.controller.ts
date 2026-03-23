@@ -15,9 +15,6 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
 import { Request } from 'express';
 import { UserService } from './user.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -26,12 +23,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationGateway } from '../notification/notification.gateway';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-const avatarUploadDir = join(process.cwd(), process.env.UPLOAD_DIR || 'uploads', 'avatars');
-if (!existsSync(avatarUploadDir)) {
-  mkdirSync(avatarUploadDir, { recursive: true });
-}
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -40,6 +34,7 @@ export class UserController {
     private readonly userService: UserService,
     private readonly notificationService: NotificationService,
     private readonly notificationGateway: NotificationGateway,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   @Get('me')
@@ -50,17 +45,10 @@ export class UserController {
   @Post('me/avatar')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: avatarUploadDir,
-        filename: (_req, file, cb) => {
-          const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname)}`;
-          cb(null, uniqueName);
-        },
-      }),
       limits: { fileSize: 5 * 1024 * 1024 },
     }),
   )
-  uploadAvatar(@UploadedFile() file: { filename: string; mimetype: string }, @Req() req: Request) {
+  async uploadAvatar(@UploadedFile() file: any) {
     if (!file) {
       throw new BadRequestException('File is required');
     }
@@ -69,8 +57,8 @@ export class UserController {
       throw new BadRequestException('Only image files are allowed');
     }
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    return { url: `${baseUrl}/uploads/avatars/${file.filename}` };
+    const result = await this.cloudinaryService.uploadFile(file, 'datn-social/avatars');
+    return { url: result.secure_url };
   }
 
   @Get(':id/followers')

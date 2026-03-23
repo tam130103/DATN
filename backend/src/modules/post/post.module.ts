@@ -14,11 +14,13 @@ import { Like } from '../engagement/entities/like.entity';
 import { Comment } from '../engagement/entities/comment.entity';
 import { UserModule } from '../user/user.module';
 import { FacebookSyncService } from './facebook-sync.service';
+import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Post, Media, Hashtag, PostHashtag, PostMention, Follow, User, Like, Comment]),
     forwardRef(() => UserModule),
+    CloudinaryModule,
   ],
   controllers: [PostController, FacebookWebhookController],
   providers: [PostService, FacebookSyncService],

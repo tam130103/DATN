@@ -14,39 +14,29 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
 import { Request } from 'express';
 import { PostService } from './post.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
-const uploadDir = join(process.cwd(), process.env.UPLOAD_DIR || 'uploads');
-if (!existsSync(uploadDir)) {
-  mkdirSync(uploadDir, { recursive: true });
-}
 
 @Controller('posts')
 @UseGuards(JwtAuthGuard)
 export class PostController {
-  constructor(private readonly postService: PostService) {}
+  constructor(
+    private readonly postService: PostService,
+    private readonly cloudinaryService: CloudinaryService
+  ) {}
 
   @Post('upload')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: uploadDir,
-        filename: (_req, file, cb) => {
-          const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname)}`;
-          cb(null, uniqueName);
-        },
-      }),
       limits: { fileSize: 20 * 1024 * 1024 },
     }),
   )
-  uploadMedia(@UploadedFile() file: { filename: string; mimetype: string }, @Req() req: Request) {
+  async uploadMedia(@UploadedFile() file: any) {
     if (!file) {
       throw new BadRequestException('File is required');
     }
@@ -55,8 +45,10 @@ export class PostController {
       throw new BadRequestException('Only image or video files are allowed');
     }
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    return { url: `${baseUrl}/uploads/${file.filename}` };
+    const folder = file.mimetype.startsWith('video/') ? 'datn-social/videos' : 'datn-social/images';
+    const result = await this.cloudinaryService.uploadFile(file, folder);
+    
+    return { url: result.secure_url };
   }
 
   @Post()

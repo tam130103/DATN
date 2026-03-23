@@ -8,6 +8,7 @@ import { EngagementModule } from './modules/engagement/engagement.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { SearchModule } from './modules/search/search.module';
+import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { SearchModule } from './modules/search/search.module';
     ChatModule,
     NotificationModule,
     SearchModule,
+    CloudinaryModule,
   ],
 })
 export class AppModule {}

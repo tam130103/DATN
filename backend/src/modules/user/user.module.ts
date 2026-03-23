@@ -6,9 +6,10 @@ import { UserController } from './user.controller';
 import { User } from './entities/user.entity';
 import { Follow } from './entities/follow.entity';
 import { NotificationModule } from '../notification/notification.module';
+import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 
 @Module({
-  imports: [ConfigModule, TypeOrmModule.forFeature([User, Follow]), forwardRef(() => NotificationModule)],
+  imports: [ConfigModule, TypeOrmModule.forFeature([User, Follow]), forwardRef(() => NotificationModule), CloudinaryModule],
   controllers: [UserController],
   providers: [UserService],
   exports: [UserService, TypeOrmModule],
