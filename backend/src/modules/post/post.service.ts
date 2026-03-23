@@ -369,6 +369,20 @@ export class PostService {
     });
   }
 
+  async deleteFacebookPostById(userId: string, sourceId: string): Promise<boolean> {
+    const post = await this.postRepository.findOne({
+      where: { userId, source: 'facebook', sourceId },
+      select: ['id'],
+    });
+
+    if (!post) {
+      return false;
+    }
+
+    await this.delete(post.id, userId);
+    return true;
+  }
+
   async getTaggedPosts(
     userId: string,
     viewerId?: string,

@@ -96,21 +96,31 @@ export class FacebookSyncService implements OnModuleInit, OnModuleDestroy {
     return timingSafeEqual(actualBuffer, expectedBuffer);
   }
 
-  async handleWebhookPayload(payload: any): Promise<{ imported: number; skipped: number; ignored: number }> {
+  async handleWebhookPayload(payload: any): Promise<{ imported: number; skipped: number; ignored: number; removed: number }> {
     if (!this.isWebhookEnabled()) {
-      return { imported: 0, skipped: 0, ignored: 1 };
+      return { imported: 0, skipped: 0, ignored: 1, removed: 0 };
     }
 
-    const postIds = this.extractWebhookPostIds(payload);
-    if (postIds.length === 0) {
-      return { imported: 0, skipped: 0, ignored: 1 };
+    const { upsertIds, removeIds } = this.extractWebhookPostIds(payload);
+    if (upsertIds.length === 0 && removeIds.length === 0) {
+      return { imported: 0, skipped: 0, ignored: 1, removed: 0 };
     }
 
     const bot = await this.userService.ensureFacebookBotUser();
     let imported = 0;
     let skipped = 0;
+    let removed = 0;
 
-    for (const postId of postIds) {
+    for (const postId of removeIds) {
+      try {
+        const deleted = await this.postService.deleteFacebookPostById(bot.id, postId);
+        if (deleted) removed += 1;
+      } catch (error) {
+        this.logger.warn(`Facebook webhook delete failed for ${postId}: ${(error as any)?.message || error}`);
+      }
+    }
+
+    for (const postId of upsertIds) {
       try {
         const result = await this.postService.importFacebookPostById(bot.id, postId);
         if (result.imported) {
@@ -120,15 +130,15 @@ export class FacebookSyncService implements OnModuleInit, OnModuleDestroy {
         }
       } catch (error) {
         skipped += 1;
-        this.logger.warn(`Facebook webhook import failed for ${postId}: ${error?.message || error}`);
+        this.logger.warn(`Facebook webhook import failed for ${postId}: ${(error as any)?.message || error}`);
       }
     }
 
-    if (imported > 0 || skipped > 0) {
-      this.logger.log(`Facebook webhook: imported ${imported}, skipped ${skipped}`);
+    if (imported > 0 || skipped > 0 || removed > 0) {
+      this.logger.log(`Facebook webhook: imported ${imported}, skipped ${skipped}, removed ${removed}`);
     }
 
-    return { imported, skipped, ignored: 0 };
+    return { imported, skipped, ignored: 0, removed };
   }
 
   private isEnabled(): boolean {
@@ -149,13 +159,14 @@ export class FacebookSyncService implements OnModuleInit, OnModuleDestroy {
     return intervalMinutes > 0 ? intervalMinutes * 60 * 1000 : 0;
   }
 
-  private extractWebhookPostIds(payload: any): string[] {
+  private extractWebhookPostIds(payload: any): { upsertIds: string[]; removeIds: string[] } {
     if (payload?.object !== 'page' || !Array.isArray(payload?.entry)) {
-      return [];
+      return { upsertIds: [], removeIds: [] };
     }
 
     const configuredPageId = this.configService.get<string>('FB_PAGE_ID');
-    const candidateIds = new Set<string>();
+    const upsertIds = new Set<string>();
+    const removeIds = new Set<string>();
 
     for (const entry of payload.entry) {
       if (configuredPageId && entry?.id && entry.id !== configuredPageId) {
@@ -168,14 +179,17 @@ export class FacebookSyncService implements OnModuleInit, OnModuleDestroy {
 
         const value = change?.value ?? {};
         if (!value?.post_id) continue;
-        if (value?.verb === 'remove') continue;
         if (value?.item && ['comment', 'reaction'].includes(String(value.item).toLowerCase())) continue;
 
-        candidateIds.add(value.post_id);
+        if (value?.verb === 'remove') {
+          removeIds.add(value.post_id);
+        } else {
+          upsertIds.add(value.post_id);
+        }
       }
     }
 
-    return Array.from(candidateIds);
+    return { upsertIds: Array.from(upsertIds), removeIds: Array.from(removeIds) };
   }
 
   private async ensureWebhookSubscription() {
