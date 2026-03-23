@@ -9,6 +9,8 @@ import { Post, Hashtag } from '../types';
 import { postService } from '../services/post.service';
 import { searchService } from '../services/search.service';
 
+const FEED_REFRESH_INTERVAL_MS = 30000;
+
 const FeedPage: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [trending, setTrending] = useState<Hashtag[]>([]);
@@ -17,17 +19,46 @@ const FeedPage: React.FC = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const observerTarget = useRef<HTMLDivElement | null>(null);
 
-  const loadPosts = useCallback(async (cursor?: string) => {
+  const loadPosts = useCallback(async (cursor?: string, options?: { silent?: boolean; merge?: boolean }) => {
     try {
-      cursor ? setIsLoadingMore(true) : setIsLoading(true);
+      if (cursor) {
+        setIsLoadingMore(true);
+      } else if (!options?.silent) {
+        setIsLoading(true);
+      }
+
       const response = await postService.getFeed(cursor);
-      setPosts((prev) => (cursor ? [...prev, ...response.posts] : response.posts));
-      setNextCursor(response.nextCursor);
+      setPosts((prev) => {
+        if (cursor) {
+          const existingIds = new Set(prev.map((post) => post.id));
+          return [...prev, ...response.posts.filter((post) => !existingIds.has(post.id))];
+        }
+
+        if (options?.merge) {
+          const incomingIds = new Set(response.posts.map((post) => post.id));
+          return [...response.posts, ...prev.filter((post) => !incomingIds.has(post.id))];
+        }
+
+        return response.posts;
+      });
+
+      setNextCursor((previousCursor) => {
+        if (options?.merge) {
+          return previousCursor ?? response.nextCursor;
+        }
+
+        return response.nextCursor;
+      });
     } catch {
-      toast.error('Failed to load feed.');
+      if (!options?.silent) {
+        toast.error('Failed to load feed.');
+      }
     } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
+      if (cursor) {
+        setIsLoadingMore(false);
+      } else if (!options?.silent) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -47,6 +78,29 @@ const FeedPage: React.FC = () => {
     observer.observe(observerTarget.current);
     return () => observer.disconnect();
   }, [isLoadingMore, loadPosts, nextCursor]);
+
+  useEffect(() => {
+    const refreshFeed = () => {
+      if (document.hidden || isLoadingMore) return;
+      void loadPosts(undefined, { silent: true, merge: true });
+    };
+
+    const intervalId = window.setInterval(refreshFeed, FEED_REFRESH_INTERVAL_MS);
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refreshFeed();
+      }
+    };
+
+    window.addEventListener('focus', refreshFeed);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refreshFeed);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isLoadingMore, loadPosts]);
 
   const aside = (
     <div className="sticky top-8 pt-4">

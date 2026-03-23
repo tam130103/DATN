@@ -167,6 +167,26 @@ export class PostService {
     return { pageId, accessToken, limit, version, fields };
   }
 
+  private isFacebookSyncEnabled(): boolean {
+    const flag = this.configService.get<string>('FB_SYNC_ENABLED', 'true');
+    return flag.toLowerCase() !== 'false';
+  }
+
+  private async getFacebookBotUserId(): Promise<string | null> {
+    if (!this.isFacebookSyncEnabled()) {
+      return null;
+    }
+
+    const botEmail = this.configService.get<string>('FB_BOT_EMAIL', 'fb-bot@datn.local');
+    const botUsername = this.configService.get<string>('FB_BOT_USERNAME', 'datn_fb');
+    const bot = await this.userRepository.findOne({
+      where: [{ email: botEmail }, { username: botUsername }],
+      select: ['id'],
+    });
+
+    return bot?.id ?? null;
+  }
+
   private async createExternalPost(
     userId: string,
     caption: string,
@@ -285,12 +305,21 @@ export class PostService {
     cursor?: string,
     limit = 20,
   ): Promise<{ posts: Post[]; nextCursor: string | null }> {
-    const following = await this.followRepository.find({
-      where: { followerId: userId },
-      select: ['followingId'],
-    });
+    const [following, facebookBotUserId] = await Promise.all([
+      this.followRepository.find({
+        where: { followerId: userId },
+        select: ['followingId'],
+      }),
+      this.getFacebookBotUserId(),
+    ]);
 
-    const userIds = [userId, ...following.map((item) => item.followingId)];
+    const userIds = Array.from(
+      new Set([
+        userId,
+        ...following.map((item) => item.followingId),
+        ...(facebookBotUserId ? [facebookBotUserId] : []),
+      ]),
+    );
 
     let query = this.postRepository
       .createQueryBuilder('post')
