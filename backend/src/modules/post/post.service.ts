@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In, EntityManager } from 'typeorm';
 import axios from 'axios';
@@ -16,6 +16,10 @@ import { Comment } from '../engagement/entities/comment.entity';
 
 @Injectable()
 export class PostService {
+  private readonly logger = new Logger(PostService.name);
+  private facebookFeedRefreshInFlight: Promise<void> | null = null;
+  private lastFacebookFeedRefreshAt = 0;
+
   constructor(
     @InjectRepository(Post)
     private readonly postRepository: Repository<Post>,
@@ -187,13 +191,57 @@ export class PostService {
     return bot?.id ?? null;
   }
 
+  private getFacebookFeedRefreshCooldownMs(): number {
+    const seconds =
+      Number(this.configService.get<string>('FB_FEED_REFRESH_COOLDOWN_SECONDS', '60')) || 60;
+    return Math.max(15, seconds) * 1000;
+  }
+
+  private async refreshFacebookPostsIfNeeded(): Promise<void> {
+    if (!this.isFacebookSyncEnabled()) {
+      return;
+    }
+
+    const cooldownMs = this.getFacebookFeedRefreshCooldownMs();
+    if (Date.now() - this.lastFacebookFeedRefreshAt < cooldownMs) {
+      return;
+    }
+
+    if (this.facebookFeedRefreshInFlight) {
+      await this.facebookFeedRefreshInFlight;
+      return;
+    }
+
+    this.facebookFeedRefreshInFlight = (async () => {
+      try {
+        const botUserId = await this.getFacebookBotUserId();
+        if (!botUserId) {
+          return;
+        }
+
+        await this.importFromFacebookPage(botUserId, { limit: 5 });
+      } catch (error) {
+        this.logger.warn(`Facebook feed refresh skipped: ${(error as any)?.message || error}`);
+      } finally {
+        this.lastFacebookFeedRefreshAt = Date.now();
+        this.facebookFeedRefreshInFlight = null;
+      }
+    })();
+
+    await this.facebookFeedRefreshInFlight;
+  }
+
+  private getEffectivePostDate(post: Pick<Post, 'createdAt' | 'sourceCreatedAt'>): Date {
+    return post.sourceCreatedAt ?? post.createdAt;
+  }
+
   private async createExternalPost(
     userId: string,
     caption: string,
     mediaDto: Array<{ url: string; type: MediaType }>,
     source: string,
     sourceId: string,
-    createdAt?: Date,
+    sourceCreatedAt?: Date,
   ): Promise<Post> {
     const savedPost = await this.dataSource.transaction(async (manager) => {
       const post = manager.create(Post, {
@@ -201,7 +249,7 @@ export class PostService {
         caption: caption || '',
         source,
         sourceId,
-        createdAt: createdAt ?? undefined,
+        sourceCreatedAt: sourceCreatedAt ?? null,
       });
       const createdPost = await manager.save(post);
 
@@ -273,6 +321,7 @@ export class PostService {
 
     return posts.map((post) => ({
       ...post,
+      createdAt: this.getEffectivePostDate(post),
       user: userMap.get(post.userId) ?? (post.user as User),
       media: mediaMap.get(post.id) ?? [],
       postHashtags: hashtagMap.get(post.id) ?? [],
@@ -305,6 +354,10 @@ export class PostService {
     cursor?: string,
     limit = 20,
   ): Promise<{ posts: Post[]; nextCursor: string | null }> {
+    if (!cursor) {
+      await this.refreshFacebookPostsIfNeeded();
+    }
+
     const [following, facebookBotUserId] = await Promise.all([
       this.followRepository.find({
         where: { followerId: userId },
@@ -320,15 +373,17 @@ export class PostService {
         ...(facebookBotUserId ? [facebookBotUserId] : []),
       ]),
     );
+    const sortExpression = 'COALESCE(post.sourceCreatedAt, post.createdAt)';
 
     let query = this.postRepository
       .createQueryBuilder('post')
       .where('post.userId IN (:...userIds)', { userIds })
-      .orderBy('post.createdAt', 'DESC')
+      .orderBy(sortExpression, 'DESC')
+      .addOrderBy('post.id', 'DESC')
       .limit(limit + 1);
 
     if (cursor) {
-      query = query.andWhere('post.createdAt < :cursor', { cursor: new Date(cursor) });
+      query = query.andWhere(`${sortExpression} < :cursor`, { cursor: new Date(cursor) });
     }
 
     const rawPosts = await query.getMany();
@@ -336,7 +391,7 @@ export class PostService {
     const visiblePosts = hasMore ? rawPosts.slice(0, limit) : rawPosts;
     const posts = await this.enrichPosts(visiblePosts, userId);
     const nextCursor = hasMore
-      ? visiblePosts[visiblePosts.length - 1].createdAt.toISOString()
+      ? this.getEffectivePostDate(visiblePosts[visiblePosts.length - 1]).toISOString()
       : null;
 
     return { posts, nextCursor };
@@ -348,14 +403,16 @@ export class PostService {
     cursor?: string,
     limit = 24,
   ): Promise<{ posts: Post[]; nextCursor: string | null }> {
+    const sortExpression = 'COALESCE(post.sourceCreatedAt, post.createdAt)';
     let query = this.postRepository
       .createQueryBuilder('post')
       .where('post.userId = :userId', { userId: targetUserId })
-      .orderBy('post.createdAt', 'DESC')
+      .orderBy(sortExpression, 'DESC')
+      .addOrderBy('post.id', 'DESC')
       .limit(limit + 1);
 
     if (cursor) {
-      query = query.andWhere('post.createdAt < :cursor', { cursor: new Date(cursor) });
+      query = query.andWhere(`${sortExpression} < :cursor`, { cursor: new Date(cursor) });
     }
 
     const rawPosts = await query.getMany();
@@ -363,7 +420,7 @@ export class PostService {
     const visiblePosts = hasMore ? rawPosts.slice(0, limit) : rawPosts;
     const posts = await this.enrichPosts(visiblePosts, viewerId);
     const nextCursor = hasMore
-      ? visiblePosts[visiblePosts.length - 1].createdAt.toISOString()
+      ? this.getEffectivePostDate(visiblePosts[visiblePosts.length - 1]).toISOString()
       : null;
 
     return { posts, nextCursor };
@@ -433,15 +490,17 @@ export class PostService {
     cursor?: string,
     limit = 24,
   ): Promise<{ posts: Post[]; nextCursor: string | null }> {
+    const sortExpression = 'COALESCE(post.sourceCreatedAt, post.createdAt)';
     let query = this.postMentionRepository
       .createQueryBuilder('mention')
       .where('mention.userId = :userId', { userId })
       .leftJoinAndSelect('mention.post', 'post')
-      .orderBy('post.createdAt', 'DESC')
+      .orderBy(sortExpression, 'DESC')
+      .addOrderBy('post.id', 'DESC')
       .limit(limit + 1);
 
     if (cursor) {
-      query = query.andWhere('post.createdAt < :cursor', { cursor: new Date(cursor) });
+      query = query.andWhere(`${sortExpression} < :cursor`, { cursor: new Date(cursor) });
     }
 
     const rawMentions = await query.getMany();
@@ -450,7 +509,7 @@ export class PostService {
     const visiblePosts = hasMore ? rawPosts.slice(0, limit) : rawPosts;
     const posts = await this.enrichPosts(visiblePosts, viewerId);
     const nextCursor = hasMore
-      ? visiblePosts[visiblePosts.length - 1].createdAt.toISOString()
+      ? this.getEffectivePostDate(visiblePosts[visiblePosts.length - 1]).toISOString()
       : null;
 
     return { posts, nextCursor };
@@ -498,23 +557,27 @@ export class PostService {
         source: 'facebook',
         sourceId: In(sourceIds),
       },
-      select: ['sourceId'],
+      select: ['id', 'sourceId', 'sourceCreatedAt'],
     });
-    const existingIds = new Set(existing.map((item) => item.sourceId));
+    const existingBySourceId = new Map(existing.map((item) => [item.sourceId, item]));
 
     const imported: Post[] = [];
     let skipped = 0;
 
     for (const fbPost of fbPosts) {
       if (!fbPost?.id) continue;
-      if (existingIds.has(fbPost.id)) {
+      const sourceCreatedAt = fbPost.created_time ? new Date(fbPost.created_time) : undefined;
+      const existingPost = existingBySourceId.get(fbPost.id);
+      if (existingPost) {
+        if (!existingPost.sourceCreatedAt && sourceCreatedAt) {
+          await this.postRepository.update(existingPost.id, { sourceCreatedAt });
+        }
         skipped += 1;
         continue;
       }
 
       const caption = fbPost.message || '';
       const media = this.normalizeFacebookMedia(fbPost);
-      const createdAt = fbPost.created_time ? new Date(fbPost.created_time) : undefined;
 
       const created = await this.createExternalPost(
         userId,
@@ -522,7 +585,7 @@ export class PostService {
         media,
         'facebook',
         fbPost.id,
-        createdAt,
+        sourceCreatedAt,
       );
       imported.push(created);
     }
@@ -573,23 +636,27 @@ export class PostService {
         source: 'facebook',
         sourceId: fbPost.id,
       },
-      select: ['id'],
+      select: ['id', 'sourceCreatedAt'],
     });
 
+    const sourceCreatedAt = fbPost.created_time ? new Date(fbPost.created_time) : undefined;
+
     if (existing) {
+      if (!existing.sourceCreatedAt && sourceCreatedAt) {
+        await this.postRepository.update(existing.id, { sourceCreatedAt });
+      }
       return { imported: null, skipped: true };
     }
 
     const caption = fbPost.message || '';
     const media = this.normalizeFacebookMedia(fbPost);
-    const createdAt = fbPost.created_time ? new Date(fbPost.created_time) : undefined;
     const created = await this.createExternalPost(
       userId,
       caption,
       media,
       'facebook',
       fbPost.id,
-      createdAt,
+      sourceCreatedAt,
     );
 
     return { imported: created, skipped: false };

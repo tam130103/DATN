@@ -30,13 +30,20 @@ export class AddPostSourceFields1765000000000 implements MigrationInterface {
 
     const indexName = 'IDX_posts_user_source_sourceId';
     const table = await queryRunner.getTable('posts');
+    const userIdColumn = table?.columns.find((column) => column.name === 'user_id' || column.name === 'userId')?.name;
     const hasIndex = table?.indices?.some((idx) => idx.name === indexName);
-    if (!hasIndex) {
+    const hasEquivalentIndex = table?.indices?.some(
+      (idx) =>
+        idx.isUnique &&
+        idx.columnNames.join('|') === [userIdColumn, 'source', 'sourceId'].filter(Boolean).join('|'),
+    );
+
+    if (userIdColumn && !hasIndex && !hasEquivalentIndex) {
       await queryRunner.createIndex(
         'posts',
         new TableIndex({
           name: indexName,
-          columnNames: ['userId', 'source', 'sourceId'],
+          columnNames: [userIdColumn, 'source', 'sourceId'],
           isUnique: true,
         }),
       );

@@ -33,6 +33,9 @@ export class Post {
   @Column({ type: 'varchar', length: 100, nullable: true })
   sourceId: string | null;
 
+  @Column({ type: 'timestamptz', nullable: true })
+  sourceCreatedAt: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 
