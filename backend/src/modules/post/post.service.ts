@@ -360,11 +360,26 @@ export class PostService {
     }
 
     await this.dataSource.transaction(async (manager) => {
+      // 1. Decrement hashtag counts and delete post_hashtags relationships
       const postHashtags = await manager.find(PostHashtag, { where: { postId: id } });
-      for (const item of postHashtags) {
-        await manager.decrement(Hashtag, { id: item.hashtagId }, 'count', 1);
+      if (postHashtags.length > 0) {
+        const hashtagIds = postHashtags.map(ph => ph.hashtagId);
+        await manager.createQueryBuilder()
+          .update(Hashtag)
+          .set({ count: () => '"count" - 1' })
+          .whereInIds(hashtagIds)
+          .execute();
+        
+        await manager.delete(PostHashtag, { postId: id });
       }
 
+      // 2. Delete other related records in order to respect constraints
+      await manager.delete(PostMention, { postId: id });
+      await manager.delete(Like, { postId: id });
+      await manager.delete(Comment, { postId: id });
+      await manager.delete(Media, { postId: id });
+
+      // 3. Finally delete the post itself
       await manager.delete(Post, { id });
     });
   }
