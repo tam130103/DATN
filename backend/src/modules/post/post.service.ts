@@ -155,6 +155,108 @@ export class PostService {
     return media;
   }
 
+  private getFacebookPostCreatedAt(post: any): Date | null {
+    if (!post?.created_time) {
+      return null;
+    }
+
+    const createdAt = new Date(post.created_time);
+    return Number.isNaN(createdAt.getTime()) ? null : createdAt;
+  }
+
+  private async reconcileRemovedFacebookPosts(
+    userId: string,
+    fbPosts: any[],
+    limit: number,
+    hasMorePages: boolean,
+  ): Promise<number> {
+    if (!Array.isArray(fbPosts) || fbPosts.length === 0) {
+      return 0;
+    }
+
+    const fetchedIds = fbPosts
+      .map((post) => post?.id)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+    if (fetchedIds.length === 0) {
+      return 0;
+    }
+
+    const fetchedDates = fbPosts
+      .map((post) => this.getFacebookPostCreatedAt(post))
+      .filter((date): date is Date => date instanceof Date);
+
+    if (fetchedDates.length === 0) {
+      return 0;
+    }
+
+    const oldestFetchedDate = fetchedDates.reduce((oldest, current) =>
+      current.getTime() < oldest.getTime() ? current : oldest,
+    );
+
+    let query = this.postRepository
+      .createQueryBuilder('post')
+      .select(['post.id', 'post.sourceId'])
+      .where('post.userId = :userId', { userId })
+      .andWhere('post.source = :source', { source: 'facebook' })
+      .andWhere('post.sourceCreatedAt IS NOT NULL')
+      .andWhere('post.sourceId NOT IN (:...fetchedIds)', { fetchedIds });
+
+    if (hasMorePages || fbPosts.length >= limit) {
+      query = query.andWhere('post.sourceCreatedAt > :oldestFetchedDate', {
+        oldestFetchedDate,
+      });
+    } else {
+      query = query.andWhere('post.sourceCreatedAt >= :oldestFetchedDate', {
+        oldestFetchedDate,
+      });
+    }
+
+    const stalePosts = await query.getMany();
+    if (stalePosts.length === 0) {
+      return 0;
+    }
+
+    let removed = 0;
+    for (const stalePost of stalePosts) {
+      try {
+        await this.delete(stalePost.id, userId);
+        removed += 1;
+      } catch (error) {
+        this.logger.warn(
+          `Failed to remove stale Facebook post ${stalePost.sourceId ?? stalePost.id}: ${
+            (error as any)?.message || error
+          }`,
+        );
+      }
+    }
+
+    return removed;
+  }
+
+  private async removeAllFacebookPostsForUser(userId: string): Promise<number> {
+    const posts = await this.postRepository.find({
+      where: { userId, source: 'facebook' },
+      select: ['id'],
+    });
+
+    if (posts.length === 0) {
+      return 0;
+    }
+
+    let removed = 0;
+    for (const post of posts) {
+      try {
+        await this.delete(post.id, userId);
+        removed += 1;
+      } catch (error) {
+        this.logger.warn(`Failed to remove Facebook post ${post.id}: ${(error as any)?.message || error}`);
+      }
+    }
+
+    return removed;
+  }
+
   private getFacebookConfig(options?: { pageId?: string; accessToken?: string; limit?: number }) {
     const pageId = options?.pageId || this.configService.get<string>('FB_PAGE_ID');
     const accessToken = options?.accessToken || this.configService.get<string>('FB_PAGE_ACCESS_TOKEN');
@@ -518,7 +620,7 @@ export class PostService {
   async importFromFacebookPage(
     userId: string,
     options?: { pageId?: string; accessToken?: string; limit?: number },
-  ): Promise<{ imported: Post[]; skipped: number }> {
+  ): Promise<{ imported: Post[]; skipped: number; removed: number }> {
     const { pageId, accessToken, limit, version, fields } = this.getFacebookConfig(options);
 
     if (!pageId || !accessToken) {
@@ -547,8 +649,11 @@ export class PostService {
 
     const fbPosts = response.data?.data ?? [];
     if (!Array.isArray(fbPosts) || fbPosts.length === 0) {
-      return { imported: [], skipped: 0 };
+      const removed = await this.removeAllFacebookPostsForUser(userId);
+      return { imported: [], skipped: 0, removed };
     }
+
+    const hasMorePages = Boolean(response.data?.paging?.next);
 
     const sourceIds = fbPosts.map((post: any) => post.id).filter(Boolean);
     const existing = await this.postRepository.find({
@@ -590,7 +695,9 @@ export class PostService {
       imported.push(created);
     }
 
-    return { imported, skipped };
+    const removed = await this.reconcileRemovedFacebookPosts(userId, fbPosts, limit, hasMorePages);
+
+    return { imported, skipped, removed };
   }
 
   async importFacebookPostById(

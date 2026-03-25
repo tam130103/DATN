@@ -323,8 +323,10 @@ export class FacebookSyncService implements OnModuleInit, OnModuleDestroy {
     try {
       const bot = await this.userService.ensureFacebookBotUser();
       const result = await this.postService.importFromFacebookPage(bot.id);
-      if (result.imported.length > 0 || result.skipped > 0) {
-        this.logger.log(`Facebook sync: imported ${result.imported.length}, skipped ${result.skipped}`);
+      if (result.imported.length > 0 || result.skipped > 0 || result.removed > 0) {
+        this.logger.log(
+          `Facebook sync: imported ${result.imported.length}, skipped ${result.skipped}, removed ${result.removed}`,
+        );
       }
     } catch (error) {
       this.logger.warn(`Facebook sync failed: ${error?.message || error}`);
