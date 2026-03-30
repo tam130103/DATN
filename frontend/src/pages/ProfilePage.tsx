@@ -172,6 +172,11 @@ const ProfilePage: React.FC = () => {
 
   const displayHandle = profile.username || profile.name || 'profile';
   const displayName = profile.name && profile.name !== profile.username ? profile.name : null;
+  const handlePostDeleted = (postId: string) => {
+    setPosts((prev) => prev.filter((post) => post.id !== postId));
+    setTaggedPosts((prev) => prev.filter((post) => post.id !== postId));
+    setActivePost((prev) => (prev?.id === postId ? null : prev));
+  };
 
   return (
     <AppShell>
@@ -383,7 +388,13 @@ const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {activePost && <PostLightbox post={activePost} onClose={() => setActivePost(null)} />}
+      {activePost && (
+        <PostLightbox
+          post={activePost}
+          onClose={() => setActivePost(null)}
+          onDeleted={handlePostDeleted}
+        />
+      )}
     </AppShell>
   );
 };

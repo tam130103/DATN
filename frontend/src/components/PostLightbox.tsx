@@ -3,6 +3,9 @@ import toast from 'react-hot-toast';
 import { Comment, Post } from '../types';
 import { Avatar } from './common/Avatar';
 import { engagementService } from '../services/engagement.service';
+import { postService } from '../services/post.service';
+import { useAuth } from '../contexts/AuthContext';
+import { PostCaption } from './PostCaption';
 
 const CloseIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -39,9 +42,25 @@ const DotsIcon = ({ className }: { className?: string }) => (
 interface PostLightboxProps {
   post: Post;
   onClose: () => void;
+  onDeleted?: (postId: string) => void;
 }
 
-export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose }) => {
+const getApiMessage = (error: unknown, fallback: string) => {
+  if (typeof error === 'object' && error && 'response' in error) {
+    const response = (error as any).response?.data;
+    if (typeof response?.message === 'string') {
+      return response.message;
+    }
+    if (Array.isArray(response?.message) && response.message.length > 0) {
+      return response.message[0];
+    }
+  }
+
+  return fallback;
+};
+
+export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDeleted }) => {
+  const { user } = useAuth();
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [liked, setLiked] = useState(post.liked || false);
   const [likesCount, setLikesCount] = useState(post.likesCount || 0);
@@ -49,6 +68,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose }) => 
   const [commentText, setCommentText] = useState('');
   const [isLoadingComments, setIsLoadingComments] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const media = useMemo(
     () => [...(post.media || [])].sort((a, b) => a.orderIndex - b.orderIndex),
@@ -145,6 +165,27 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose }) => 
   const createdAt = new Date(post.createdAt).toLocaleDateString();
   const cover = media[currentMediaIndex];
   const isVideo = cover?.type === 'VIDEO';
+  const profilePath = post.user?.username ? `/${post.user.username}` : undefined;
+  const authorLabel = post.user?.username || post.user?.name || 'Member';
+  const isOwner = user?.id === post.userId;
+
+  const handleDelete = async () => {
+    if (!window.confirm('Delete this post?')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await postService.deletePost(post.id);
+      toast.success('Post deleted.');
+      onDeleted?.(post.id);
+      onClose();
+    } catch (error) {
+      toast.error(getApiMessage(error, 'Failed to delete post.'));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-2 sm:p-6" onClick={handleBackdropClick}>
@@ -207,20 +248,33 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose }) => 
               <Avatar src={post.user?.avatarUrl} name={post.user?.name} username={post.user?.username} size="sm" />
               <div className="text-sm font-semibold">{post.user?.username || post.user?.name || 'Member'}</div>
             </div>
-            <button type="button" className="text-neutral-400 transition hover:text-neutral-700" aria-label="Post options">
-              <DotsIcon className="h-5 w-5" />
-            </button>
+            {isOwner ? (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="rounded-full px-3 py-1 text-xs font-semibold text-red-500 transition hover:bg-red-50 disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            ) : (
+              <button type="button" className="text-neutral-400 transition hover:text-neutral-700" aria-label="Post options">
+                <DotsIcon className="h-5 w-5" />
+              </button>
+            )}
           </div>
 
           <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4 text-sm">
             <div className="flex items-start gap-3">
               <Avatar src={post.user?.avatarUrl} name={post.user?.name} username={post.user?.username} size="sm" />
-              <p className="text-neutral-800">
-                <span className="font-semibold text-neutral-900">
-                  {post.user?.username || post.user?.name || 'Member'}
-                </span>{' '}
-                {post.caption || ''}
-              </p>
+              <PostCaption
+                text={post.caption}
+                prefixLabel={authorLabel}
+                prefixTo={profilePath}
+                collapsedLength={320}
+                className="flex-1"
+                textClassName="text-neutral-800"
+              />
             </div>
 
             {isLoadingComments ? (

@@ -8,11 +8,26 @@ import { useAuth } from '../contexts/AuthContext';
 import { Avatar } from './common/Avatar';
 import { chatService } from '../services/chat.service';
 import { userService } from '../services/user.service';
+import { PostCaption } from './PostCaption';
 
 interface PostCardProps {
   post: Post;
   onDeleted?: (postId: string) => void;
 }
+
+const getApiMessage = (error: unknown, fallback: string) => {
+  if (typeof error === 'object' && error && 'response' in error) {
+    const response = (error as any).response?.data;
+    if (typeof response?.message === 'string') {
+      return response.message;
+    }
+    if (Array.isArray(response?.message) && response.message.length > 0) {
+      return response.message[0];
+    }
+  }
+
+  return fallback;
+};
 
 
 /* ── Instagram Icons ── */
@@ -216,53 +231,14 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
       await postService.deletePost(post.id);
       toast.success('Post deleted.');
       onDeleted?.(post.id);
-    } catch {
-      toast.error('Failed to delete post.');
+    } catch (error) {
+      toast.error(getApiMessage(error, 'Failed to delete post.'));
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const renderCaption = (text: string) => {
-    const parts = text.split(/([#@]\w+)/g);
-    const textParts: React.ReactNode[] = [];
-    const hashtagParts: React.ReactNode[] = [];
-
-    parts.forEach((part, index) => {
-      if (part.startsWith('#')) {
-        const tag = part.replace('#', '').toLowerCase();
-        hashtagParts.push(
-          <Link key={`tag-${index}`} to={`/hashtag/${tag}`} className="mr-1 text-[#00376b] hover:underline">
-            {part}
-          </Link>
-        );
-      } else if (part.startsWith('@')) {
-        const uname = part.replace('@', '').toLowerCase();
-        textParts.push(
-          <Link key={`mention-${index}`} to={`/${uname}`} className="font-semibold text-[#00376b] hover:underline">
-            {part}
-          </Link>
-        );
-      } else {
-        textParts.push(<span key={`text-${index}`}>{part}</span>);
-      }
-    });
-
-    return (
-      <div className="flex flex-col">
-        {textParts.length > 0 && (
-          <div className="whitespace-pre-wrap">{textParts}</div>
-        )}
-        {hashtagParts.length > 0 && (
-          <div className="mt-0.5 font-bold">
-            {hashtagParts}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const profilePath = post.user?.username ? `/${post.user.username}` : '#';
+  const profilePath = post.user ? `/${post.user.username || post.user.id}` : '#';
   const displayName = post.user?.username || post.user?.name || 'user';
   const isOwner = user?.id === post.userId;
 
@@ -322,9 +298,9 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
       )}
 
       {/* ── Caption ABOVE action bar (text-only posts) ── */}
-      {media.length === 0 && (
+      {media.length === 0 && post.caption?.trim() && (
         <div className="px-3 pt-2 text-sm">
-          {renderCaption(post.caption)}
+          <PostCaption text={post.caption} />
         </div>
       )}
 
@@ -363,9 +339,9 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
         </div>
 
         {/* ── Caption BELOW action bar (posts with media) ── */}
-        {media.length > 0 && (
+        {media.length > 0 && post.caption?.trim() && (
           <div className="mt-2 text-sm">
-            {renderCaption(post.caption)}
+            <PostCaption text={post.caption} />
           </div>
         )}
 

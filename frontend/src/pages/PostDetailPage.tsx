@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AppShell } from '../components/layout/AppShell';
 import { PostCard } from '../components/PostCard';
@@ -9,6 +10,7 @@ import { Post } from '../types';
 
 const PostDetailPage: React.FC = () => {
   const { postId } = useParams();
+  const navigate = useNavigate();
   const [post, setPost] = useState<Post | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -53,14 +55,20 @@ const PostDetailPage: React.FC = () => {
       description="Post details and discussion."
       action={
         <Link
-          to={post.user?.username ? `/${post.user.username}` : '/profile'}
+          to={post.user ? `/${post.user.username || post.user.id}` : '#'}
           className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
         >
           View profile
         </Link>
       }
     >
-      <PostCard post={post} />
+      <PostCard
+        post={post}
+        onDeleted={() => {
+          setPost(null);
+          navigate('/feed');
+        }}
+      />
     </AppShell>
   );
 };

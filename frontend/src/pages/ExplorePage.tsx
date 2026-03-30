@@ -118,7 +118,7 @@ const ExplorePage: React.FC = () => {
                   <div className="py-10 text-center text-sm text-[#8e8e8e]">No users found for "{query}"</div>
                 ) : (
                   users.map((user) => (
-                    <Link key={user.id} to={user.username ? `/${user.username}` : '#'} className="flex items-center gap-3 px-4 py-3 hover:bg-[#fafafa]">
+                    <Link key={user.id} to={`/${user.username || user.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-[#fafafa]">
                       <Avatar src={user.avatarUrl} name={user.name} username={user.username} size="md" />
                       <div>
                         <p className="text-sm font-semibold">{user.username || user.name || 'user'}</p>

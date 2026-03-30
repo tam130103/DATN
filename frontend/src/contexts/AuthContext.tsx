@@ -1,6 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authService } from '../services/auth.service';
+import { chatSocketService } from '../services/chat-socket.service';
+import { notificationService } from '../services/notification.service';
 import { User } from '../types';
 
 interface AuthContextType {
@@ -73,6 +75,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = () => {
+    chatSocketService.disconnect();
+    notificationService.disconnect();
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     setToken(null);

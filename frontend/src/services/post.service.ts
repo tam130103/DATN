@@ -50,4 +50,14 @@ export const postService = {
     const response = await apiClient.get<FeedResponse>(`/posts/user/${userId}/tagged`, { params });
     return response.data;
   },
+  
+  generateCaption: async (prompt: string, tone?: string): Promise<string> => {
+    const response = await apiClient.post<{ text: string }>('/posts/ai/generate-caption', { prompt, tone });
+    return response.data.text;
+  },
+
+  suggestHashtags: async (text: string): Promise<string[]> => {
+    const response = await apiClient.post<{ hashtags: string[] }>('/posts/ai/suggest-hashtags', { text });
+    return response.data.hashtags;
+  },
 };

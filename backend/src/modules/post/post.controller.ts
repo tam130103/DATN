@@ -20,6 +20,7 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { AIService } from '../ai/ai.service';
 
 
 @Controller('posts')
@@ -27,7 +28,8 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
 export class PostController {
   constructor(
     private readonly postService: PostService,
-    private readonly cloudinaryService: CloudinaryService
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly aiService: AIService,
   ) {}
 
   @Post('upload')
@@ -101,6 +103,26 @@ export class PostController {
   @Delete(':id')
   delete(@CurrentUser() user: any, @Param('id') id: string) {
     return this.postService.delete(id, user.id);
+  }
+
+  @Post('ai/generate-caption')
+  async generateCaption(@Body() body: { prompt: string; tone?: string }) {
+    const prompt = body.prompt?.trim();
+    if (!prompt) {
+      throw new BadRequestException('Vui lòng nhập chủ đề hoặc từ khóa để AI tạo nội dung.');
+    }
+    const text = await this.aiService.generateCaption(prompt, body.tone?.trim());
+    return { text };
+  }
+
+  @Post('ai/suggest-hashtags')
+  async suggestHashtags(@Body() body: { text: string }) {
+    const text = body.text?.trim();
+    if (!text) {
+      throw new BadRequestException('Vui lòng nhập nội dung trước khi gợi ý hashtag.');
+    }
+    const hashtags = await this.aiService.suggestHashtags(text);
+    return { hashtags };
   }
 }
 

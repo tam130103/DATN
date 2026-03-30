@@ -13,6 +13,7 @@ import { Follow } from '../user/entities/follow.entity';
 import { User } from '../user/entities/user.entity';
 import { Like } from '../engagement/entities/like.entity';
 import { Comment } from '../engagement/entities/comment.entity';
+import { AIService } from '../ai/ai.service';
 
 @Injectable()
 export class PostService {
@@ -41,6 +42,7 @@ export class PostService {
     private readonly commentRepository: Repository<Comment>,
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
+    private readonly aiService: AIService,
   ) {}
 
   private extractHashtags(caption: string): string[] {
@@ -67,7 +69,11 @@ export class PostService {
     return Array.from(mentions);
   }
 
-  private async processMedia(manager: EntityManager, postId: string, mediaDto: Array<{ url: string; type: MediaType }>) {
+  private async processMedia(
+    manager: EntityManager,
+    postId: string,
+    mediaDto: Array<{ url: string; type: MediaType }>,
+  ) {
     if (!mediaDto || mediaDto.length === 0) return;
     const mediaEntities = mediaDto.map((item, index) =>
       manager.create(Media, { postId, url: item.url, type: item.type, orderIndex: index }),
@@ -79,43 +85,44 @@ export class PostService {
     const hashtagNames = this.extractHashtags(caption || '');
     if (hashtagNames.length === 0) return;
 
-    const existingTags = await manager.find(Hashtag, { 
-      where: hashtagNames.map(name => ({ name })) 
+    const existingTags = await manager.find(Hashtag, {
+      where: hashtagNames.map((name) => ({ name })),
     });
-    
-    const existingNames = new Set(existingTags.map(t => t.name));
-    const newNames = hashtagNames.filter(name => !existingNames.has(name));
+
+    const existingNames = new Set(existingTags.map((t) => t.name));
+    const newNames = hashtagNames.filter((name) => !existingNames.has(name));
 
     let newTags: Hashtag[] = [];
     if (newNames.length > 0) {
-      const created = newNames.map(name => manager.create(Hashtag, { name, count: 0 }));
+      const created = newNames.map((name) => manager.create(Hashtag, { name, count: 0 }));
       newTags = await manager.save(created);
     }
 
     const allTags = [...existingTags, ...newTags];
 
     if (allTags.length > 0) {
-      await manager.createQueryBuilder()
+      await manager
+        .createQueryBuilder()
         .update(Hashtag)
         .set({ count: () => '"count" + 1' })
-        .whereInIds(allTags.map(t => t.id))
+        .whereInIds(allTags.map((t) => t.id))
         .execute();
     }
 
-    const postHashtags = allTags.map(tag => manager.create(PostHashtag, { postId, hashtagId: tag.id }));
+    const postHashtags = allTags.map((tag) => manager.create(PostHashtag, { postId, hashtagId: tag.id }));
     await manager.save(postHashtags);
   }
 
   private async processMentions(manager: EntityManager, postId: string, caption: string) {
     const mentionUsernames = this.extractMentions(caption || '');
     if (mentionUsernames.length === 0) return;
-    
+
     const mentionedUsers = await manager.find(User, {
       where: mentionUsernames.map((username) => ({ username })),
     });
-    
+
     if (mentionedUsers.length > 0) {
-      const mentions = mentionedUsers.map(user => manager.create(PostMention, { postId, userId: user.id }));
+      const mentions = mentionedUsers.map((user) => manager.create(PostMention, { postId, userId: user.id }));
       await manager.save(mentions);
     }
   }
@@ -421,28 +428,50 @@ export class PostService {
       commentsCountMap.set(comment.postId, (commentsCountMap.get(comment.postId) ?? 0) + 1);
     });
 
-    return posts.map((post) => ({
-      ...post,
-      createdAt: this.getEffectivePostDate(post),
-      user: userMap.get(post.userId) ?? (post.user as User),
-      media: mediaMap.get(post.id) ?? [],
-      postHashtags: hashtagMap.get(post.id) ?? [],
-      likesCount: likesCountMap.get(post.id) ?? 0,
-      commentsCount: commentsCountMap.get(post.id) ?? 0,
-      liked: viewerId ? likedPostIds.has(post.id) : false,
-    } as Post));
+    return posts.map(
+      (post) =>
+        ({
+          ...post,
+          createdAt: this.getEffectivePostDate(post),
+          user: userMap.get(post.userId) ?? (post.user as User),
+          media: mediaMap.get(post.id) ?? [],
+          postHashtags: hashtagMap.get(post.id) ?? [],
+          likesCount: likesCountMap.get(post.id) ?? 0,
+          commentsCount: commentsCountMap.get(post.id) ?? 0,
+          liked: viewerId ? likedPostIds.has(post.id) : false,
+        }) as Post,
+    );
   }
 
   async create(userId: string, createPostDto: CreatePostDto): Promise<Post> {
-    const { caption, media: mediaDto } = createPostDto;
+    const normalizedCaption = (createPostDto.caption ?? '').trim();
+    const mediaDto = createPostDto.media ?? [];
+
+    if (normalizedCaption) {
+      const moderation = await this.aiService.moderateContent(normalizedCaption);
+      if (!moderation.isSafe) {
+        const reason = moderation.reason || 'Vi phạm chính sách cộng đồng.';
+        this.logger.warn(
+          `Blocked unsafe post from user ${userId}: ${reason} (length=${normalizedCaption.length})`,
+        );
+        throw new BadRequestException(`Nội dung không phù hợp: ${reason}`);
+      }
+
+      const sentiment = await this.aiService.detectSentiment(normalizedCaption);
+      this.logger.log(
+        `AI sentiment telemetry user=${userId} label=${sentiment.label} score=${
+          sentiment.score ?? 'n/a'
+        } length=${normalizedCaption.length}`,
+      );
+    }
 
     const savedPost = await this.dataSource.transaction(async (manager) => {
-      const post = manager.create(Post, { userId, caption });
+      const post = manager.create(Post, { userId, caption: normalizedCaption });
       const createdPost = await manager.save(post);
 
       await this.processMedia(manager, createdPost.id, mediaDto);
-      await this.processHashtags(manager, createdPost.id, caption);
-      await this.processMentions(manager, createdPost.id, caption);
+      await this.processHashtags(manager, createdPost.id, normalizedCaption);
+      await this.processMentions(manager, createdPost.id, normalizedCaption);
 
       return createdPost;
     });
@@ -548,26 +577,23 @@ export class PostService {
     }
 
     await this.dataSource.transaction(async (manager) => {
-      // 1. Decrement hashtag counts and delete post_hashtags relationships
       const postHashtags = await manager.find(PostHashtag, { where: { postId: id } });
       if (postHashtags.length > 0) {
-        const hashtagIds = postHashtags.map(ph => ph.hashtagId);
-        await manager.createQueryBuilder()
+        const hashtagIds = postHashtags.map((ph) => ph.hashtagId);
+        await manager
+          .createQueryBuilder()
           .update(Hashtag)
           .set({ count: () => '"count" - 1' })
           .whereInIds(hashtagIds)
           .execute();
-        
+
         await manager.delete(PostHashtag, { postId: id });
       }
 
-      // 2. Delete other related records in order to respect constraints
       await manager.delete(PostMention, { postId: id });
       await manager.delete(Like, { postId: id });
       await manager.delete(Comment, { postId: id });
       await manager.delete(Media, { postId: id });
-
-      // 3. Finally delete the post itself
       await manager.delete(Post, { id });
     });
   }
@@ -606,7 +632,7 @@ export class PostService {
     }
 
     const rawMentions = await query.getMany();
-    const rawPosts = rawMentions.map(m => m.post).filter(Boolean);
+    const rawPosts = rawMentions.map((m) => m.post).filter(Boolean);
     const hasMore = rawPosts.length > limit;
     const visiblePosts = hasMore ? rawPosts.slice(0, limit) : rawPosts;
     const posts = await this.enrichPosts(visiblePosts, viewerId);
@@ -662,7 +688,7 @@ export class PostService {
         source: 'facebook',
         sourceId: In(sourceIds),
       },
-      select: ['id', 'sourceId', 'sourceCreatedAt'],
+      select: ['id', 'sourceId', 'sourceCreatedAt', 'caption'],
     });
     const existingBySourceId = new Map(existing.map((item) => [item.sourceId, item]));
 
@@ -673,15 +699,23 @@ export class PostService {
       if (!fbPost?.id) continue;
       const sourceCreatedAt = fbPost.created_time ? new Date(fbPost.created_time) : undefined;
       const existingPost = existingBySourceId.get(fbPost.id);
+      const caption = fbPost.message || '';
+
       if (existingPost) {
+        const updateData: Partial<Post> = {};
         if (!existingPost.sourceCreatedAt && sourceCreatedAt) {
-          await this.postRepository.update(existingPost.id, { sourceCreatedAt });
+          updateData.sourceCreatedAt = sourceCreatedAt;
+        }
+        if (existingPost.caption !== caption) {
+          updateData.caption = caption;
+        }
+        if (Object.keys(updateData).length > 0) {
+          await this.postRepository.update(existingPost.id, updateData);
         }
         skipped += 1;
         continue;
       }
 
-      const caption = fbPost.message || '';
       const media = this.normalizeFacebookMedia(fbPost);
 
       const created = await this.createExternalPost(
@@ -743,19 +777,26 @@ export class PostService {
         source: 'facebook',
         sourceId: fbPost.id,
       },
-      select: ['id', 'sourceCreatedAt'],
+      select: ['id', 'sourceCreatedAt', 'caption'],
     });
 
     const sourceCreatedAt = fbPost.created_time ? new Date(fbPost.created_time) : undefined;
+    const caption = fbPost.message || '';
 
     if (existing) {
+      const updateData: Partial<Post> = {};
       if (!existing.sourceCreatedAt && sourceCreatedAt) {
-        await this.postRepository.update(existing.id, { sourceCreatedAt });
+        updateData.sourceCreatedAt = sourceCreatedAt;
+      }
+      if (existing.caption !== caption) {
+        updateData.caption = caption;
+      }
+      if (Object.keys(updateData).length > 0) {
+        await this.postRepository.update(existing.id, updateData);
       }
       return { imported: null, skipped: true };
     }
 
-    const caption = fbPost.message || '';
     const media = this.normalizeFacebookMedia(fbPost);
     const created = await this.createExternalPost(
       userId,

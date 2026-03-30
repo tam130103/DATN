@@ -9,6 +9,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { SearchModule } from './modules/search/search.module';
 import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
+import { AIModule } from './modules/ai/ai.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
     NotificationModule,
     SearchModule,
     CloudinaryModule,
+    AIModule,
   ],
 })
 export class AppModule {}

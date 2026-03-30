@@ -6,9 +6,15 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 class ChatSocketService {
   private socket: Socket | null = null;
   private listeners = new Map<string, Set<Function>>();
+  private token: string | null = null;
 
   connect(token: string) {
+    if (this.socket && this.token && this.token !== token) {
+      this.disconnect();
+    }
+
     if (this.socket) {
+      this.token = token;
       this.socket.auth = { token };
       if (!this.socket.connected) {
         this.socket.connect();
@@ -16,6 +22,7 @@ class ChatSocketService {
       return;
     }
 
+    this.token = token;
     this.socket = io(`${API_URL}/chat`, {
       auth: { token },
       reconnection: true,
@@ -64,6 +71,7 @@ class ChatSocketService {
   disconnect() {
     this.socket?.disconnect();
     this.socket = null;
+    this.token = null;
   }
 
   on(event: string, callback: Function) {
