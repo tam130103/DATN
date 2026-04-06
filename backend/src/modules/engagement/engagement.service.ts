@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Like } from './entities/like.entity';
 import { Comment } from './entities/comment.entity';
+import { SavedPost } from './entities/saved-post.entity';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationGateway } from '../notification/notification.gateway';
@@ -15,6 +16,8 @@ export class EngagementService {
     private readonly likeRepository: Repository<Like>,
     @InjectRepository(Comment)
     private readonly commentRepository: Repository<Comment>,
+    @InjectRepository(SavedPost)
+    private readonly savedPostRepository: Repository<SavedPost>,
     @InjectRepository(Post)
     private readonly postRepository: Repository<Post>,
     private readonly notificationService: NotificationService,
@@ -113,5 +116,20 @@ export class EngagementService {
     }
 
     await this.commentRepository.remove(comment);
+  }
+
+  async toggleSave(userId: string, postId: string): Promise<{ saved: boolean }> {
+    const existing = await this.savedPostRepository.findOne({
+      where: { userId, postId },
+    });
+
+    if (existing) {
+      await this.savedPostRepository.remove(existing);
+      return { saved: false };
+    }
+
+    const savedPost = this.savedPostRepository.create({ userId, postId });
+    await this.savedPostRepository.save(savedPost);
+    return { saved: true };
   }
 }

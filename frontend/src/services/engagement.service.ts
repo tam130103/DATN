@@ -7,6 +7,11 @@ export const engagementService = {
     return response.data;
   },
 
+  toggleSave: async (postId: string): Promise<{ saved: boolean }> => {
+    const response = await apiClient.post<{ saved: boolean }>(`/posts/${postId}/save`);
+    return response.data;
+  },
+
   getPostComments: async (postId: string, page = 1, limit = 20): Promise<Comment[]> => {
     const response = await apiClient.get<Comment[]>(`/posts/${postId}/comments`, {
       params: { page, limit },
@@ -26,3 +31,4 @@ export const engagementService = {
     await apiClient.delete(`/posts/comments/${commentId}`);
   },
 };
+

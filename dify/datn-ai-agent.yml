@@ -1,0 +1,65 @@
+app:
+  description: "Trợ lý AI phân tích dữ liệu hệ thống DATN Social sử dụng OpenAPI Tools."
+  icon: "🤖"
+  icon_background: "#FFEAD5"
+  mode: agent-chat
+  name: "DATN AI Agent"
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.1.1
+model_config:
+  agent_mode:
+    enabled: true
+    max_iteration: 5
+    strategy: function_calling
+    tools: []
+  annotation_reply:
+    enabled: false
+  dataset_configs:
+    datasets:
+      datasets: []
+    retrieval_model: multiple
+  file_upload:
+    image:
+      detail: high
+      enabled: false
+      number_limits: 3
+      transfer_methods:
+      - remote_url
+      - local_file
+  model:
+    completion_params:
+      stop: []
+    mode: chat
+    name: gemini-2.5-flash
+    provider: langgenius/gemini/google
+  more_like_this:
+    enabled: false
+  opening_statement: 'Xin chào, mình là đặc vụ AI của dự án DATN Social. Mình có thể đếm số lượng bài viết, kiểm tra nội dung post thời gian thực trên CSDL vì mình đang được kết nối trực tiếp với backend! Bạn muốn mình giúp gì nào?'
+  pre_prompt: |
+    Bạn là DATN AI Agent, một trợ lý thông minh được cung cấp các CÔNG CỤ (Tools) để gọi trực tiếp các API trên hệ thống Backend mạng xã hội DATN.
+    
+    Quy tắc của bạn:
+    - Khi người dùng hỏi "có bao nhiêu bài viết", hãy sử dụng tool `getPostsCount`.
+    - Khi người dùng hỏi "có bài nào nhắc tới [từ khóa] không", hãy sử dụng tool `searchPosts` với truy vấn tương ứng.
+    - Xưng hô là "Mình" và gọi người dùng là "Bạn".
+    - Với các câu giao tiếp bình thường (chào hỏi), không cần gọi tool.
+  prompt_type: simple
+  retriever_resource:
+    enabled: true
+  sensitive_word_avoidance:
+    configs: []
+    enabled: false
+    type: ''
+  speech_to_text:
+    enabled: false
+  suggested_questions:
+  - Cho mình biết hiện tại database có mấy bài viết tất cả?
+  - Hệ thống có bài nào đang nhắc về "biển" không?
+  suggested_questions_after_answer:
+    enabled: false
+  text_to_speech:
+    enabled: false
+    language: ''
+    voice: ''
+  user_input_form: []

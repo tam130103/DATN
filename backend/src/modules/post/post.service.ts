@@ -13,6 +13,7 @@ import { Follow } from '../user/entities/follow.entity';
 import { User } from '../user/entities/user.entity';
 import { Like } from '../engagement/entities/like.entity';
 import { Comment } from '../engagement/entities/comment.entity';
+import { SavedPost } from '../engagement/entities/saved-post.entity';
 import { AIService } from '../ai/ai.service';
 
 @Injectable()
@@ -40,6 +41,8 @@ export class PostService {
     private readonly likeRepository: Repository<Like>,
     @InjectRepository(Comment)
     private readonly commentRepository: Repository<Comment>,
+    @InjectRepository(SavedPost)
+    private readonly savedPostRepository: Repository<SavedPost>,
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
     private readonly aiService: AIService,
@@ -381,7 +384,7 @@ export class PostService {
     const postIds = posts.map((post) => post.id);
     const userIds = Array.from(new Set(posts.map((post) => post.userId)));
 
-    const [users, media, postHashtags, likes, commentsList] = await Promise.all([
+    const [users, media, postHashtags, likes, commentsList, savedList] = await Promise.all([
       this.userRepository.find({ where: { id: In(userIds) } }),
       this.mediaRepository.find({
         where: { postId: In(postIds) },
@@ -396,6 +399,9 @@ export class PostService {
         where: { postId: In(postIds) },
         select: ['id', 'postId'],
       }),
+      viewerId
+        ? this.savedPostRepository.find({ where: { userId: viewerId, postId: In(postIds) } })
+        : Promise.resolve([]),
     ]);
 
     const userMap = new Map(users.map((user) => [user.id, user]));
@@ -404,6 +410,7 @@ export class PostService {
     const likesCountMap = new Map<string, number>();
     const commentsCountMap = new Map<string, number>();
     const likedPostIds = new Set<string>();
+    const savedPostIds = new Set<string>(savedList.map((s) => s.postId));
 
     media.forEach((item) => {
       const items = mediaMap.get(item.postId) ?? [];
@@ -439,6 +446,7 @@ export class PostService {
           likesCount: likesCountMap.get(post.id) ?? 0,
           commentsCount: commentsCountMap.get(post.id) ?? 0,
           liked: viewerId ? likedPostIds.has(post.id) : false,
+          saved: viewerId ? savedPostIds.has(post.id) : false,
         }) as Post,
     );
   }
@@ -639,6 +647,33 @@ export class PostService {
     const nextCursor = hasMore
       ? this.getEffectivePostDate(visiblePosts[visiblePosts.length - 1]).toISOString()
       : null;
+
+    return { posts, nextCursor };
+  }
+
+  async getSavedPosts(
+    userId: string,
+    viewerId?: string,
+    cursor?: string,
+    limit = 24,
+  ): Promise<{ posts: Post[]; nextCursor: string | null }> {
+    let query = this.savedPostRepository
+      .createQueryBuilder('saved')
+      .where('saved.userId = :userId', { userId })
+      .leftJoinAndSelect('saved.post', 'post')
+      .orderBy('saved.createdAt', 'DESC')
+      .limit(limit + 1);
+
+    if (cursor) {
+      query = query.andWhere('saved.createdAt < :cursor', { cursor: new Date(cursor) });
+    }
+
+    const rawSaved = await query.getMany();
+    const rawPosts = rawSaved.map((s) => s.post).filter(Boolean);
+    const hasMore = rawPosts.length > limit;
+    const visiblePosts = hasMore ? rawPosts.slice(0, limit) : rawPosts;
+    const posts = await this.enrichPosts(visiblePosts, viewerId);
+    const nextCursor = hasMore ? rawSaved[visiblePosts.length - 1].createdAt.toISOString() : null;
 
     return { posts, nextCursor };
   }
