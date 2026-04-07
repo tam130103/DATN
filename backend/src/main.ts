@@ -5,6 +5,7 @@ import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import * as express from 'express';
 import { AppModule } from './app.module';
+import { createCorsOriginValidator } from './common/cors.util';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
@@ -22,28 +23,7 @@ async function bootstrap() {
   app.setGlobalPrefix(configService.get<string>('API_PREFIX', 'api/v1'));
 
   app.enableCors({
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      
-      const allowedOrigins = [
-        frontendUrl,
-        'https://datn-mu-six.vercel.app',
-        /^https:\/\/.*\.vercel\.app$/,
-        /^http:\/\/localhost:\d+$/,
-        /^http:\/\/127\.0\.0\.1:\d+$/
-      ];
-
-      const isAllowed = allowedOrigins.some((o) =>
-        typeof o === 'string' ? o === origin : o.test(origin),
-      );
-
-      if (isAllowed) {
-        callback(null, true);
-      } else {
-        console.error(`CORS blocked for origin: ${origin}`);
-        callback(new Error('Not allowed by CORS'), false);
-      }
-    },
+    origin: createCorsOriginValidator(() => frontendUrl),
     credentials: true,
   });
 

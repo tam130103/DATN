@@ -12,15 +12,13 @@ import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { ChatService } from './chat.service';
+import { createSocketCorsOptions } from '../../common/cors.util';
 
 // Online users map: userId -> Set of socket ids
 const onlineUsers = new Map<string, Set<string>>();
 
 @WebSocketGateway({
-  cors: {
-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
-    credentials: true,
-  },
+  cors: createSocketCorsOptions(),
   namespace: '/chat',
 })
 export class ChatGateway
