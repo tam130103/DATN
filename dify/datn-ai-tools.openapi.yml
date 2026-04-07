@@ -4,8 +4,8 @@ info:
   description: Tools for Dify AI to query project database dynamically, such as counting posts or searching posts content.
   version: 1.0.0
 servers:
-  - url: 'https://laurie-chairless-giancarlo.ngrok-free.dev'
-    description: Ngrok production server for Dify
+  - url: 'https://datn-f8w6.onrender.com'
+    description: Render production server for Dify
 
 paths:
   /api/v1/ai-tools/posts/count:
