@@ -1,0 +1,88 @@
+ M README.md
+ M backend/src/app.module.ts
+ M backend/src/modules/ai/ai.service.spec.ts
+ M backend/src/modules/ai/ai.service.ts
+ M backend/src/modules/auth/strategies/jwt.strategy.ts
+ M backend/src/modules/chat/chat.controller.ts
+ M backend/src/modules/chat/chat.gateway.ts
+ M backend/src/modules/chat/chat.module.ts
+ M backend/src/modules/chat/chat.service.ts
+ M backend/src/modules/chat/entities/conversation.entity.ts
+ M backend/src/modules/engagement/engagement.controller.ts
+ M backend/src/modules/engagement/engagement.module.ts
+ M backend/src/modules/engagement/engagement.service.ts
+ M backend/src/modules/engagement/entities/comment.entity.ts
+ M backend/src/modules/post/entities/post.entity.ts
+ M backend/src/modules/post/post.controller.ts
+ M backend/src/modules/post/post.module.ts
+ M backend/src/modules/post/post.service.spec.ts
+ M backend/src/modules/post/post.service.ts
+ M backend/src/modules/search/search.service.ts
+ M backend/src/modules/user/entities/user.entity.ts
+ M backend/src/modules/user/user.service.ts
+ M frontend/package-lock.json
+ M frontend/package.json
+ M frontend/src/App.tsx
+ M frontend/src/components/CreatePost.tsx
+ M frontend/src/components/PostCaption.tsx
+ M frontend/src/components/PostCard.tsx
+ M frontend/src/components/PostLightbox.tsx
+ M frontend/src/components/common/Avatar.tsx
+ M frontend/src/components/common/ProtectedRoute.tsx
+ M frontend/src/components/common/StatePanel.tsx
+ M frontend/src/components/layout/AppShell.tsx
+ M frontend/src/contexts/AuthContext.tsx
+ M frontend/src/index.css
+ M frontend/src/main.tsx
+ M frontend/src/pages/ExplorePage.tsx
+ M frontend/src/pages/FeedPage.tsx
+ M frontend/src/pages/HashtagPage.tsx
+ M frontend/src/pages/LoginPage.tsx
+ M frontend/src/pages/MessagesPage.tsx
+ M frontend/src/pages/NotificationsPage.tsx
+ M frontend/src/pages/PostDetailPage.tsx
+ M frontend/src/pages/ProfilePage.tsx
+ M frontend/src/pages/RegisterPage.tsx
+ M frontend/src/services/chat.service.ts
+ M frontend/src/services/post.service.ts
+ M frontend/src/types/index.ts
+ M frontend/tests/e2e/smoke.spec.ts
+?? backend/backend_err_utf8.txt
+?? backend/backend_output.txt
+?? backend/backend_output_utf8.txt
+?? backend/backend_verify_error.txt
+?? backend/backend_verify_output.txt
+?? backend/check-db.js
+?? backend/check-db.ts
+?? backend/db_schema.json
+?? backend/db_schema.txt
+?? backend/difytest.json
+?? backend/make-admin-direct.js
+?? backend/make-admin.js
+?? backend/set-admin.js
+?? backend/src/migrations/1767000000000-AddDifyConversationIdToConversations.ts
+?? backend/src/migrations/1775461415765-AddSavedPosts.ts
+?? backend/src/migrations/1775473729916-AddAdminModerationFields.ts
+?? backend/src/modules/admin/
+?? backend/src/modules/ai-tools/
+?? backend/src/modules/auth/decorators/roles.decorator.ts
+?? backend/src/modules/auth/guards/roles.guard.ts
+?? backend/src/modules/engagement/entities/saved-post.entity.ts
+?? backend/test-output.txt
+?? backend/test_admin_c.ts
+?? backend/test_admin_http.ts
+?? backend/test_admin_http2.ts
+?? backend/test_admin_service.ts
+?? backend/test_db.js
+?? backend/test_http.ts
+?? dify/datn-ai-assistant.yml
+?? dify/datn-ai-tools.openapi.yml
+?? dify/project_knowledge.md
+?? frontend/src/components/ReportModal.tsx
+?? frontend/src/components/layout/AdminShell.css
+?? frontend/src/components/layout/AdminShell.tsx
+?? frontend/src/components/layout/AuthLayout.tsx
+?? frontend/src/pages/admin/
+?? frontend/src/services/admin.service.ts
+?? git_status.txt
+?? git_status_ascii.txt
