@@ -21,11 +21,23 @@ export interface CreateConversationInput {
   name?: string;
 }
 
+export interface SendMessageResult {
+  message: Message;
+  assistantReply?: Message | null;
+}
+
 export const chatService = {
   createConversation: async (input: CreateConversationInput): Promise<Conversation> => {
     const response = await apiClient.post<Conversation>('/conversations', input);
     return response.data;
   },
+
+  /** Phase 2: Open or create conversation with AI bot */
+  getAssistantConversation: async (): Promise<Conversation> => {
+    const response = await apiClient.post<Conversation>('/conversations/assistant');
+    return response.data;
+  },
+
 
   getConversations: async (): Promise<Conversation[]> => {
     const response = await apiClient.get<Conversation[]>('/conversations');
@@ -48,8 +60,14 @@ export const chatService = {
     await apiClient.post(`/conversations/${conversationId}/leave`);
   },
 
-  sendMessage: async (conversationId: string, content: string): Promise<Message> => {
-    const response = await apiClient.post<Message>(`/conversations/${conversationId}/messages`, { content });
+  sendMessage: async (
+    conversationId: string,
+    content: string,
+  ): Promise<SendMessageResult> => {
+    const response = await apiClient.post<SendMessageResult>(
+      `/conversations/${conversationId}/messages`,
+      { content },
+    );
     return response.data;
   },
 };

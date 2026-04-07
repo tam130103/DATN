@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
-import { BrandLogo } from '../components/branding/BrandLogo';
+import { AuthLayout } from '../components/layout/AuthLayout';
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -17,84 +17,101 @@ const RegisterPage: React.FC = () => {
 
   const handleRegister = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!email || !password || !confirmPassword) { toast.error('Please fill in all fields.'); return; }
-    if (password !== confirmPassword) { toast.error('Passwords do not match.'); return; }
-    if (password.length < 6) { toast.error('Password must be at least 6 characters.'); return; }
+    if (!email || !password || !confirmPassword) {
+      toast.error('Vui lòng điền đầy đủ các trường.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast.error('Mật khẩu không khớp.');
+      return;
+    }
+    if (password.length < 6) {
+      toast.error('Mật khẩu phải có ít nhất 6 ký tự.');
+      return;
+    }
+
     setIsRegistering(true);
-    try { await register(email, password, name || undefined); navigate('/feed'); }
-    catch (error: any) { toast.error(error.response?.data?.message || 'Registration failed.'); }
-    finally { setIsRegistering(false); }
+    try {
+      await register(email, password, name || undefined);
+      navigate('/feed');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Đăng ký thất bại.');
+    } finally {
+      setIsRegistering(false);
+    }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#fafafa] px-4 py-10">
-      <div className="w-full max-w-[350px] space-y-3">
-        <div className="border border-[#dbdbdb] bg-white px-10 py-10 text-center">
-          <div className="mb-3 flex justify-center">
-            <BrandLogo variant="full" className="h-auto w-[220px] max-w-full" />
-          </div>
-          <p className="mb-6 text-base font-semibold text-[#8e8e8e]">
-            Sign up to see photos and videos from your friends.
-          </p>
+    <AuthLayout
+      badge="Tạo tài khoản"
+      title="Tạo tài khoản của bạn"
+      description="Bắt đầu chia sẻ bài viết và tin nhắn."
+      footerText="Bạn đã có tài khoản?"
+      footerLinkLabel="Đăng nhập"
+      footerLinkTo="/login"
+    >
+      <p className="mb-5 text-center text-sm font-semibold leading-5 text-[var(--app-muted)]">
+        Đăng ký để xem ảnh, video và cập nhật từ cộng đồng của bạn.
+      </p>
 
-          <form onSubmit={handleRegister} className="space-y-2" data-testid="register-form">
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              placeholder="Mobile Number or Email"
-              data-testid="register-email"
-              autoComplete="email"
-              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-[#0095f6]"
-            />
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Full Name"
-              data-testid="register-name"
-              autoComplete="name"
-              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-[#0095f6]"
-            />
-            <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              placeholder="Password"
-              data-testid="register-password"
-              autoComplete="new-password"
-              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-[#0095f6]"
-            />
-            <input
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              type="password"
-              placeholder="Confirm Password"
-              data-testid="register-confirm-password"
-              autoComplete="new-password"
-              className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-2 py-2 text-xs outline-none transition focus-visible:ring-2 focus-visible:ring-[#0095f6]"
-            />
-            <p className="py-2 text-[11px] text-[#8e8e8e]">
-              By signing up, you agree to our <span className="font-semibold text-[#262626]">Terms</span>,{' '}
-              <span className="font-semibold text-[#262626]">Privacy Policy</span> and{' '}
-              <span className="font-semibold text-[#262626]">Cookies Policy</span>.
-            </p>
-            <button
-              type="submit"
-              disabled={isRegistering || isLoading || !email || !password}
-              data-testid="register-submit"
-              className="w-full min-h-[44px] sm:min-h-0 rounded-lg bg-[#0095f6] py-1.5 text-sm font-semibold text-white transition hover:bg-[#1877f2] disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#0095f6] focus-visible:outline-none"
-            >
-              {isRegistering ? 'Signing up...' : 'Sign up'}
-            </button>
-          </form>
-        </div>
+      <form onSubmit={handleRegister} className="space-y-3" data-testid="register-form">
+        <input
+          id="register-email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          type="email"
+          placeholder="Số điện thoại hoặc email"
+          data-testid="register-email"
+          autoComplete="email"
+          className="min-h-[44px] w-full rounded-md border border-[var(--app-border)] bg-[var(--app-bg-soft)] px-3 text-sm text-[var(--app-text)] outline-none transition focus:border-[var(--app-border-strong)]"
+        />
 
-        <div className="border border-[#dbdbdb] bg-white px-10 py-5 text-center text-sm">
-          Have an account?{' '}
-          <Link to="/login" className="font-semibold text-[#0095f6]">Log in</Link>
-        </div>
-      </div>
-    </div>
+        <input
+          id="register-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Họ và tên"
+          data-testid="register-name"
+          autoComplete="name"
+          className="min-h-[44px] w-full rounded-md border border-[var(--app-border)] bg-[var(--app-bg-soft)] px-3 text-sm text-[var(--app-text)] outline-none transition focus:border-[var(--app-border-strong)]"
+        />
+
+        <input
+          id="register-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          type="password"
+          placeholder="Mật khẩu"
+          data-testid="register-password"
+          autoComplete="new-password"
+          className="min-h-[44px] w-full rounded-md border border-[var(--app-border)] bg-[var(--app-bg-soft)] px-3 text-sm text-[var(--app-text)] outline-none transition focus:border-[var(--app-border-strong)]"
+        />
+
+        <input
+          id="register-confirm-password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          type="password"
+          placeholder="Xác nhận mật khẩu"
+          data-testid="register-confirm-password"
+          autoComplete="new-password"
+          className="min-h-[44px] w-full rounded-md border border-[var(--app-border)] bg-[var(--app-bg-soft)] px-3 text-sm text-[var(--app-text)] outline-none transition focus:border-[var(--app-border-strong)]"
+        />
+
+        <p className="rounded-md bg-[var(--app-bg-soft)] px-3 py-2.5 text-center text-xs leading-5 text-[var(--app-muted)]">
+          Bằng cách đăng ký, bạn đồng ý với Điều khoản, Chính sách dữ liệu và Chính sách cookie của chúng tôi.
+        </p>
+
+        <button
+          type="submit"
+          disabled={isRegistering || isLoading}
+          data-testid="register-submit"
+          className="min-h-[44px] w-full rounded-md bg-[var(--app-primary)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--app-primary-strong)] disabled:opacity-50"
+        >
+          {isRegistering ? 'Đang đăng ký...' : 'Đăng ký'}
+        </button>
+      </form>
+    </AuthLayout>
   );
 };
 

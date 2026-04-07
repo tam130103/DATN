@@ -8,13 +8,13 @@ interface StatePanelProps {
 
 export const StatePanel: React.FC<StatePanelProps> = ({ title, description, action }) => {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-6 text-center">
-      <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-xs font-semibold text-neutral-600">
+    <div className="surface-card rounded-xl p-8 text-center">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-[var(--app-border)] bg-[var(--app-bg-soft)] text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--app-muted)]">
         {title.slice(0, 2).toUpperCase()}
       </div>
-      <h3 className="text-base font-semibold text-neutral-900">{title}</h3>
-      <p className="mt-2 text-sm text-neutral-500">{description}</p>
-      {action ? <div className="mt-4">{action}</div> : null}
+      <h3 className="text-xl font-semibold text-[var(--app-text)]">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-[var(--app-muted-strong)]">{description}</p>
+      {action ? <div className="mt-5">{action}</div> : null}
     </div>
   );
 };

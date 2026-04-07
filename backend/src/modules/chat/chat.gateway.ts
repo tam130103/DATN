@@ -160,6 +160,10 @@ export class ChatGateway
       if (!client.rooms.has(data.conversationId)) {
         client.emit('newMessage', message);
       }
+
+      // Phase 2: Trigger AI assistant reply (non-blocking)
+      void this.triggerAssistantReply(data.conversationId, userId, data.content);
+
     } catch (error) {
       client.emit('error', { message: error.message });
     }
@@ -204,5 +208,50 @@ export class ChatGateway
     return conversation.members.filter(
       (m) => !m.hasLeft && onlineUsers.has(m.userId),
     ).length;
+  }
+
+  // ─── Phase 2: AI Chatbot Companion ────────────────────────────────
+
+  /**
+   * Ask ChatService to check if this conversation has the AI bot.
+   * If yes, call Dify and broadcast the reply via socket.
+   */
+  private async triggerAssistantReply(
+    conversationId: string,
+    senderId: string,
+    content: string,
+  ): Promise<void> {
+    try {
+      // Emit "bot is typing" indicator
+      this.server.to(conversationId).emit('userTyping', {
+        conversationId,
+        userId: 'ai-bot',
+        isTyping: true,
+      });
+
+      const reply = await this.chatService.sendAssistantReplyIfNeeded(
+        conversationId,
+        senderId,
+        content,
+      );
+
+      // Stop typing indicator
+      this.server.to(conversationId).emit('userTyping', {
+        conversationId,
+        userId: 'ai-bot',
+        isTyping: false,
+      });
+
+      if (reply) {
+        this.server.to(conversationId).emit('newMessage', reply);
+      }
+    } catch (err) {
+      this.server.to(conversationId).emit('userTyping', {
+        conversationId,
+        userId: 'ai-bot',
+        isTyping: false,
+      });
+      console.error('AI assistant reply error:', err);
+    }
   }
 }

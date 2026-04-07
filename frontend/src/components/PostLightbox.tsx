@@ -6,6 +6,7 @@ import { engagementService } from '../services/engagement.service';
 import { postService } from '../services/post.service';
 import { useAuth } from '../contexts/AuthContext';
 import { PostCaption } from './PostCaption';
+import { ReportModal } from './ReportModal';
 
 const CloseIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -69,6 +70,8 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
   const [isLoadingComments, setIsLoadingComments] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showOptionsDropdown, setShowOptionsDropdown] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const media = useMemo(
     () => [...(post.media || [])].sort((a, b) => a.orderIndex - b.orderIndex),
@@ -87,7 +90,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
         }
       } catch {
         if (isActive) {
-          toast.error('Failed to load comments.');
+          toast.error('Không thể tải bình luận.');
         }
       } finally {
         if (isActive) {
@@ -136,7 +139,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
     } catch {
       setLiked(originalLiked);
       setLikesCount(originalCount);
-      toast.error('Failed to update like.');
+      toast.error('Không thể cập nhật lượt thích.');
     }
   };
 
@@ -150,7 +153,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
       setComments((prev) => [newComment, ...prev]);
       setCommentText('');
     } catch {
-      toast.error('Failed to add comment.');
+      toast.error('Không thể thêm bình luận.');
     } finally {
       setIsSubmitting(false);
     }
@@ -166,40 +169,41 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
   const cover = media[currentMediaIndex];
   const isVideo = cover?.type === 'VIDEO';
   const profilePath = post.user?.username ? `/${post.user.username}` : undefined;
-  const authorLabel = post.user?.username || post.user?.name || 'Member';
+  const authorLabel = post.user?.username || post.user?.name || 'Thành viên';
   const isOwner = user?.id === post.userId;
 
   const handleDelete = async () => {
-    if (!window.confirm('Delete this post?')) {
+    if (!window.confirm('Xóa bài viết này?')) {
       return;
     }
 
     setIsDeleting(true);
     try {
       await postService.deletePost(post.id);
-      toast.success('Post deleted.');
+      toast.success('Đã xóa bài viết.');
       onDeleted?.(post.id);
       onClose();
     } catch (error) {
-      toast.error(getApiMessage(error, 'Failed to delete post.'));
+      toast.error(getApiMessage(error, 'Không thể xóa bài viết.'));
     } finally {
       setIsDeleting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-2 sm:p-6" onClick={handleBackdropClick}>
-      <div className="relative flex h-[90vh] w-full max-w-[1200px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl md:h-[80vh] md:max-h-[820px] md:flex-row">
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-0 backdrop-blur-sm sm:p-6" onClick={handleBackdropClick}>
+      <div className="surface-card relative flex h-screen w-full max-w-[1240px] flex-col overflow-hidden md:h-[88vh] md:max-h-[860px] md:rounded-xl md:flex-row">
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 rounded-full bg-black/60 p-2 text-white transition hover:bg-black/80"
-          aria-label="Close"
+          className="absolute right-4 top-4 z-10 rounded-full bg-black/70 p-2 text-white transition hover:bg-black"
+          aria-label="Đóng"
         >
           <CloseIcon className="h-5 w-5" />
         </button>
 
-        <div className="relative flex w-full items-center justify-center bg-black md:flex-1">
+        <div className="relative flex w-full items-center justify-center bg-slate-950 md:flex-1">
           {cover ? (
             isVideo ? (
               <video
@@ -210,12 +214,12 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
             ) : (
               <img
                 src={cover.url}
-                alt={post.caption || 'Post media'}
+                alt={post.caption || 'Phương tiện bài viết'}
                 className="h-auto max-h-[60vh] w-full object-contain md:h-full md:max-h-full"
               />
             )
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-white/70">No media available</div>
+            <div className="flex h-full items-center justify-center text-sm text-white/70">Không có phương tiện khả dụng</div>
           )}
 
           {media.length > 1 ? (
@@ -224,8 +228,8 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                 type="button"
                 onClick={() => setCurrentMediaIndex((prev) => Math.max(0, prev - 1))}
                 disabled={currentMediaIndex === 0}
-                className="absolute left-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20 disabled:opacity-40"
-                aria-label="Previous media"
+                className="absolute left-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/12 text-white backdrop-blur transition hover:bg-white/20 disabled:opacity-40"
+                aria-label="Phương tiện trước"
               >
                 <ChevronIcon direction="left" className="h-5 w-5" />
               </button>
@@ -233,8 +237,8 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                 type="button"
                 onClick={() => setCurrentMediaIndex((prev) => Math.min(media.length - 1, prev + 1))}
                 disabled={currentMediaIndex === media.length - 1}
-                className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20 disabled:opacity-40"
-                aria-label="Next media"
+                className="absolute right-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/12 text-white backdrop-blur transition hover:bg-white/20 disabled:opacity-40"
+                aria-label="Phương tiện sau"
               >
                 <ChevronIcon direction="right" className="h-5 w-5" />
               </button>
@@ -242,52 +246,122 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
           ) : null}
         </div>
 
-        <div className="flex w-full flex-col bg-white text-neutral-900 md:w-[420px] md:border-l md:border-neutral-200">
-          <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
+        <div className="flex w-full flex-col bg-white text-[var(--app-text)] md:w-[420px] md:border-l md:border-[var(--app-border)]">
+          <div className="flex items-center justify-between border-b border-[var(--app-border)] px-5 py-4">
             <div className="flex items-center gap-3">
-              <Avatar src={post.user?.avatarUrl} name={post.user?.name} username={post.user?.username} size="sm" />
-              <div className="text-sm font-semibold">{post.user?.username || post.user?.name || 'Member'}</div>
+              <Avatar src={post.user?.avatarUrl} name={post.user?.name} username={post.user?.username} size="sm" ring />
+              <div>
+                <div className="text-sm font-semibold text-[var(--app-text)]">{post.user?.username || post.user?.name || 'Thành viên'}</div>
+                <div className="text-xs text-[var(--app-muted)]">{createdAt}</div>
+              </div>
             </div>
-            {isOwner ? (
+            <div className="relative">
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={() => setShowOptionsDropdown(!showOptionsDropdown)}
                 disabled={isDeleting}
-                className="rounded-full px-3 py-1 text-xs font-semibold text-red-500 transition hover:bg-red-50 disabled:opacity-50"
+                className="rounded-full p-2 text-[var(--app-muted)] transition hover:bg-[var(--app-bg-soft)] hover:text-[var(--app-text)] disabled:opacity-50"
+                aria-label="Tùy chọn bài viết"
               >
-                {isDeleting ? 'Deleting...' : 'Delete'}
-              </button>
-            ) : (
-              <button type="button" className="text-neutral-400 transition hover:text-neutral-700" aria-label="Post options">
                 <DotsIcon className="h-5 w-5" />
               </button>
-            )}
+
+              {showOptionsDropdown && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-[60]" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowOptionsDropdown(false);
+                    }} 
+                  />
+                  <div className="absolute right-0 top-full mt-1 z-[70] w-[320px] rounded-xl bg-[var(--app-bg)] bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] ring-1 ring-gray-200">
+                    {isOwner ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); handleDelete(); }}
+                          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
+                        >
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-800">
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-[var(--app-text)]">Xóa bài viết</div>
+                            <div className="text-xs text-[var(--app-muted)]">Gỡ bài viết này khỏi dòng thời gian.</div>
+                          </div>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); setShowReportModal(true); }}
+                          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
+                        >
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-800">
+                            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-[var(--app-text)]">Báo cáo bài viết</div>
+                            <div className="text-xs text-[var(--app-muted)]">Chúng tôi sẽ không cho {authorLabel} biết ai đã báo cáo.</div>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); toast.success('Đã ẩn bài viết'); }}
+                          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
+                        >
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-800">
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-[var(--app-text)]">Ẩn bài viết</div>
+                            <div className="text-xs text-[var(--app-muted)]">Ẩn bớt các bài viết tương tự.</div>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); toast.success(`Đã bỏ theo dõi ${authorLabel}`); }}
+                          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
+                        >
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-800">
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-[var(--app-text)]">Bỏ theo dõi {authorLabel}</div>
+                            <div className="text-xs text-[var(--app-muted)]">Không nhìn thấy bài viết nữa nhưng vẫn là bạn bè.</div>
+                          </div>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
-          <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4 text-sm">
-            <div className="flex items-start gap-3">
-              <Avatar src={post.user?.avatarUrl} name={post.user?.name} username={post.user?.username} size="sm" />
-              <PostCaption
-                text={post.caption}
-                prefixLabel={authorLabel}
-                prefixTo={profilePath}
-                collapsedLength={320}
-                className="flex-1"
-                textClassName="text-neutral-800"
-              />
-            </div>
+          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5 text-sm">
+            <PostCaption
+              text={post.caption}
+              prefixLabel={authorLabel}
+              prefixTo={profilePath}
+              collapsedLength={320}
+              className="flex-1"
+              textClassName="text-[var(--app-text)] leading-6"
+            />
 
             {isLoadingComments ? (
-              <p className="text-xs text-neutral-500">Loading comments...</p>
+              <p className="text-xs font-semibold text-[var(--app-muted)]">Đang tải bình luận...</p>
             ) : comments.length === 0 ? (
-              <p className="text-xs text-neutral-500">No comments yet.</p>
+              <div className="rounded-lg bg-[var(--app-bg-soft)] px-4 py-4 text-xs font-semibold text-[var(--app-muted)]">Chưa có bình luận nào.</div>
             ) : (
               comments.map((comment) => (
                 <div key={comment.id} className="flex items-start gap-3">
                   <Avatar src={comment.user?.avatarUrl} name={comment.user?.name} username={comment.user?.username} size="sm" />
-                  <p className="text-neutral-800">
-                    <span className="font-semibold text-neutral-900">
-                      {comment.user?.username || comment.user?.name || 'Member'}
+                  <p className="text-[var(--app-text)]">
+                    <span className="font-semibold text-[var(--app-text)]">
+                      {comment.user?.username || comment.user?.name || 'Thành viên'}
                     </span>{' '}
                     {comment.content}
                   </p>
@@ -296,31 +370,41 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
             )}
           </div>
 
-          <div className="border-t border-neutral-200 px-4 py-3">
-            <div className="flex items-center gap-4">
-              <button type="button" onClick={handleLikeToggle} className={liked ? 'text-rose-500' : 'text-neutral-700'}>
+          <div className="border-t border-[var(--app-border)] px-5 py-4">
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={handleLikeToggle} className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition ${liked ? 'text-[var(--app-accent)]' : 'text-[var(--app-text)] hover:opacity-70'}`}>
                 <HeartIcon filled={liked} className="h-6 w-6" />
               </button>
-              <CommentIcon className="h-6 w-6 text-neutral-700" />
+              <div className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[var(--app-text)]">
+                <CommentIcon className="h-6 w-6 text-[var(--app-text)]" />
+              </div>
+              <div className="ml-auto text-right">
+                <p className="text-sm font-semibold text-[var(--app-text)]">{likesCount} lượt thích</p>
+                <p className="text-xs text-[var(--app-muted)]">{comments.length} bình luận</p>
+              </div>
             </div>
-            <p className="mt-2 text-sm font-semibold text-neutral-900">{likesCount} likes</p>
-            <p className="mt-1 text-xs text-neutral-500">{createdAt}</p>
           </div>
 
-          <form onSubmit={handleSubmitComment} className="flex items-center gap-2 border-t border-neutral-200 px-4 py-3">
+          <form onSubmit={handleSubmitComment} className="border-t border-[var(--app-border)] px-5 py-4">
+            <div className="flex items-center gap-3 rounded-full border border-[var(--app-border)] bg-white px-4 py-2">
             <input
               type="text"
               value={commentText}
               onChange={(event) => setCommentText(event.target.value)}
-              placeholder="Add a comment..."
-              className="flex-1 bg-transparent text-sm text-neutral-900 outline-none placeholder:text-neutral-400"
+              placeholder="Thêm bình luận..."
+              className="min-h-[44px] flex-1 bg-transparent text-sm text-[var(--app-text)] outline-none placeholder:text-[var(--app-muted)]"
             />
-            <button type="submit" disabled={!commentText.trim() || isSubmitting} className="text-sm font-semibold text-[#0095f6] disabled:opacity-50">
-              Post
+            <button type="submit" disabled={!commentText.trim() || isSubmitting} className="inline-flex min-h-[40px] items-center justify-center rounded-full bg-[var(--app-primary)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--app-primary-strong)] disabled:opacity-50">
+              Đăng
             </button>
+            </div>
           </form>
         </div>
       </div>
     </div>
+      {showReportModal ? (
+        <ReportModal postId={post.id} onClose={() => setShowReportModal(false)} />
+      ) : null}
+    </>
   );
 };

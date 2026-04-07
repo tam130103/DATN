@@ -20,6 +20,9 @@ export class Conversation {
   @Column({ nullable: true })
   name: string;
 
+  @Column({ nullable: true })
+  difyConversationId: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

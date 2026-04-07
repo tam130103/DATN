@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { postService } from '../services/post.service';
 import { userService } from '../services/user.service';
@@ -17,6 +17,21 @@ type MediaDraft = {
 };
 
 type AIAction = 'caption' | 'hashtags' | null;
+
+const PhotoIcon = () => (
+  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.9">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+    <polyline points="21 15 16 10 5 21" />
+  </svg>
+);
+
+const SparkIcon = () => (
+  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9">
+    <path d="M12 2l1.9 5.1L19 9l-5.1 1.9L12 16l-1.9-5.1L5 9l5.1-1.9L12 2z" />
+    <path d="M5 17l.9 2.1L8 20l-2.1.9L5 23l-.9-2.1L2 20l2.1-.9L5 17z" />
+  </svg>
+);
 
 const getApiMessage = (error: unknown, fallback: string) => {
   if (typeof error === 'object' && error && 'response' in error) {
@@ -69,7 +84,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (mediaFiles.length + files.length > 10) {
-      toast.error('Bạn chỉ có thể đăng tối đa 10 ảnh hoặc video.');
+      toast.error('Bạn chỉ có thể tải lên tối đa 10 hình ảnh hoặc video.');
       return;
     }
 
@@ -126,16 +141,16 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
 
   const removeMedia = (index: number) => {
     setMediaFiles((prev) => {
-      const newMedia = [...prev];
-      URL.revokeObjectURL(newMedia[index].preview);
-      newMedia.splice(index, 1);
-      return newMedia;
+      const next = [...prev];
+      URL.revokeObjectURL(next[index].preview);
+      next.splice(index, 1);
+      return next;
     });
   };
 
   const resetComposer = () => {
     setCaption('');
-    mediaFiles.forEach((m) => URL.revokeObjectURL(m.preview));
+    mediaFiles.forEach((media) => URL.revokeObjectURL(media.preview));
     setMediaFiles([]);
     setShowSuggestions(false);
     setSuggestions([]);
@@ -144,7 +159,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!caption.trim()) {
-      toast.error('Hãy viết nội dung trước khi đăng bài.');
+      toast.error('Hãy viết nội dung trước khi xuất bản.');
       return;
     }
 
@@ -166,18 +181,24 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
       toast.success('Đăng bài thành công.');
       onPostCreated?.();
     } catch (error) {
-      toast.error(getApiMessage(error, 'Không thể đăng bài lúc này.'));
+      toast.error(getApiMessage(error, 'Không thể chia sẻ bài viết lúc này.'));
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleAISuggest = async () => {
-    const prompt = window.prompt(
-      'Bạn muốn AI viết nội dung về chủ đề gì? Ví dụ: đi du lịch Đà Lạt, cảm xúc hôm nay, review quán ăn...',
-    );
-    const normalizedPrompt = prompt?.trim();
+    let normalizedPrompt = caption.trim();
+    
     if (!normalizedPrompt) {
+      const userInput = window.prompt(
+        'AI nên viết về điều gì? Ví dụ: chuyến đi cuối tuần, review đồ ăn... (Hoặc nhập trực tiếp vào hộp trước!)',
+      );
+      normalizedPrompt = userInput?.trim() || '';
+    }
+
+    if (!normalizedPrompt) {
+      toast.error('Vui lòng nhập một vài từ khóa hoặc ý tưởng để AI viết caption.');
       return;
     }
 
@@ -185,9 +206,9 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
     try {
       const suggested = await postService.generateCaption(normalizedPrompt);
       setCaption(suggested);
-      toast.success('AI đã tạo nội dung xong. Bạn có thể chỉnh sửa trước khi đăng.');
+      toast.success('AI đã viết xong bản nháp. Bạn có thể sửa trực tiếp ở trên.');
     } catch (error) {
-      toast.error(getApiMessage(error, 'AI đang bận, vui lòng thử lại sau.'));
+      toast.error(getApiMessage(error, 'AI hiện tại đang bị lỗi. Vui lòng thử lại sau.'));
     } finally {
       setAiAction(null);
     }
@@ -195,7 +216,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
 
   const handleHashtagSuggest = async () => {
     if (!caption.trim()) {
-      toast.error('Hãy nhập nội dung trước khi gợi ý hashtag.');
+      toast.error('Vui lòng viết tiêu đề trước khi lấy gợi ý hashtag.');
       return;
     }
 
@@ -205,10 +226,10 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
       const updatedCaption = appendUniqueHashtags(caption, tags);
 
       if (updatedCaption === caption) {
-        toast.success('Không có hashtag mới để thêm.');
+        toast.success('Không có hashtag nào mới được thêm vào.');
       } else {
         setCaption(updatedCaption);
-        toast.success('Đã thêm hashtag gợi ý.');
+        toast.success('Đã thêm hashtag đề xuất.');
       }
     } catch (error) {
       toast.error(getApiMessage(error, 'Không thể gợi ý hashtag lúc này.'));
@@ -218,115 +239,149 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
   };
 
   return (
-    <div className="border-b border-[#dbdbdb] bg-white transition-shadow md:rounded-lg md:border md:shadow-sm">
+    <div className="surface-card overflow-hidden rounded-xl">
       <form onSubmit={handleSubmit} data-testid="create-post-form">
-        <div className="relative flex items-start gap-3 p-3">
-          <Avatar src={user?.avatarUrl} name={user?.name} username={user?.username} size="sm" />
-          <div className="relative w-full">
-            <textarea
-              value={caption}
-              onChange={handleTextChange}
-              placeholder="Bạn đang nghĩ gì?"
-              data-testid="create-post-caption"
-              className="min-h-[56px] w-full resize-none bg-transparent text-sm outline-none placeholder:text-[#8e8e8e]"
-              rows={2}
+        <div className="px-4 py-4">
+          <div className="flex items-start gap-3">
+            <Avatar
+              src={user?.avatarUrl}
+              name={user?.name}
+              username={user?.username}
+              size="md"
+              ring
             />
 
-            {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute left-0 top-full z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-[#dbdbdb] bg-white shadow-lg sm:w-64">
-                {suggestions.map((suggestion) => (
-                  <button
-                    key={suggestion.id}
-                    type="button"
-                    onClick={() => insertMention(suggestion.username || suggestion.name || '')}
-                    className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-gray-100"
-                  >
-                    <Avatar
-                      src={suggestion.avatarUrl}
-                      name={suggestion.name}
-                      username={suggestion.username}
-                      size="sm"
-                    />
-                    <div className="flex flex-col overflow-hidden">
-                      <span className="truncate text-sm font-semibold">{suggestion.username}</span>
-                      <span className="truncate text-xs text-[#8e8e8e]">{suggestion.name}</span>
-                    </div>
-                  </button>
-                ))}
+            <div className="relative min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--app-text)]">
+                    {user?.username || user?.name || 'Bạn'}
+                  </p>
+                  <p className="text-xs text-[var(--app-muted)]">
+                    Chia sẻ ảnh, video, hoặc trạng thái với cộng đồng của bạn.
+                  </p>
+                </div>
+                <span className="text-xs font-medium text-[var(--app-muted)]">
+                  {mediaFiles.length}/10
+                </span>
               </div>
-            )}
+
+              <div className="mt-3 rounded-lg border border-[var(--app-border)] bg-[var(--app-bg-soft)] px-4 py-3">
+                <textarea
+                  value={caption}
+                  onChange={handleTextChange}
+                  placeholder="Viết một vài suy nghĩ..."
+                  data-testid="create-post-caption"
+                  className="min-h-[60px] w-full resize-none bg-transparent text-sm leading-6 text-[var(--app-text)] placeholder:text-[var(--app-muted)]"
+                  rows={2}
+                />
+
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--app-border)] pt-3">
+                  <p className="text-xs text-[var(--app-muted)]">
+                    Nhắc đến ai đó bằng <span className="font-semibold">@username</span> hoặc thêm hashtags.
+                  </p>
+                  <span className="text-xs text-[var(--app-muted)]">{caption.trim().length} ký tự</span>
+                </div>
+              </div>
+
+              {showSuggestions && suggestions.length > 0 ? (
+                <div className="surface-card absolute left-0 top-full z-50 mt-2 w-full overflow-hidden rounded-lg sm:max-w-[360px]">
+                  {suggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.id}
+                      type="button"
+                      onClick={() => insertMention(suggestion.username || suggestion.name || '')}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
+                    >
+                      <Avatar
+                        src={suggestion.avatarUrl}
+                        name={suggestion.name}
+                        username={suggestion.username}
+                        size="sm"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-[var(--app-text)]">
+                          {suggestion.username || suggestion.name}
+                        </p>
+                        <p className="truncate text-sm text-[var(--app-muted)]">{suggestion.name}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </div>
+
+          {mediaFiles.length > 0 ? (
+            <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {mediaFiles.map((media, index) => (
+                <div key={index} className="relative overflow-hidden rounded-lg bg-slate-950">
+                  {media.type === 'IMAGE' ? (
+                    <img src={media.preview} alt="" className="aspect-square w-full object-cover" />
+                  ) : (
+                    <video src={media.preview} className="aspect-square w-full object-cover" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeMedia(index)}
+                    className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-xs font-semibold text-white"
+                  >
+                    X
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
 
-        {mediaFiles.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto px-3 pb-3">
-            {mediaFiles.map((media, index) => (
-              <div key={index} className="relative flex-shrink-0">
-                {media.type === 'IMAGE' ? (
-                  <img src={media.preview} alt="" className="h-20 w-20 rounded-md object-cover" />
-                ) : (
-                  <video src={media.preview} className="h-20 w-20 rounded-md object-cover" />
-                )}
-                <button
-                  type="button"
-                  onClick={() => removeMedia(index)}
-                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black text-[10px] text-white"
-                >
-                  x
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="flex flex-col gap-3 border-t border-[var(--app-border)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              onChange={handleFileSelect}
+              className="hidden"
+              data-testid="create-post-media-input"
+            />
 
-        <div className="flex items-center justify-between border-t border-[#efefef] px-3 py-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,video/*"
-            multiple
-            onChange={handleFileSelect}
-            className="hidden"
-            data-testid="create-post-media-input"
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={mediaFiles.length >= 10 || isLoading}
-            className="text-sm text-[#8e8e8e] hover:text-[#262626] disabled:opacity-40"
-          >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
-              <polyline points="21 15 16 10 5 21" />
-            </svg>
-          </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={mediaFiles.length >= 10 || isLoading}
+              className="inline-flex min-h-[38px] items-center gap-2 rounded-md border border-[var(--app-border)] bg-white px-3 text-sm font-medium text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)] disabled:opacity-40"
+            >
+              <PhotoIcon />
+              Thêm tệp
+            </button>
 
-          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleHashtagSuggest}
               disabled={isAnyAILoading || !caption.trim()}
-              title="Gợi ý hashtag"
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[#8e8e8e] transition hover:bg-gray-100 hover:text-[#0095f6] disabled:opacity-40"
+              className="inline-flex min-h-[38px] items-center gap-2 rounded-md px-2 text-sm font-semibold text-[var(--app-primary)] transition hover:bg-[var(--app-primary-soft)] disabled:opacity-40"
             >
               {isHashtagLoading ? (
-                <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
               ) : (
-                '# AI'
+                '#'
               )}
+              Gợi ý hashtag
             </button>
+
             <button
               type="button"
               onClick={handleAISuggest}
               disabled={isAnyAILoading}
-              className="flex items-center gap-1 rounded-md bg-gradient-to-r from-purple-500 to-blue-500 px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:opacity-90 disabled:opacity-40"
+              className="inline-flex min-h-[38px] items-center gap-2 rounded-md px-2 text-sm font-semibold text-[var(--app-primary)] transition hover:bg-[var(--app-primary-soft)] disabled:opacity-40"
             >
               {isCaptionLoading ? (
-                <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
               ) : (
-                'AI Assist'
+                <SparkIcon />
               )}
+              Viết bằng AI
             </button>
           </div>
 
@@ -334,9 +389,9 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
             type="submit"
             disabled={isLoading || !caption.trim()}
             data-testid="create-post-submit"
-            className="rounded-lg bg-[#0095f6] px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-[#1877f2] disabled:opacity-40"
+            className="inline-flex min-h-[38px] items-center justify-center rounded-md bg-[var(--app-primary)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--app-primary-strong)] disabled:opacity-40"
           >
-            {isLoading ? 'Đang đăng...' : 'Đăng'}
+            {isLoading ? 'Đang đăng...' : 'Chia sẻ'}
           </button>
         </div>
       </form>

@@ -1,0 +1,100 @@
+openapi: 3.1.0
+info:
+  title: DATN AI Tools API
+  description: Tools for Dify AI to query project database dynamically, such as counting posts or searching posts content.
+  version: 1.0.0
+servers:
+  - url: 'https://laurie-chairless-giancarlo.ngrok-free.dev'
+    description: Ngrok production server for Dify
+
+paths:
+  /api/v1/ai-tools/posts/count:
+    get:
+      summary: Get system post counts
+      description: Returns the total number of posts currently written and published on the DATN Social platform.
+      operationId: getPostsCount
+      security:
+        - ToolApiKey: []
+      responses:
+        '200':
+          description: A JSON containing the total posts count.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      total_posts:
+                        type: integer
+                        description: Total number of posts published
+        '401':
+          description: Unauthorized if the custom header key is missing or invalid.
+
+  /api/v1/ai-tools/posts/search:
+    get:
+      summary: Search posts by content
+      description: Search inside the database for posts mentioning a specific keyword or query. Very helpful to answer "Is there any post about X?".
+      operationId: searchPosts
+      security:
+        - ToolApiKey: []
+      parameters:
+        - name: q
+          in: query
+          description: The keyword or phrase to search for inside post captions. Required.
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of posts to fetch. Defaults to 5.
+          required: false
+          schema:
+            type: integer
+            default: 5
+      responses:
+        '200':
+          description: A list of matching posts.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      posts:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            content:
+                              type: string
+                              description: The caption/text of the post
+                            author:
+                              type: string
+                              description: The author name of the post
+                            createdAt:
+                              type: string
+                              format: date-time
+                      count:
+                        type: integer
+        '401':
+          description: Unauthorized
+        '400':
+          description: Bad request if query 'q' is missing.
+
+components:
+  securitySchemes:
+    ToolApiKey:
+      type: apiKey
+      name: X-Datn-Tool-Key
+      in: header
+      description: Special header key used to authorize AI tools. Value should be datn-tool-secret-key-123.

@@ -12,6 +12,7 @@ import { Follow } from '../user/entities/follow.entity';
 import { User } from '../user/entities/user.entity';
 import { Like } from '../engagement/entities/like.entity';
 import { Comment } from '../engagement/entities/comment.entity';
+import { SavedPost } from '../engagement/entities/saved-post.entity';
 import { UserModule } from '../user/user.module';
 import { FacebookSyncService } from './facebook-sync.service';
 import { CloudinaryModule } from '../cloudinary/cloudinary.module';
@@ -19,7 +20,7 @@ import { AIModule } from '../ai/ai.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Post, Media, Hashtag, PostHashtag, PostMention, Follow, User, Like, Comment]),
+    TypeOrmModule.forFeature([Post, Media, Hashtag, PostHashtag, PostMention, Follow, User, Like, Comment, SavedPost]),
     forwardRef(() => UserModule),
     CloudinaryModule,
     AIModule,
@@ -29,3 +30,4 @@ import { AIModule } from '../ai/ai.module';
   exports: [PostService],
 })
 export class PostModule {}
+

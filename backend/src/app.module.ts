@@ -10,6 +10,8 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { SearchModule } from './modules/search/search.module';
 import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
 import { AIModule } from './modules/ai/ai.module';
+import { AiToolsModule } from './modules/ai-tools/ai-tools.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -41,6 +43,8 @@ import { AIModule } from './modules/ai/ai.module';
     SearchModule,
     CloudinaryModule,
     AIModule,
+    AiToolsModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

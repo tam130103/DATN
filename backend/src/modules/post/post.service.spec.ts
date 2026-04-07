@@ -75,6 +75,7 @@ describe('PostService.create', () => {
       userRepository,
       likeRepository,
       commentRepository,
+      createRepositoryMock() as any, // savedPostRepository
       dataSource,
       { get: jest.fn() } as unknown as ConfigService,
       aiService,

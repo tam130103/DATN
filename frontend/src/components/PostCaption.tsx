@@ -21,7 +21,7 @@ const renderRichText = (text: string) =>
         <Link
           key={`caption-hashtag-${index}`}
           to={`/hashtag/${tag}`}
-          className="font-medium text-[#00376b] hover:underline"
+          className="font-semibold text-[var(--app-primary)] transition hover:text-[var(--app-primary-strong)] hover:underline"
         >
           {part}
         </Link>
@@ -34,7 +34,7 @@ const renderRichText = (text: string) =>
         <Link
           key={`caption-mention-${index}`}
           to={`/${username}`}
-          className="font-medium text-[#00376b] hover:underline"
+          className="font-semibold text-[var(--app-primary)] transition hover:text-[var(--app-primary-strong)] hover:underline"
         >
           {part}
         </Link>
@@ -71,25 +71,25 @@ export const PostCaption: React.FC<PostCaptionProps> = ({
   return (
     <div className={className}>
       <div
-        className={`relative overflow-hidden whitespace-pre-wrap break-words text-sm leading-5 text-[#262626] ${textClassName}`.trim()}
+        className={`relative overflow-hidden whitespace-pre-wrap break-words text-sm leading-6 text-[var(--app-text)] ${textClassName}`.trim()}
         style={
           shouldCollapse && !isExpanded
-            ? { maxHeight: `${collapsedLines * 1.25}rem` }
+            ? { maxHeight: `${collapsedLines * 1.75}rem` }
             : undefined
         }
       >
         {prefixLabel ? (
           prefixTo ? (
-            <Link to={prefixTo} className="mr-1 font-semibold text-[#262626] hover:underline">
+            <Link to={prefixTo} className="mr-1 font-semibold text-[var(--app-text)] hover:underline">
               {prefixLabel}
             </Link>
           ) : (
-            <span className="mr-1 font-semibold text-[#262626]">{prefixLabel}</span>
+            <span className="mr-1 font-semibold text-[var(--app-text)]">{prefixLabel}</span>
           )
         ) : null}
         {content}
         {shouldCollapse && !isExpanded ? (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white via-white/90 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white via-white/90 to-transparent" />
         ) : null}
       </div>
 
@@ -97,7 +97,7 @@ export const PostCaption: React.FC<PostCaptionProps> = ({
         <button
           type="button"
           onClick={() => setIsExpanded((prev) => !prev)}
-          className="mt-1 text-sm font-medium text-[#8e8e8e] transition hover:text-[#262626]"
+          className="mt-2 text-sm font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
         >
           {isExpanded ? 'Ẩn bớt' : 'Xem thêm'}
         </button>

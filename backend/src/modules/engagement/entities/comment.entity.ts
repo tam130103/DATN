@@ -10,6 +10,12 @@ import {
 import { User } from '../../user/entities/user.entity';
 import { Post } from '../../post/entities/post.entity';
 
+export enum CommentStatus {
+  VISIBLE = 'visible',
+  HIDDEN = 'hidden',
+  DELETED = 'deleted',
+}
+
 @Entity('comments')
 export class Comment {
   @PrimaryGeneratedColumn('uuid')
@@ -27,6 +33,22 @@ export class Comment {
 
   @Column({ type: 'uuid', name: 'parent_id', nullable: true })
   parentId: string;
+
+  @Column({
+    type: 'enum',
+    enum: CommentStatus,
+    default: CommentStatus.VISIBLE,
+  })
+  status: CommentStatus;
+
+  @Column({ nullable: true, type: 'text' })
+  moderationReason: string | null;
+
+  @Column({ nullable: true, type: 'uuid', name: 'moderated_by' })
+  moderatedBy: string | null;
+
+  @Column({ nullable: true, type: 'timestamptz' })
+  moderatedAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -6,6 +6,17 @@ export enum UserProvider {
   GOOGLE = 'google',
 }
 
+export enum UserRole {
+  USER = 'user',
+  ADMIN = 'admin',
+  SYSTEM = 'system',
+}
+
+export enum UserStatus {
+  ACTIVE = 'active',
+  BLOCKED = 'blocked',
+}
+
 @Entity('users')
 @Index(['username'])
 export class User {
@@ -48,6 +59,26 @@ export class User {
 
   @Column({ default: true })
   notificationEnabled: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.USER,
+  })
+  role: UserRole;
+
+  @Column({
+    type: 'enum',
+    enum: UserStatus,
+    default: UserStatus.ACTIVE,
+  })
+  status: UserStatus;
+
+  @Column({ nullable: true, type: 'text' })
+  blockedReason: string | null;
+
+  @Column({ nullable: true, type: 'timestamptz' })
+  blockedAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

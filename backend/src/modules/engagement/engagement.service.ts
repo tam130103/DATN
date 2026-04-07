@@ -1,13 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Like } from './entities/like.entity';
-import { Comment } from './entities/comment.entity';
+import { Comment, CommentStatus } from './entities/comment.entity';
 import { SavedPost } from './entities/saved-post.entity';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationGateway } from '../notification/notification.gateway';
-import { Post } from '../post/entities/post.entity';
+import { Post, PostStatus } from '../post/entities/post.entity';
 
 @Injectable()
 export class EngagementService {
@@ -34,13 +34,17 @@ export class EngagementService {
       return { liked: false };
     }
 
-    // Check if user is liking their own post
+    // Check if user is liking their own post AND post is visible
     const post = await this.postRepository.findOne({
-      where: { id: postId },
-      select: ['userId'],
+      where: { id: postId, status: PostStatus.VISIBLE },
+      select: ['id', 'userId'],
     });
 
-    if (post && post.userId !== userId) {
+    if (!post) {
+      throw new NotFoundException('Post not found or unavailable');
+    }
+
+    if (post.userId !== userId) {
       // Create notification
       const notification = await this.notificationService.createLikeNotification(
         userId,
@@ -66,11 +70,15 @@ export class EngagementService {
   }
 
   async createComment(userId: string, postId: string, createCommentDto: CreateCommentDto): Promise<Comment> {
-    // Check if user is commenting on their own post
+    // Check if user is commenting on their own post AND post is visible
     const post = await this.postRepository.findOne({
-      where: { id: postId },
-      select: ['userId'],
+      where: { id: postId, status: PostStatus.VISIBLE },
+      select: ['id', 'userId'],
     });
+
+    if (!post) {
+      throw new NotFoundException('Post not found or unavailable');
+    }
 
     const comment = this.commentRepository.create({
       userId,
@@ -80,7 +88,7 @@ export class EngagementService {
     });
     const savedComment = await this.commentRepository.save(comment);
 
-    if (post && post.userId !== userId) {
+    if (post.userId !== userId) {
       // Create notification
       const notification = await this.notificationService.createCommentNotification(
         userId,
@@ -98,7 +106,7 @@ export class EngagementService {
 
   async getPostComments(postId: string, page = 1, limit = 20): Promise<Comment[]> {
     return this.commentRepository.find({
-      where: { postId, parentId: null },
+      where: { postId, parentId: null, status: CommentStatus.VISIBLE },
       relations: ['user'],
       order: { createdAt: 'DESC' },
       take: limit,
@@ -119,6 +127,15 @@ export class EngagementService {
   }
 
   async toggleSave(userId: string, postId: string): Promise<{ saved: boolean }> {
+    const post = await this.postRepository.findOne({
+      where: { id: postId, status: PostStatus.VISIBLE },
+      select: ['id'],
+    });
+
+    if (!post) {
+      throw new NotFoundException('Post not found or unavailable');
+    }
+
     const existing = await this.savedPostRepository.findOne({
       where: { userId, postId },
     });

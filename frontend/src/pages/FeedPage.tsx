@@ -51,7 +51,7 @@ const FeedPage: React.FC = () => {
       });
     } catch {
       if (!options?.silent) {
-        toast.error('Failed to load feed.');
+        toast.error('Không thể tải bảng tin.');
       }
     } finally {
       if (cursor) {
@@ -103,70 +103,103 @@ const FeedPage: React.FC = () => {
   }, [isLoadingMore, loadPosts]);
 
   const aside = (
-    <div className="sticky top-8 pt-4">
+    <div className="sticky top-6 space-y-4">
+      <div className="surface-card rounded-xl p-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--app-muted)]">
+          CẬP NHẬT TRANG CHỦ
+        </p>
+        <p className="mt-3 text-sm leading-6 text-[var(--app-muted-strong)]">
+          Bài viết mới sẽ được cập nhật liên tục vào bảng tin của bạn mỗi 30 giây.
+        </p>
 
-      {/* Suggestions / Trending */}
-      <div className="mt-5">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-[#8e8e8e]">Trending</p>
-          <Link to="/explore" className="text-xs font-semibold text-[#262626]">See All</Link>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-lg bg-[var(--app-bg-soft)] px-3 py-3">
+            <p className="text-xs text-[var(--app-muted)]">Bài viết</p>
+            <p className="mt-1 text-xl font-semibold text-[var(--app-text)]">{posts.length}</p>
+          </div>
+          <div className="rounded-lg bg-[var(--app-bg-soft)] px-3 py-3">
+            <p className="text-xs text-[var(--app-muted)]">Thịnh hành</p>
+            <p className="mt-1 text-xl font-semibold text-[var(--app-text)]">{trending.length}</p>
+          </div>
         </div>
-        <div className="mt-3 space-y-3">
+      </div>
+
+      <div className="surface-card rounded-xl p-5">
+        <div className="flex items-center justify-between">
+          <p className="text-base font-semibold text-[var(--app-text)]">Thịnh hành</p>
+          <Link
+            to="/explore"
+            className="text-sm font-semibold text-[var(--app-primary)] transition hover:text-[var(--app-primary-strong)]"
+          >
+            Khám phá
+          </Link>
+        </div>
+
+        <div className="mt-4 space-y-3">
           {trending.length === 0 ? (
-            <p className="text-xs text-[#8e8e8e]">No trending hashtags yet.</p>
+            <p className="text-sm leading-6 text-[var(--app-muted)]">
+              Chưa có hashtag nào thịnh hành.
+            </p>
           ) : (
-            trending.map((tag) => (
-              <Link key={tag.id} to={`/hashtag/${tag.name}`} className="flex items-center justify-between">
-                <span className="text-sm font-medium">#{tag.name}</span>
-                <span className="text-xs text-[#8e8e8e]">{tag.count} posts</span>
+            trending.map((tag, index) => (
+              <Link
+                key={tag.id}
+                to={`/hashtag/${tag.name}`}
+                className="block rounded-lg px-3 py-3 transition hover:bg-[var(--app-bg-soft)]"
+              >
+                <p className="text-xs text-[var(--app-muted)]">Thịnh hành #{index + 1}</p>
+                <p className="mt-1 text-sm font-semibold text-[var(--app-text)]">#{tag.name}</p>
+                <p className="mt-0.5 text-sm text-[var(--app-muted)]">{tag.count} bài viết</p>
               </Link>
             ))
           )}
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="mt-8">
-        <p className="text-[11px] uppercase tracking-wide text-[#c7c7c7]">
-          © 2026 DATN Social
-        </p>
+      <div className="px-1 text-xs leading-5 text-[var(--app-muted)]">
+        DATN Social | Đồ án tốt nghiệp
       </div>
     </div>
   );
 
   return (
     <AppShell aside={aside}>
-      <CreatePost onPostCreated={() => loadPosts()} />
+      <div className="space-y-4">
+        <CreatePost onPostCreated={() => loadPosts()} />
 
-      {isLoading && posts.length === 0 ? (
-        <StatePanel title="Feed" description="Loading posts..." />
-      ) : posts.length === 0 ? (
-        <StatePanel
-          title="Welcome"
-          description="Follow people or create your first post."
-          action={
-            <Link to="/explore" className="rounded-lg bg-[#0095f6] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1877f2]">
-              Discover
-            </Link>
-          }
-        />
-      ) : (
-        <div className="space-y-3">
-          {posts.map((post) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              onDeleted={(postId) => setPosts((prev) => prev.filter((item) => item.id !== postId))}
-            />
-          ))}
-        </div>
-      )}
+        {isLoading && posts.length === 0 ? (
+          <StatePanel title="Bảng tin" description="Đang tải bài viết..." />
+        ) : posts.length === 0 ? (
+          <StatePanel
+            title="Chào mừng"
+            description="Theo dõi mọi người hoặc tạo bài viết đầu tiên của bạn."
+            action={
+              <Link
+                to="/explore"
+                className="inline-flex min-h-[38px] items-center justify-center rounded-md bg-[var(--app-primary)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--app-primary-strong)]"
+              >
+                Khám phá ngay
+              </Link>
+            }
+          />
+        ) : (
+          <div className="space-y-4">
+            {posts.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                onDeleted={(postId) => setPosts((prev) => prev.filter((item) => item.id !== postId))}
+              />
+            ))}
+          </div>
+        )}
 
-      {isLoadingMore && (
-        <div className="py-4 text-center text-sm text-[#8e8e8e]">Loading...</div>
-      )}
+        {isLoadingMore ? (
+          <div className="py-4 text-center text-sm text-[var(--app-muted)]">Đang tải thêm...</div>
+        ) : null}
 
-      {nextCursor ? <div ref={observerTarget} className="h-4" /> : null}
+        {nextCursor ? <div ref={observerTarget} className="h-4" /> : null}
+      </div>
     </AppShell>
   );
 };

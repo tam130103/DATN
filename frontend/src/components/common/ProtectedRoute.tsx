@@ -14,8 +14,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       <div className="flex min-h-screen items-center justify-center px-4">
         <div className="w-full max-w-md">
           <StatePanel
-            title="Loading"
-            description="Restoring your session and syncing the latest workspace state."
+            title="Đang tải"
+            description="Đang xác thực thông tin và đồng bộ trạng thái."
           />
         </div>
       </div>

@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { User } from '../user/entities/user.entity';
+import { User, UserStatus } from '../user/entities/user.entity';
 import { Hashtag } from './entities/hashtag.entity';
-import { Post } from '../post/entities/post.entity';
+import { Post, PostStatus } from '../post/entities/post.entity';
 import { PostHashtag } from '../post/entities/post-hashtag.entity';
 import { PostService } from '../post/post.service';
 
@@ -24,8 +24,8 @@ export class SearchService {
   async searchUsers(query: string, page = 1, limit = 20): Promise<User[]> {
     return this.userRepository
       .createQueryBuilder('user')
-      .where('user.username ILIKE :query', { query: `%${query}%` })
-      .orWhere('user.name ILIKE :query', { query: `%${query}%` })
+      .where('(user.username ILIKE :query OR user.name ILIKE :query)', { query: `%${query}%` })
+      .andWhere('user.status = :status', { status: UserStatus.ACTIVE })
       .take(limit)
       .skip((page - 1) * limit)
       .getMany();
@@ -61,7 +61,7 @@ export class SearchService {
     }
 
     const posts = await this.postRepository.find({
-      where: { id: In(postIds) },
+      where: { id: In(postIds), status: PostStatus.VISIBLE },
     });
 
     const postsById = new Map(posts.map((post) => [post.id, post]));

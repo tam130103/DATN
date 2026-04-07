@@ -97,6 +97,13 @@ export class UserService {
     return existing;
   }
 
+  /** Phase 2: Reuse the Facebook bot user as the AI Assistant */
+  async getAssistantBotUserId(): Promise<string> {
+    const bot = await this.ensureFacebookBotUser();
+    return bot.id;
+  }
+
+
   async ensureUserFollowsFacebookBot(userId: string): Promise<void> {
     const bot = await this.ensureFacebookBotUser();
     if (bot.id === userId) return;

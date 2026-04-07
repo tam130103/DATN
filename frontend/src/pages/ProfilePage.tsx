@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AppShell } from '../components/layout/AppShell';
 import { Avatar } from '../components/common/Avatar';
@@ -10,8 +10,8 @@ import { postService } from '../services/post.service';
 import { chatService } from '../services/chat.service';
 import { Post, User } from '../types';
 
-const GridIcon = () => (
-  <svg viewBox="0 0 24 24" className="h-3 w-3" fill="currentColor">
+const GridIcon = ({ className = 'h-4 w-4' }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="currentColor">
     <rect x="3" y="3" width="7" height="7" />
     <rect x="14" y="3" width="7" height="7" />
     <rect x="14" y="14" width="7" height="7" />
@@ -19,18 +19,31 @@ const GridIcon = () => (
   </svg>
 );
 
-const BookmarkIcon = () => (
-  <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2">
+const BookmarkIcon = ({ className = 'h-4 w-4' }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.9">
     <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
   </svg>
 );
 
-const TagIcon = () => (
-  <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2">
+const TagIcon = ({ className = 'h-4 w-4' }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.9">
     <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
     <line x1="7" y1="7" x2="7.01" y2="7" />
   </svg>
 );
+
+const EmptyIcon = ({ children }: { children: React.ReactNode }) => (
+  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-[var(--app-border)] bg-[var(--app-bg-soft)] text-[var(--app-muted)]">
+    {children}
+  </div>
+);
+
+const tabButtonClass = (isActive: boolean) =>
+  `inline-flex min-h-[40px] items-center gap-2 border-t px-1 py-3 text-xs font-semibold uppercase tracking-[0.14em] transition ${
+    isActive
+      ? 'border-[var(--app-text)] text-[var(--app-text)]'
+      : 'border-transparent text-[var(--app-muted)] hover:text-[var(--app-text)]'
+  }`;
 
 const ProfilePage: React.FC = () => {
   const { username } = useParams();
@@ -44,6 +57,7 @@ const ProfilePage: React.FC = () => {
   const [draft, setDraft] = useState({ username: '', name: '', bio: '', avatarUrl: '' });
   const [posts, setPosts] = useState<Post[]>([]);
   const [taggedPosts, setTaggedPosts] = useState<Post[]>([]);
+  const [savedPosts, setSavedPosts] = useState<Post[]>([]);
   const [activePost, setActivePost] = useState<Post | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -51,75 +65,125 @@ const ProfilePage: React.FC = () => {
 
   useEffect(() => {
     let isActive = true;
-    if (!username && !currentUser?.id) return () => { isActive = false; };
+    if (!username && !currentUser?.id) {
+      return () => {
+        isActive = false;
+      };
+    }
 
     const fetchProfile = async () => {
       setIsLoading(true);
       try {
         const data = username ? await userService.getByUsername(username) : await userService.getMe();
-        if (!isActive || !data) { setProfile(null); return; }
+        if (!isActive || !data) {
+          setProfile(null);
+          return;
+        }
         setProfile(data);
-        setDraft({ username: data.username || '', name: data.name || '', bio: data.bio || '', avatarUrl: data.avatarUrl || '' });
+        setDraft({
+          username: data.username || '',
+          name: data.name || '',
+          bio: data.bio || '',
+          avatarUrl: data.avatarUrl || '',
+        });
 
-        const [postsResult] = await Promise.allSettled([
-          postService.getPostsByUser(data.id, undefined, 24),
-        ]);
+        const [postsResult] = await Promise.allSettled([postService.getPostsByUser(data.id, undefined, 24)]);
+
         if (!isActive) return;
         setPosts(postsResult.status === 'fulfilled' ? postsResult.value.posts : []);
       } catch {
         if (!isActive) return;
-        toast.error('Failed to load profile.');
+        toast.error('Không thể tải hồ sơ.');
         setProfile(null);
       } finally {
         if (isActive) setIsLoading(false);
       }
     };
+
     fetchProfile();
-    return () => { isActive = false; };
+    return () => {
+      isActive = false;
+    };
   }, [username, currentUser?.id]);
 
   useEffect(() => {
-    if (!avatarFile) { setAvatarPreview(null); return; }
+    if (!avatarFile) {
+      setAvatarPreview(null);
+      return;
+    }
     const url = URL.createObjectURL(avatarFile);
     setAvatarPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [avatarFile]);
 
-  // Fetch tagged posts when the tab switches to 'tagged'
   useEffect(() => {
     if (activeTab !== 'tagged' || !profile) return;
     let active = true;
-    postService.getTaggedPosts(profile.id).then(res => {
-      if (active) setTaggedPosts(res.posts);
-    }).catch(() => {});
-    return () => { active = false; };
+    postService
+      .getTaggedPosts(profile.id)
+      .then((res) => {
+        if (active) setTaggedPosts(res.posts);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, [activeTab, profile]);
 
   const isOwnProfile = currentUser?.id === profile?.id;
+
+  useEffect(() => {
+    if (activeTab !== 'saved' || !profile || !isOwnProfile) return;
+    let active = true;
+    postService
+      .getSavedPosts(profile.id)
+      .then((res) => {
+        if (active) setSavedPosts(res.posts);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [activeTab, profile, isOwnProfile]);
+
   const isFollowing = !!profile?.isFollowing;
-  const postsWithMedia = posts;
+  const joinedDate = useMemo(
+    () => (profile ? new Date(profile.createdAt).toLocaleDateString() : ''),
+    [profile],
+  );
+  const displayHandle = profile?.username || profile?.name || 'Hồ sơ';
+  const displayName = profile?.name && profile.name !== profile.username ? profile.name : null;
+  const bioText =
+    profile?.bio ||
+    (isOwnProfile
+      ? 'Thêm một tiểu sử ngắn để cho mọi người biết về bạn.'
+      : 'Chưa có tiểu sử.');
 
   const handleFollowToggle = async () => {
     if (!profile || isOwnProfile) return;
-    const orig = profile;
+    const original = profile;
     const next = !isFollowing;
-    setProfile({ ...profile, isFollowing: next, followersCount: next ? profile.followersCount + 1 : Math.max(0, profile.followersCount - 1) });
+    setProfile({
+      ...profile,
+      isFollowing: next,
+      followersCount: next ? profile.followersCount + 1 : Math.max(0, profile.followersCount - 1),
+    });
     try {
       if (!next) await userService.unfollowUser(profile.id);
       else await userService.followUser(profile.id);
     } catch {
-      setProfile(orig);
-      toast.error('Failed to update follow state.');
+      setProfile(original);
+      toast.error('Không thể cập nhật trạng thái theo dõi.');
     }
   };
 
   const handleMessage = async () => {
     if (!profile || isOwnProfile) return;
     try {
-      const conv = await chatService.createConversation({ participantIds: [profile.id] });
-      navigate(`/messages/${conv.id}`);
-    } catch (error) {
-      toast.error('Failed to start conversation.');
+      const conversation = await chatService.createConversation({ participantIds: [profile.id] });
+      navigate(`/messages/${conversation.id}`);
+    } catch {
+      toast.error('Không thể bắt đầu cuộc trò chuyện.');
     }
   };
 
@@ -130,31 +194,103 @@ const ProfilePage: React.FC = () => {
       let avatarUrl: string | undefined;
       if (avatarFile) {
         setIsUploadingAvatar(true);
-        try { avatarUrl = await userService.uploadAvatar(avatarFile); }
-        catch { toast.error('Failed to upload avatar.'); return; }
-        finally { setIsUploadingAvatar(false); }
+        try {
+          avatarUrl = await userService.uploadAvatar(avatarFile);
+        } catch {
+          toast.error('Không thể tải lên ảnh đại diện.');
+          return;
+        } finally {
+          setIsUploadingAvatar(false);
+        }
       }
-      const payload: any = { username: draft.username.trim() || undefined, name: draft.name.trim() || undefined, bio: draft.bio.trim() || undefined };
+
+      const payload: any = {
+        username: draft.username.trim() || undefined,
+        name: draft.name.trim() || undefined,
+        bio: draft.bio.trim() || undefined,
+      };
       if (avatarUrl) payload.avatarUrl = avatarUrl;
+
       const updated = await userService.updateProfile(payload);
       setProfile((prev) => (prev ? { ...prev, ...updated } : prev));
       updateUser((prev) => (prev ? { ...prev, ...updated } : prev));
-      setDraft({ username: updated.username || '', name: updated.name || '', bio: updated.bio || '', avatarUrl: updated.avatarUrl || '' });
+      setDraft({
+        username: updated.username || '',
+        name: updated.name || '',
+        bio: updated.bio || '',
+        avatarUrl: updated.avatarUrl || '',
+      });
       setAvatarFile(null);
       setIsEditing(false);
-      toast.success('Profile updated.');
+      toast.success('Hồ sơ đã được cập nhật.');
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to update profile.');
+      toast.error(error.response?.data?.message || 'Không thể cập nhật hồ sơ.');
     } finally {
       setIsSaving(false);
     }
   };
 
+  const handlePostDeleted = (postId: string) => {
+    setPosts((prev) => prev.filter((post) => post.id !== postId));
+    setTaggedPosts((prev) => prev.filter((post) => post.id !== postId));
+    setSavedPosts((prev) => prev.filter((post) => post.id !== postId));
+    setActivePost((prev) => (prev?.id === postId ? null : prev));
+  };
+
+  const renderGrid = (items: Post[]) => (
+    <div className="grid grid-cols-3 gap-1 sm:gap-4">
+      {items.map((post) => {
+        const cover = post.media?.[0];
+        const hasVideo = post.media?.some((item) => item.type === 'VIDEO');
+        const hasCarousel = (post.media?.length || 0) > 1;
+
+        return (
+          <button
+            key={post.id}
+            type="button"
+            onClick={() => setActivePost(post)}
+            className="group relative aspect-square overflow-hidden bg-[var(--app-bg-soft)] text-left focus-visible:outline-none"
+          >
+            {cover?.type === 'VIDEO' ? (
+              <video src={cover.url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+            ) : cover ? (
+              <img src={cover.url} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-[var(--app-bg-soft)] p-4 text-center text-xs font-semibold text-[var(--app-muted-strong)]">
+                {post.caption?.slice(0, 80) || 'Bài viết chữ'}
+              </div>
+            )}
+
+            <div className="absolute left-2 top-2 flex gap-1.5">
+              {hasCarousel ? (
+                <span className="rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
+                  Nhiều ảnh
+                </span>
+              ) : null}
+              {hasVideo ? (
+                <span className="rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
+                  Video
+                </span>
+              ) : null}
+            </div>
+
+            <div className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 transition group-hover:opacity-100">
+              <div className="flex gap-6 text-sm font-semibold text-white">
+                <span>{post.likesCount ?? 0} lượt thích</span>
+                <span>{post.commentsCount ?? 0} bình luận</span>
+              </div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+
   if (isLoading) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center py-20">
-          <p className="text-sm text-[#8e8e8e]">Loading...</p>
+        <div className="surface-card rounded-xl px-6 py-16 text-center">
+          <p className="text-sm text-[var(--app-muted)]">Đang tải hồ sơ...</p>
         </div>
       </AppShell>
     );
@@ -163,238 +299,271 @@ const ProfilePage: React.FC = () => {
   if (!profile) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center py-20">
-          <p className="text-sm text-[#8e8e8e]">User not found.</p>
+        <div className="surface-card rounded-xl px-6 py-16 text-center">
+          <p className="text-lg font-semibold text-[var(--app-text)]">Không tìm thấy người dùng</p>
+          <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
+            Hồ sơ này có thể đã bị hạn chế, bị xoá hoặc tên người dùng đã thay đổi.
+          </p>
         </div>
       </AppShell>
     );
   }
 
-  const displayHandle = profile.username || profile.name || 'profile';
-  const displayName = profile.name && profile.name !== profile.username ? profile.name : null;
-  const handlePostDeleted = (postId: string) => {
-    setPosts((prev) => prev.filter((post) => post.id !== postId));
-    setTaggedPosts((prev) => prev.filter((post) => post.id !== postId));
-    setActivePost((prev) => (prev?.id === postId ? null : prev));
-  };
-
   return (
     <AppShell>
-      <div className="max-w-[935px]">
-        {/* ── Profile Header ── */}
-        <div className="flex flex-col items-center gap-4 px-4 py-6 text-center sm:flex-row sm:items-start sm:gap-8 sm:text-left md:gap-16 md:px-6">
-          {/* Avatar */}
-          <div className="flex-shrink-0">
-            <div className="h-24 w-24 overflow-hidden rounded-full sm:h-[120px] sm:w-[120px] md:h-[150px] md:w-[150px]">
-              <Avatar src={profile.avatarUrl} name={profile.name} username={profile.username} size="xl" />
-            </div>
-          </div>
-
-          {/* Info */}
-          <div className="w-full flex-1 space-y-4">
-            {/* Username + buttons */}
-            <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
-              <h2 className="text-xl font-light">{displayHandle}</h2>
-              {isOwnProfile ? (
-                <>
-                  <button
-                    onClick={() => setIsEditing(!isEditing)}
-                    className="w-full min-h-[44px] sm:min-h-[36px] rounded-lg border border-[#dbdbdb] bg-transparent px-4 py-1.5 text-sm font-semibold transition-colors duration-200 hover:bg-[#fafafa] sm:w-auto focus-visible:ring-2 focus-visible:ring-[#0095f6] focus-visible:outline-none cursor-pointer"
-                  >
-                    Edit profile
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={handleFollowToggle}
-                    className={`w-full min-h-[44px] sm:min-h-[36px] cursor-pointer rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-[#0095f6] focus-visible:outline-none sm:w-auto ${
-                      isFollowing
-                        ? 'border border-[#dbdbdb] bg-transparent text-[#262626] hover:bg-[#fafafa]'
-                        : 'bg-[#0095f6] text-white hover:bg-[#1877f2]'
-                    }`}
-                  >
-                    {isFollowing ? 'Following' : 'Follow'}
-                  </button>
-                  <button onClick={handleMessage} className="w-full min-h-[44px] sm:min-h-[36px] cursor-pointer rounded-lg border border-[#dbdbdb] px-4 py-1.5 text-sm font-semibold transition-colors duration-200 hover:bg-[#fafafa] focus-visible:ring-2 focus-visible:ring-[#0095f6] focus-visible:outline-none sm:w-auto">Message</button>
-                </>
-              )}
+      <div className="space-y-6">
+        <section className="surface-card rounded-xl p-5 sm:p-8">
+          <div className="grid gap-8 md:grid-cols-[180px_minmax(0,1fr)] md:items-start">
+            <div className="flex justify-center md:justify-start">
+              <Avatar
+                src={avatarPreview || profile.avatarUrl}
+                name={profile.name}
+                username={profile.username}
+                size="xl"
+                ring
+              />
             </div>
 
-            {/* Stats */}
-            <div className="flex flex-wrap justify-center gap-4 text-sm sm:justify-start sm:gap-8">
-              <span><strong>{postsWithMedia.length}</strong> posts</span>
-              <span><strong>{profile.followersCount}</strong> followers</span>
-              <span><strong>{profile.followingCount}</strong> following</span>
-            </div>
-
-            {/* Name + Bio */}
-            <div>
-              {displayName && <p className="text-sm font-semibold">{displayName}</p>}
-              {profile.bio && <p className="mt-1 whitespace-pre-line text-sm">{profile.bio}</p>}
-            </div>
-          </div>
-        </div>
-
-        {/* ── Edit Form ── */}
-        {isOwnProfile && isEditing && (
-          <div className="mx-4 mb-6 rounded-lg border border-[#dbdbdb] bg-white p-5">
-            <h3 className="mb-4 font-semibold">Edit Profile</h3>
-            <form onSubmit={handleSaveProfile} className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-[#8e8e8e]">Username</label>
-                <input value={draft.username} onChange={(e) => setDraft((p) => ({ ...p, username: e.target.value }))}
-                  className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-3 py-2 text-sm outline-none focus:border-[#a8a8a8]" />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-[#8e8e8e]">Name</label>
-                <input value={draft.name} onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))}
-                  className="w-full rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-3 py-2 text-sm outline-none focus:border-[#a8a8a8]" />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-[#8e8e8e]">Bio</label>
-                <textarea value={draft.bio} onChange={(e) => setDraft((p) => ({ ...p, bio: e.target.value }))}
-                  rows={3} className="w-full resize-none rounded-sm border border-[#dbdbdb] bg-[#fafafa] px-3 py-2 text-sm outline-none focus:border-[#a8a8a8]" />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-[#8e8e8e]">Avatar</label>
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 overflow-hidden rounded-full">
-                    <Avatar src={avatarPreview || profile.avatarUrl} name={profile.name} username={profile.username} size="md" />
+            <div className="min-w-0">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h1 className="truncate text-[28px] font-normal text-[var(--app-text)]">
+                      {displayHandle}
+                    </h1>
+                    {isFollowing ? (
+                      <span className="rounded-md bg-[var(--app-bg-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--app-text)]">
+                        Đang theo dõi
+                      </span>
+                    ) : null}
                   </div>
-                  <input type="file" accept="image/*" onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
-                    className="text-xs text-[#262626]" />
+                  {displayName ? (
+                    <p className="mt-1 text-sm font-semibold text-[var(--app-text)]">{displayName}</p>
+                  ) : null}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {isOwnProfile ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing((prev) => !prev)}
+                      className="inline-flex min-h-[36px] items-center justify-center rounded-md border border-[var(--app-border)] bg-white px-4 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"
+                    >
+                      {isEditing ? 'Đóng trình chỉnh sửa' : 'Chỉnh sửa hồ sơ'}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleFollowToggle}
+                        className={`inline-flex min-h-[36px] items-center justify-center rounded-md px-4 text-sm font-semibold transition ${
+                          isFollowing
+                            ? 'border border-[var(--app-border)] bg-white text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]'
+                            : 'bg-[var(--app-primary)] text-white hover:bg-[var(--app-primary-strong)]'
+                        }`}
+                      >
+                        {isFollowing ? 'Đang theo dõi' : 'Theo dõi'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleMessage}
+                        className="inline-flex min-h-[36px] items-center justify-center rounded-md border border-[var(--app-border)] bg-white px-4 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"
+                      >
+                        Nhắn tin
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
-              <div className="flex gap-2 pt-1">
-                <button type="submit" disabled={isSaving || isUploadingAvatar}
-                  className="rounded-lg bg-[#0095f6] px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
-                  {isSaving || isUploadingAvatar ? 'Saving...' : 'Submit'}
+
+              <div className="mt-5 flex flex-wrap gap-6 text-sm text-[var(--app-text)]">
+                <p>
+                  <span className="font-semibold">{posts.length}</span> bài viết
+                </p>
+                <p>
+                  <span className="font-semibold">{profile.followersCount}</span> người theo dõi
+                </p>
+                <p>
+                  <span className="font-semibold">{profile.followingCount}</span> đang theo dõi
+                </p>
+              </div>
+
+              <div className="mt-5 space-y-2 text-sm leading-6 text-[var(--app-text)]">
+                <p>{bioText}</p>
+                <p className="text-[var(--app-muted)]">
+                  Tham gia {joinedDate} | @{profile.username || 'thành viên'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {isOwnProfile && isEditing ? (
+          <section className="surface-card rounded-xl p-5 sm:p-6">
+            <h2 className="text-lg font-semibold text-[var(--app-text)]">Chỉnh sửa hồ sơ</h2>
+            <p className="mt-1 text-sm text-[var(--app-muted)]">
+              Cập nhật cách hồ sơ của bạn hiển thị trên bảng tin, tin nhắn và tìm kiếm.
+            </p>
+
+            <form onSubmit={handleSaveProfile} className="mt-5 grid gap-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label htmlFor="profile-username" className="text-xs font-medium text-[var(--app-muted)]">
+                    Tên người dùng
+                  </label>
+                  <input
+                    id="profile-username"
+                    value={draft.username}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, username: e.target.value }))}
+                    className="min-h-[44px] w-full rounded-md border border-[var(--app-border)] bg-[var(--app-bg-soft)] px-3 text-sm text-[var(--app-text)]"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="profile-name" className="text-xs font-medium text-[var(--app-muted)]">
+                    Tên hiển thị
+                  </label>
+                  <input
+                    id="profile-name"
+                    value={draft.name}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
+                    className="min-h-[44px] w-full rounded-md border border-[var(--app-border)] bg-[var(--app-bg-soft)] px-3 text-sm text-[var(--app-text)]"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="profile-bio" className="text-xs font-medium text-[var(--app-muted)]">
+                  Tiểu sử
+                </label>
+                <textarea
+                  id="profile-bio"
+                  value={draft.bio}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, bio: e.target.value }))}
+                  rows={4}
+                  className="w-full resize-none rounded-md border border-[var(--app-border)] bg-[var(--app-bg-soft)] px-3 py-3 text-sm leading-6 text-[var(--app-text)]"
+                />
+              </div>
+
+              <div className="rounded-lg bg-[var(--app-bg-soft)] px-4 py-4">
+                <p className="text-sm font-semibold text-[var(--app-text)]">Ảnh đại diện</p>
+                <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <Avatar
+                    src={avatarPreview || profile.avatarUrl}
+                    name={profile.name}
+                    username={profile.username}
+                    size="lg"
+                    ring
+                  />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setAvatarFile(e.target.files?.[0] || null)}
+                    className="text-sm text-[var(--app-muted-strong)]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="submit"
+                  disabled={isSaving || isUploadingAvatar}
+                  className="inline-flex min-h-[38px] items-center justify-center rounded-md bg-[var(--app-primary)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--app-primary-strong)] disabled:opacity-50"
+                >
+                  {isSaving || isUploadingAvatar ? 'Đang lưu...' : 'Lưu thay đổi'}
                 </button>
-                <button type="button" onClick={() => setIsEditing(false)}
-                  className="rounded-lg border border-[#dbdbdb] px-4 py-1.5 text-sm font-semibold">Cancel</button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="inline-flex min-h-[38px] items-center justify-center rounded-md border border-[var(--app-border)] bg-white px-4 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"
+                >
+                  Hủy
+                </button>
               </div>
             </form>
-          </div>
-        )}
+          </section>
+        ) : null}
 
-        {/* ── Tabs ── */}
-        <div className="border-t border-[#dbdbdb]">
-          <div className="flex justify-center gap-6 sm:gap-10">
+        <section className="border-t border-[var(--app-border)]">
+          <div className="flex justify-center gap-8">
             {[
-              { key: 'posts', label: 'Posts', icon: <GridIcon /> },
-              ...(isOwnProfile ? [{ key: 'saved', label: 'Saved', icon: <BookmarkIcon /> }] : []),
-              { key: 'tagged', label: 'Tagged', icon: <TagIcon /> },
+              { key: 'posts', label: 'Bài viết', icon: <GridIcon /> },
+              ...(isOwnProfile ? [{ key: 'saved', label: 'Đã lưu', icon: <BookmarkIcon /> }] : []),
+              { key: 'tagged', label: 'Được gắn thẻ', icon: <TagIcon /> },
             ].map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key as any)}
-                className={`flex items-center gap-1.5 border-t-2 py-3 min-h-[44px] text-[11px] font-semibold uppercase tracking-[1.5px] cursor-pointer transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-[#0095f6] focus-visible:outline-none ${
-                  activeTab === tab.key ? 'border-[#262626] text-[#262626]' : 'border-transparent text-[#8e8e8e] hover:text-[#262626]'
-                }`}
+                type="button"
+                onClick={() => setActiveTab(tab.key as 'posts' | 'saved' | 'tagged')}
+                className={tabButtonClass(activeTab === tab.key)}
               >
                 {tab.icon}
                 {tab.label}
               </button>
             ))}
           </div>
-        </div>
 
-        {/* ── Posts Grid ── */}
-        <div>
-          {activeTab === 'posts' && (
-            postsWithMedia.length === 0 ? (
-              <div className="flex flex-col items-center py-16 text-center">
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#262626]">
-                  <GridIcon />
+          <div className="mt-4">
+            {activeTab === 'posts' ? (
+              posts.length === 0 ? (
+                <div className="surface-card rounded-xl px-6 py-14 text-center">
+                  <EmptyIcon>
+                    <GridIcon className="h-7 w-7" />
+                  </EmptyIcon>
+                  <p className="text-2xl font-semibold text-[var(--app-text)]">Chưa có bài viết nào</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
+                    {isOwnProfile
+                      ? 'Bắt đầu đăng bài để xây dựng lưới hồ sơ của bạn.'
+                      : 'Người dùng này chưa có bài viết công khai nào.'}
+                  </p>
                 </div>
-                <p className="text-2xl font-semibold">No Posts Yet</p>
-                {isOwnProfile && (
-                  <p className="mt-2 text-sm text-[#8e8e8e]">Share photos and videos to fill your grid.</p>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-[3px]">
-                {postsWithMedia.map((post) => {
-                  const cover = post.media?.[0];
-                  return (
-                    <button
-                      key={post.id}
-                      type="button"
-                      onClick={() => setActivePost(post)}
-                      className="group relative aspect-square overflow-hidden bg-[#fafafa] cursor-pointer transition-opacity duration-200 hover:opacity-[0.85] focus-visible:ring-2 focus-visible:ring-[#0095f6] focus-visible:outline-none"
-                    >
-                      {cover?.type === 'VIDEO' ? (
-                        <video src={cover.url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
-                      ) : cover ? (
-                        <img src={cover.url} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-gray-100 p-4 text-xs text-[#8e8e8e]">
-                          {post.caption?.slice(0, 80) || 'Text post'}
-                        </div>
-                      )}
-                      <div className="absolute inset-0 hidden items-center justify-center gap-4 bg-black/30 text-white group-hover:flex">
-                        <span className="flex items-center gap-1 text-sm font-bold">
-                          ♥ {post.likesCount ?? 0}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )
-          )}
+              ) : (
+                renderGrid(posts)
+              )
+            ) : null}
 
-          {activeTab === 'tagged' && (
-            taggedPosts.length === 0 ? (
-              <div className="flex flex-col items-center py-16 text-center">
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border-2 border-[#262626]">
-                  <TagIcon />
+            {activeTab === 'saved' ? (
+              savedPosts.length === 0 ? (
+                <div className="surface-card rounded-xl px-6 py-14 text-center">
+                  <EmptyIcon>
+                    <BookmarkIcon className="h-7 w-7" />
+                  </EmptyIcon>
+                  <p className="text-2xl font-semibold text-[var(--app-text)]">Không có bài viết đã lưu</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
+                    Nhấn vào biểu tượng dấu trang trên bất kỳ bài viết nào để lưu vào đây.
+                  </p>
                 </div>
-                <p className="text-2xl font-semibold">No Tagged Posts</p>
-                <p className="mt-2 text-sm text-[#8e8e8e]">When people tag you in posts, they'll appear here.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-[3px]">
-                {taggedPosts.map((post) => {
-                  const cover = post.media?.[0];
-                  return (
-                    <button
-                      key={post.id}
-                      type="button"
-                      onClick={() => setActivePost(post)}
-                      className="group relative aspect-square overflow-hidden bg-[#fafafa] cursor-pointer transition-opacity duration-200 hover:opacity-[0.85] focus-visible:ring-2 focus-visible:ring-[#0095f6] focus-visible:outline-none"
-                    >
-                      {cover?.type === 'VIDEO' ? (
-                        <video src={cover.url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
-                      ) : cover ? (
-                        <img src={cover.url} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-gray-100 p-4 text-xs text-[#8e8e8e]">
-                          {post.caption?.slice(0, 80) || 'Text post'}
-                        </div>
-                      )}
-                      <div className="absolute inset-0 hidden items-center justify-center gap-4 bg-black/30 text-white group-hover:flex">
-                        <span className="flex items-center gap-1 text-sm font-bold">
-                          ♥ {post.likesCount ?? 0}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )
-          )}
-        </div>
+              ) : (
+                renderGrid(savedPosts)
+              )
+            ) : null}
+
+            {activeTab === 'tagged' ? (
+              taggedPosts.length === 0 ? (
+                <div className="surface-card rounded-xl px-6 py-14 text-center">
+                  <EmptyIcon>
+                    <TagIcon className="h-7 w-7" />
+                  </EmptyIcon>
+                  <p className="text-2xl font-semibold text-[var(--app-text)]">Không có bài viết được gắn thẻ</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
+                    Các bài viết có gắn thẻ hồ sơ này sẽ tự động xuất hiện ở đây.
+                  </p>
+                </div>
+              ) : (
+                renderGrid(taggedPosts)
+              )
+            ) : null}
+          </div>
+        </section>
       </div>
 
-      {activePost && (
+      {activePost ? (
         <PostLightbox
           post={activePost}
           onClose={() => setActivePost(null)}
           onDeleted={handlePostDeleted}
         />
-      )}
+      ) : null}
     </AppShell>
   );
 };

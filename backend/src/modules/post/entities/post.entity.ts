@@ -13,6 +13,12 @@ import { Media } from './media.entity';
 import { PostHashtag } from './post-hashtag.entity';
 import { PostMention } from './post-mention.entity';
 
+export enum PostStatus {
+  VISIBLE = 'visible',
+  HIDDEN = 'hidden',
+  DELETED = 'deleted',
+}
+
 @Entity('posts')
 @Index(['userId', 'createdAt'])
 @Index(['userId', 'source', 'sourceId'], { unique: true })
@@ -35,6 +41,22 @@ export class Post {
 
   @Column({ type: 'timestamptz', nullable: true })
   sourceCreatedAt: Date | null;
+
+  @Column({
+    type: 'enum',
+    enum: PostStatus,
+    default: PostStatus.VISIBLE,
+  })
+  status: PostStatus;
+
+  @Column({ nullable: true, type: 'text' })
+  moderationReason: string | null;
+
+  @Column({ nullable: true, type: 'uuid', name: 'moderated_by' })
+  moderatedBy: string | null;
+
+  @Column({ nullable: true, type: 'timestamptz' })
+  moderatedAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

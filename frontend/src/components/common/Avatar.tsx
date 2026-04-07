@@ -10,32 +10,41 @@ interface AvatarProps {
 }
 
 const sizeMap = {
-  xs: 'h-5 w-5 text-[8px]',
+  xs: 'h-6 w-6 text-[10px]',
   sm: 'h-8 w-8 text-[11px]',
   md: 'h-11 w-11 text-sm',
-  lg: 'h-16 w-16 text-lg',
+  lg: 'h-14 w-14 text-base',
   xl: 'h-[150px] w-[150px] text-4xl',
 };
 
-export const Avatar: React.FC<AvatarProps> = ({ src, name, username, size = 'md', className = '', ring }) => {
+export const Avatar: React.FC<AvatarProps> = ({
+  src,
+  name,
+  username,
+  size = 'md',
+  className = '',
+  ring,
+}) => {
   const sizeClass = sizeMap[size];
   const initials = (name || username || '?').charAt(0).toUpperCase();
+  const wrapperClass = ring
+    ? 'inline-flex rounded-full bg-[linear-gradient(135deg,#f9ce34,#ee2a7b,#6228d7)] p-[2px]'
+    : 'inline-flex';
+  const innerClass = `${sizeClass} rounded-full border border-[var(--app-border)] bg-[#efefef] object-cover ${ring ? 'border-2 border-white' : ''} ${className}`.trim();
 
   if (src) {
     return (
-      <div className={`${ring ? 'rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[2px]' : ''}`}>
-        <img
-          src={src}
-          alt={name || username || 'Avatar'}
-          className={`${sizeClass} rounded-full object-cover ${ring ? 'border-2 border-white' : ''} ${className}`}
-        />
+      <div className={wrapperClass}>
+        <img src={src} alt={name || username || 'Avatar'} className={innerClass} />
       </div>
     );
   }
 
   return (
-    <div className={`${ring ? 'rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[2px]' : ''}`}>
-      <div className={`${sizeClass} flex items-center justify-center rounded-full bg-gray-200 font-semibold text-gray-600 ${ring ? 'border-2 border-white' : ''} ${className}`}>
+    <div className={wrapperClass}>
+      <div
+        className={`${innerClass} flex items-center justify-center bg-[linear-gradient(180deg,#fafafa,#efefef)] font-semibold text-[var(--app-muted-strong)]`}
+      >
         {initials}
       </div>
     </div>

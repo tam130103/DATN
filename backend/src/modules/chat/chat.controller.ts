@@ -31,6 +31,14 @@ export class ChatController {
     return this.chatService.findOrCreateConversation(user.id, dto.participantIds[0]);
   }
 
+  /** Phase 2: Open or create a direct conversation with the AI bot */
+  @Post('assistant')
+  @UseGuards(JwtAuthGuard)
+  getAssistantConversation(@CurrentUser() user: any) {
+    return this.chatService.getAssistantConversation(user.id);
+  }
+
+
   @Get()
   @UseGuards(JwtAuthGuard)
   getConversations(@CurrentUser() user: any) {
@@ -67,23 +75,17 @@ export class ChatController {
     @Param('id', ParseUUIDPipe) conversationId: string,
     @Body() dto: { content: string; mediaUrl?: string },
   ) {
-    try {
-      const message = await this.chatService.createMessage(
-        conversationId,
-        user.id,
-        dto.content,
-        dto.mediaUrl,
-      );
+    const message = await this.chatService.createMessage(
+      conversationId,
+      user.id,
+      dto.content,
+      dto.mediaUrl,
+    );
 
-      // Broadcast to OTHER WebSocket clients (not the sender who gets it via HTTP response)
-      if (this.chatGateway && this.chatGateway.server) {
-        this.chatGateway.server.to(conversationId).emit('newMessage', message);
-      }
-      
-      return message;
-    } catch (error) {
-      console.error('ERROR in sendMessage:', error);
-      throw error;
+    if (this.chatGateway && this.chatGateway.server) {
+      this.chatGateway.server.to(conversationId).emit('newMessage', message);
     }
+
+    return { message };
   }
 }

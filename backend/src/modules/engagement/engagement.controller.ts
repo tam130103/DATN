@@ -1,4 +1,15 @@
-import { Controller, Post, Delete, Get, Body, Param, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Delete,
+  Get,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  ParseIntPipe,
+  DefaultValuePipe,
+} from '@nestjs/common';
 import { EngagementService } from './engagement.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -19,6 +30,16 @@ export class EngagementController {
     return this.engagementService.toggleLike(user.id, postId);
   }
 
+  @Post(':id/save')
+  toggleSave(@CurrentUser() user: any, @Param('id') postId: string) {
+    return this.engagementService.toggleSave(user.id, postId);
+  }
+
+  @Delete(':id/save')
+  unsave(@CurrentUser() user: any, @Param('id') postId: string) {
+    return this.engagementService.toggleSave(user.id, postId);
+  }
+
   @Post(':id/comments')
   createComment(
     @CurrentUser() user: any,
@@ -31,8 +52,8 @@ export class EngagementController {
   @Get(':id/comments')
   getPostComments(
     @Param('id') postId: string,
-    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
     return this.engagementService.getPostComments(postId, page, limit);
   }

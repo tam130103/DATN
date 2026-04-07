@@ -9,9 +9,13 @@ import { Conversation } from './entities/conversation.entity';
 import { ConversationMember } from './entities/conversation-member.entity';
 import { Message } from './entities/message.entity';
 import { User } from '../user/entities/user.entity';
+import { AIModule } from '../ai/ai.module';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
+    AIModule,
+    UserModule,
     TypeOrmModule.forFeature([Conversation, ConversationMember, Message, User]),
     JwtModule.registerAsync({
       imports: [ConfigModule],

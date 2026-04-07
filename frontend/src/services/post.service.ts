@@ -60,4 +60,12 @@ export const postService = {
     const response = await apiClient.post<{ hashtags: string[] }>('/posts/ai/suggest-hashtags', { text });
     return response.data.hashtags;
   },
+
+  getSavedPosts: async (userId: string, cursor?: string, limit = 24): Promise<{ posts: any[]; nextCursor: string | null }> => {
+    const params: Record<string, string | number> = { limit };
+    if (cursor) params.cursor = cursor;
+    const response = await apiClient.get(`/posts/user/${userId}/saved`, { params });
+    return response.data;
+  },
 };
+

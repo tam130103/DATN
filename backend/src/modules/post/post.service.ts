@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In, EntityManager } from 'typeorm';
 import axios from 'axios';
 import { ConfigService } from '@nestjs/config';
-import { Post } from './entities/post.entity';
+import { Post, PostStatus } from './entities/post.entity';
 import { Media, MediaType } from './entities/media.entity';
 import { Hashtag } from './entities/hashtag.entity';
 import { PostHashtag } from './entities/post-hashtag.entity';
@@ -512,11 +512,12 @@ export class PostService {
         ...(facebookBotUserId ? [facebookBotUserId] : []),
       ]),
     );
-    const sortExpression = 'COALESCE(post.sourceCreatedAt, post.createdAt)';
+    const sortExpression = 'COALESCE("post"."sourceCreatedAt", "post"."createdAt")';
 
     let query = this.postRepository
       .createQueryBuilder('post')
       .where('post.userId IN (:...userIds)', { userIds })
+      .andWhere('post.status = :status', { status: PostStatus.VISIBLE })
       .orderBy(sortExpression, 'DESC')
       .addOrderBy('post.id', 'DESC')
       .limit(limit + 1);
@@ -542,10 +543,11 @@ export class PostService {
     cursor?: string,
     limit = 24,
   ): Promise<{ posts: Post[]; nextCursor: string | null }> {
-    const sortExpression = 'COALESCE(post.sourceCreatedAt, post.createdAt)';
+    const sortExpression = 'COALESCE("post"."sourceCreatedAt", "post"."createdAt")';
     let query = this.postRepository
       .createQueryBuilder('post')
       .where('post.userId = :userId', { userId: targetUserId })
+      .andWhere('post.status = :status', { status: PostStatus.VISIBLE })
       .orderBy(sortExpression, 'DESC')
       .addOrderBy('post.id', 'DESC')
       .limit(limit + 1);
@@ -567,7 +569,7 @@ export class PostService {
 
   async findById(id: string, viewerId?: string): Promise<Post> {
     const post = await this.postRepository.findOne({
-      where: { id },
+      where: { id, status: PostStatus.VISIBLE },
     });
 
     if (!post) {
@@ -626,11 +628,12 @@ export class PostService {
     cursor?: string,
     limit = 24,
   ): Promise<{ posts: Post[]; nextCursor: string | null }> {
-    const sortExpression = 'COALESCE(post.sourceCreatedAt, post.createdAt)';
+    const sortExpression = 'COALESCE("post"."sourceCreatedAt", "post"."createdAt")';
     let query = this.postMentionRepository
       .createQueryBuilder('mention')
       .where('mention.userId = :userId', { userId })
       .leftJoinAndSelect('mention.post', 'post')
+      .andWhere('post.status = :status', { status: PostStatus.VISIBLE })
       .orderBy(sortExpression, 'DESC')
       .addOrderBy('post.id', 'DESC')
       .limit(limit + 1);

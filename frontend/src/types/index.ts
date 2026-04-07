@@ -1,3 +1,6 @@
+export type UserRole = 'user' | 'admin' | 'system';
+export type UserStatus = 'active' | 'blocked';
+
 export interface User {
   id: string;
   email: string;
@@ -10,6 +13,10 @@ export interface User {
   notificationEnabled: boolean;
   isFollowing?: boolean;
   createdAt: string;
+  role: UserRole;
+  status: UserStatus;
+  blockedReason?: string | null;
+  blockedAt?: string | null;
 }
 
 export interface PostMedia {
@@ -36,6 +43,7 @@ export interface Post {
   media: PostMedia[];
   postHashtags: PostHashtag[];
   liked?: boolean;
+  saved?: boolean;
   likesCount?: number;
   commentsCount?: number;
 }
