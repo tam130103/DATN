@@ -246,7 +246,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
           ) : null}
         </div>
 
-        <div className="flex w-full flex-col bg-white text-[var(--app-text)] md:w-[420px] md:border-l md:border-[var(--app-border)]">
+        <div className="flex w-full flex-col bg-[var(--app-surface)] text-[var(--app-text)] md:w-[420px] md:border-l md:border-[var(--app-border)]">
           <div className="flex items-center justify-between border-b border-[var(--app-border)] px-5 py-4">
             <div className="flex items-center gap-3">
               <Avatar src={post.user?.avatarUrl} name={post.user?.name} username={post.user?.username} size="sm" ring />
@@ -275,7 +275,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                       setShowOptionsDropdown(false);
                     }} 
                   />
-                  <div className="absolute right-0 top-full mt-1 z-[70] w-[320px] rounded-xl bg-[var(--app-bg)] bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] ring-1 ring-gray-200">
+                  <div className="absolute right-0 top-full mt-1 z-[70] w-[320px] rounded-xl bg-[var(--app-bg)] p-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] ring-1 ring-[var(--app-border)]">
                     {isOwner ? (
                       <>
                         <button
@@ -386,7 +386,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
           </div>
 
           <form onSubmit={handleSubmitComment} className="border-t border-[var(--app-border)] px-5 py-4">
-            <div className="flex items-center gap-3 rounded-full border border-[var(--app-border)] bg-white px-4 py-2">
+            <div className="flex items-center gap-3 rounded-full border border-[var(--app-border)] bg-[var(--app-bg-soft)] px-4 py-2">
             <input
               type="text"
               value={commentText}
