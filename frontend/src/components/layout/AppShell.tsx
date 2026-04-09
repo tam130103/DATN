@@ -126,7 +126,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   children,
   fullWidth,
 }) => {
-  const { user, isAdmin, logout } = useAuth();
+  const { user, isAdmin, logout, token } = useAuth();
   const location = useLocation();
   const isMessagesPage = location.pathname.startsWith('/messages');
   const showHeader = !fullWidth && !isMessagesPage && (title || description || action);
@@ -141,7 +141,10 @@ export const AppShell: React.FC<AppShellProps> = ({
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !token) return;
+
+    notificationService.connect(token);
+    chatSocketService.connect(token);
 
     chatService.getUnreadCount?.().then(setUnreadMessages).catch(() => {});
     notificationService.getUnreadCount?.().then(setUnreadNotifications).catch(() => {});
@@ -153,7 +156,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       unsubscribeMessages();
       unsubscribeNotifications();
     };
-  }, [user]);
+  }, [user, token]);
 
   useEffect(() => {
     if (!user) return;
