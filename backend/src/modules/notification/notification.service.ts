@@ -36,7 +36,11 @@ export class NotificationService {
       type,
       data,
     });
-    return this.notificationRepository.save(notification);
+    
+    const savedNotification = await this.notificationRepository.save(notification);
+    savedNotification.sender = await this.userService.findById(senderId);
+    
+    return savedNotification;
   }
 
   async findByUser(userId: string, page = 1, limit = 20): Promise<Notification[]> {
