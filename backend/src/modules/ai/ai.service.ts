@@ -80,12 +80,15 @@ export class AIService implements OnModuleInit {
       const payload: Record<string, unknown> = {
         inputs: {},
         query: trimmed,
-        response_mode: 'streaming',
+        response_mode: 'blocking',
         user: userId,
       };
 
       if (difyConversationId) {
         payload.conversation_id = difyConversationId;
+        this.logger.log(`[AI] Continuing Dify conversation: ${difyConversationId}`);
+      } else {
+        this.logger.log('[AI] Starting new Dify conversation');
       }
 
       const res = await axios.post(`${apiUrl}/chat-messages`, payload, {
@@ -93,51 +96,21 @@ export class AIService implements OnModuleInit {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        responseType: 'stream',
         timeout: 120_000,
       });
 
-      let fullAnswer = '';
-      let conversationIdOut = difyConversationId || null;
+      const data = res.data;
+      const conversationIdOut: string | null =
+        data?.conversation_id || difyConversationId || null;
+      const rawAnswer: string = data?.answer || '';
 
-      await new Promise((resolve, reject) => {
-        let buffer = '';
-        res.data.on('data', (chunk: Buffer) => {
-          buffer += chunk.toString('utf8');
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-          
-          for (const line of lines) {
-            const trimmedLine = line.trim();
-            if (trimmedLine.startsWith('data:')) {
-              const dataStr = trimmedLine.substring(5).trim();
-              if (!dataStr) continue;
-              try {
-                const jsonObj = JSON.parse(dataStr);
-                
-                if (!conversationIdOut && jsonObj.conversation_id) {
-                  conversationIdOut = jsonObj.conversation_id;
-                }
-                
-                if (jsonObj.event === 'agent_message' || jsonObj.event === 'message') {
-                  if (jsonObj.answer) {
-                    fullAnswer += jsonObj.answer;
-                  }
-                }
-              } catch (e) {
-                // Ignore incomplete JSON
-              }
-            }
-          }
-        });
+      this.logger.log(
+        `[AI] Got reply. dify_conv_id=${conversationIdOut ?? 'null'}, answer_length=${rawAnswer.length}`,
+      );
 
-        res.data.on('end', resolve);
-        res.data.on('error', reject);
-      });
-
-      const answer = this.cleanPlainTextResponse(fullAnswer);
+      const answer = this.cleanPlainTextResponse(rawAnswer);
       if (!answer) {
-        throw new Error('Dify trả về phản hồi trống từ stream.');
+        throw new Error('Dify trả về phản hồi trống.');
       }
 
       return {
@@ -145,7 +118,9 @@ export class AIService implements OnModuleInit {
         conversationId: conversationIdOut,
       };
     } catch (error: any) {
-      this.logger.error(`AI Assistant error: ${error?.message || error}`);
+      this.logger.error(
+        `AI Assistant error: ${error?.response?.data ? JSON.stringify(error.response.data) : error?.message || error}`,
+      );
       throw new ServiceUnavailableException('AI Assistant tạm thời không khả dụng.');
     }
   }

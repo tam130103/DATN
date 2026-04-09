@@ -1,95 +1,241 @@
 openapi: 3.1.0
 info:
   title: DATN AI Tools API
-  description: Tools for Dify AI to query project database dynamically, such as counting posts or searching posts content.
-  version: 1.0.0
+  description: >
+    Read-only tools for Dify Agent to query live data from DATN Social.
+    Use these endpoints for statistics, posts, users, hashtags, and moderation summaries.
+  version: 2.0.0
 servers:
-  - url: 'https://datn-f8w6.onrender.com'
-    description: Render production server for Dify
+  - url: "https://datn-f8w6.onrender.com"
+    description: Render production server for DATN backend
 
 paths:
+  /api/v1/ai-tools/dashboard/overview:
+    get:
+      summary: Get system overview statistics
+      description: Returns a compact dashboard overview for DATN Social.
+      operationId: getDashboardStats
+      security:
+        - ToolApiKey: []
+      responses:
+        "200":
+          description: System statistics returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStatsResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
   /api/v1/ai-tools/posts/count:
     get:
-      summary: Get system post counts
-      description: Returns the total number of posts currently written and published on the DATN Social platform.
+      summary: Get total visible posts
+      description: Returns the total number of visible posts currently published.
       operationId: getPostsCount
       security:
         - ToolApiKey: []
       responses:
-        '200':
-          description: A JSON containing the total posts count.
+        "200":
+          description: Total posts count returned successfully.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  data:
-                    type: object
-                    properties:
-                      total_posts:
-                        type: integer
-                        description: Total number of posts published
-        '401':
-          description: Unauthorized if the custom header key is missing or invalid.
+                $ref: "#/components/schemas/PostsCountResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
 
   /api/v1/ai-tools/posts/search:
     get:
-      summary: Search posts by content
-      description: Search inside the database for posts mentioning a specific keyword or query. Very helpful to answer "Is there any post about X?".
+      summary: Search posts by caption content
+      description: Search visible posts whose caption contains a keyword or phrase.
       operationId: searchPosts
       security:
         - ToolApiKey: []
       parameters:
-        - name: q
-          in: query
-          description: The keyword or phrase to search for inside post captions. Required.
-          required: true
-          schema:
-            type: string
-        - name: limit
-          in: query
-          description: Maximum number of posts to fetch. Defaults to 5.
-          required: false
-          schema:
-            type: integer
-            default: 5
+        - $ref: "#/components/parameters/SearchQueryParam"
+        - $ref: "#/components/parameters/LimitParam"
       responses:
-        '200':
-          description: A list of matching posts.
+        "200":
+          description: Matching posts returned successfully.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  data:
-                    type: object
-                    properties:
-                      posts:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                            content:
-                              type: string
-                              description: The caption/text of the post
-                            author:
-                              type: string
-                              description: The author name of the post
-                            createdAt:
-                              type: string
-                              format: date-time
-                      count:
-                        type: integer
-        '401':
-          description: Unauthorized
-        '400':
-          description: Bad request if query 'q' is missing.
+                $ref: "#/components/schemas/PostListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /api/v1/ai-tools/posts/recent:
+    get:
+      summary: Get recent posts
+      description: Returns the latest visible posts ordered by creation time descending.
+      operationId: getRecentPosts
+      security:
+        - ToolApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Recent posts returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostListResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /api/v1/ai-tools/posts/top:
+    get:
+      summary: Get top posts
+      description: Returns top visible posts ranked by likes, comments, then recency.
+      operationId: getTopPosts
+      security:
+        - ToolApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Top posts returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopPostListResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /api/v1/ai-tools/users/search:
+    get:
+      summary: Search users
+      description: Search users by username, display name, or email.
+      operationId: searchUsers
+      security:
+        - ToolApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/SearchQueryParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Matching users returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /api/v1/ai-tools/users/{idOrUsername}:
+    get:
+      summary: Get user profile summary
+      description: Returns profile summary for a user by UUID, username, or email.
+      operationId: getUserProfile
+      security:
+        - ToolApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/UserIdentifierParam"
+      responses:
+        "200":
+          description: User profile returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfileResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+  /api/v1/ai-tools/users/{idOrUsername}/status:
+    get:
+      summary: Get user moderation and role status
+      description: Returns the current role and moderation status of a user.
+      operationId: getUserStatus
+      security:
+        - ToolApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/UserIdentifierParam"
+      responses:
+        "200":
+          description: User status returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserStatusResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+
+  /api/v1/ai-tools/hashtags/search:
+    get:
+      summary: Search hashtags
+      description: Search hashtags by prefix and sort by usage count descending.
+      operationId: searchHashtags
+      security:
+        - ToolApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/SearchQueryParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Matching hashtags returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HashtagListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /api/v1/ai-tools/hashtags/trending:
+    get:
+      summary: Get trending hashtags
+      description: Returns the most used hashtags on DATN Social.
+      operationId: getTrendingHashtags
+      security:
+        - ToolApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Trending hashtags returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HashtagListResponse"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
+
+  /api/v1/ai-tools/reports/posts:
+    get:
+      summary: Get reported posts summary
+      description: Returns grouped report information for posts, optionally filtered by report status.
+      operationId: getReportedPosts
+      security:
+        - ToolApiKey: []
+      parameters:
+        - $ref: "#/components/parameters/LimitParam"
+        - name: status
+          in: query
+          description: Optional report status filter.
+          required: false
+          schema:
+            type: string
+            enum: [open, resolved, rejected]
+      responses:
+        "200":
+          description: Reported posts returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportedPostListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequestError"
+        "401":
+          $ref: "#/components/responses/UnauthorizedError"
 
 components:
   securitySchemes:
@@ -97,4 +243,368 @@ components:
       type: apiKey
       name: X-Datn-Tool-Key
       in: header
-      description: Special header key used to authorize AI tools. Value should be datn-tool-secret-key-123.
+      description: >
+        Secret API key used to authorize DATN AI tools.
+        Configure this value securely in Dify tool settings or server environment.
+
+  parameters:
+    SearchQueryParam:
+      name: q
+      in: query
+      description: Keyword or phrase to search for.
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    LimitParam:
+      name: limit
+      in: query
+      description: Maximum number of records to return. Default is 5, maximum is 20.
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 20
+        default: 5
+    UserIdentifierParam:
+      name: idOrUsername
+      in: path
+      description: User UUID, username, or email.
+      required: true
+      schema:
+        type: string
+
+  responses:
+    UnauthorizedError:
+      description: Invalid or missing tool API key.
+    BadRequestError:
+      description: Invalid request parameters.
+    NotFoundError:
+      description: Requested resource was not found.
+
+  schemas:
+    DashboardStats:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+        activeUsers:
+          type: integer
+        blockedUsers:
+          type: integer
+        totalPosts:
+          type: integer
+        hiddenPosts:
+          type: integer
+        totalComments:
+          type: integer
+        hiddenComments:
+          type: integer
+        openReports:
+          type: integer
+      required:
+        - totalUsers
+        - activeUsers
+        - blockedUsers
+        - totalPosts
+        - hiddenPosts
+        - totalComments
+        - hiddenComments
+        - openReports
+
+    PostSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        caption:
+          type: string
+        author:
+          type: string
+        authorUsername:
+          type:
+            - string
+            - "null"
+        createdAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [visible, hidden, deleted]
+      required:
+        - id
+        - caption
+        - author
+        - createdAt
+        - status
+
+    TopPostSummary:
+      allOf:
+        - $ref: "#/components/schemas/PostSummary"
+        - type: object
+          properties:
+            likesCount:
+              type: integer
+            commentsCount:
+              type: integer
+          required:
+            - likesCount
+            - commentsCount
+
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type:
+            - string
+            - "null"
+        name:
+          type:
+            - string
+            - "null"
+        email:
+          type: string
+        role:
+          type: string
+          enum: [user, admin, system]
+        status:
+          type: string
+          enum: [active, blocked]
+        followersCount:
+          type: integer
+        followingCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - role
+        - status
+        - followersCount
+        - followingCount
+        - createdAt
+
+    UserProfile:
+      allOf:
+        - $ref: "#/components/schemas/UserSummary"
+        - type: object
+          properties:
+            bio:
+              type:
+                - string
+                - "null"
+            avatarUrl:
+              type:
+                - string
+                - "null"
+
+    UserStatus:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type:
+            - string
+            - "null"
+        name:
+          type:
+            - string
+            - "null"
+        role:
+          type: string
+          enum: [user, admin, system]
+        status:
+          type: string
+          enum: [active, blocked]
+        blockedReason:
+          type:
+            - string
+            - "null"
+        blockedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+      required:
+        - id
+        - role
+        - status
+
+    HashtagSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        count:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - count
+        - createdAt
+
+    ReportedPostSummary:
+      type: object
+      properties:
+        postId:
+          type: string
+        caption:
+          type: string
+        postStatus:
+          type:
+            - string
+            - "null"
+          enum: [visible, hidden, deleted, null]
+        author:
+          type: string
+        authorUsername:
+          type:
+            - string
+            - "null"
+        reportCount:
+          type: integer
+        latestReportedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+      required:
+        - postId
+        - caption
+        - author
+        - reportCount
+
+    DashboardStatsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/DashboardStats"
+      required: [success, data]
+
+    PostsCountResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            total_posts:
+              type: integer
+          required: [total_posts]
+      required: [success, data]
+
+    PostListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            posts:
+              type: array
+              items:
+                $ref: "#/components/schemas/PostSummary"
+            count:
+              type: integer
+          required: [posts, count]
+      required: [success, data]
+
+    TopPostListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            posts:
+              type: array
+              items:
+                $ref: "#/components/schemas/TopPostSummary"
+            count:
+              type: integer
+          required: [posts, count]
+      required: [success, data]
+
+    UserListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            users:
+              type: array
+              items:
+                $ref: "#/components/schemas/UserSummary"
+            count:
+              type: integer
+          required: [users, count]
+      required: [success, data]
+
+    UserProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/UserProfile"
+      required: [success, data]
+
+    UserStatusResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: "#/components/schemas/UserStatus"
+      required: [success, data]
+
+    HashtagListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            hashtags:
+              type: array
+              items:
+                $ref: "#/components/schemas/HashtagSummary"
+            count:
+              type: integer
+          required: [hashtags, count]
+      required: [success, data]
+
+    ReportedPostListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            reports:
+              type: array
+              items:
+                $ref: "#/components/schemas/ReportedPostSummary"
+            count:
+              type: integer
+          required: [reports, count]
+      required: [success, data]

@@ -325,11 +325,8 @@ export class ChatService {
         `conv:${conversationId}`,
       );
 
-      // Persist Dify's conversation_id for memory continuity
-      if (
-        aiResult.conversationId &&
-        aiResult.conversationId !== conversation.difyConversationId
-      ) {
+      // Always persist Dify's conversation_id so memory is maintained correctly
+      if (aiResult.conversationId) {
         await this.conversationRepository.update(conversationId, {
           difyConversationId: aiResult.conversationId,
         });

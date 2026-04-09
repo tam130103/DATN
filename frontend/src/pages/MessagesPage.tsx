@@ -51,6 +51,7 @@ const MessagesPage: React.FC = () => {
   const [groupName, setGroupName] = useState('');
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const [isOpeningAssistant, setIsOpeningAssistant] = useState(false);
+  const [messagesError, setMessagesError] = useState<{ code: number | null; message: string } | null>(null);
 
   const loadConversations = useCallback(async () => {
     setIsLoadingConversations(true);
@@ -111,6 +112,7 @@ const MessagesPage: React.FC = () => {
   useEffect(() => {
     if (!selectedConversation) return;
     setIsLoadingMessages(true);
+    setMessagesError(null);
     chatService.getMessages(selectedConversation)
       .then((data) => {
         setMessages(data.reverse());
@@ -121,7 +123,17 @@ const MessagesPage: React.FC = () => {
           return { ...conv, lastMessage: { ...conv.lastMessage, isRead: true } };
         }));
       })
-      .catch(() => toast.error('Không thể tải tin nhắn.'))
+      .catch((err: any) => {
+        const status: number | null = err?.response?.status ?? err?.status ?? null;
+        if (status === 403) {
+          setMessagesError({ code: 403, message: 'Bạn không có quyền xem cuộc trò chuyện này.' });
+        } else if (status === 404) {
+          setMessagesError({ code: 404, message: 'Cuộc trò chuyện không tồn tại hoặc đã bị xoá.' });
+        } else {
+          setMessagesError({ code: status, message: 'Không thể tải tin nhắn. Vui lòng thử lại.' });
+          toast.error('Không thể tải tin nhắn.');
+        }
+      })
       .finally(() => setIsLoadingMessages(false));
     return () => { chatSocketService.leaveConversation(selectedConversation); };
   }, [selectedConversation, user?.id]);
@@ -292,7 +304,18 @@ const MessagesPage: React.FC = () => {
               </div>
 
               <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-                {isLoadingMessages ? <div className="flex h-full items-center justify-center"><p className="text-sm text-[var(--app-muted)]">Đang tải tin nhắn...</p></div> : messages.length === 0 ? (
+                {isLoadingMessages ? <div className="flex h-full items-center justify-center"><p className="text-sm text-[var(--app-muted)]">Đang tải tin nhắn...</p></div> : messagesError ? (
+                  <div className="flex h-full flex-col items-center justify-center text-center">
+                    <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-[var(--app-border)] bg-amber-50 text-amber-400">
+                      <svg viewBox="0 0 24 24" className="h-10 w-10" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                    </div>
+                    <p className="text-lg font-semibold text-[var(--app-text)]">{messagesError.code === 403 ? 'Không có quyền truy cập' : messagesError.code === 404 ? 'Không tìm thấy' : 'Có lỗi xảy ra'}</p>
+                    <p className="mt-2 max-w-sm text-sm leading-6 text-[var(--app-muted)]">{messagesError.message}</p>
+                    {messagesError.code === 403 ? (
+                      <button type="button" onClick={() => { setSelectedConversation(null); navigate('/messages'); }} className="mt-5 inline-flex min-h-[38px] items-center justify-center rounded-md border border-[var(--app-border)] bg-white px-4 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]">← Quay lại danh sách</button>
+                    ) : null}
+                  </div>
+                ) : messages.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center text-center">
                     <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-[var(--app-border)] bg-white text-[var(--app-muted)]"><ChatIcon /></div>
                     <p className="text-2xl font-semibold text-[var(--app-text)]">{getConversationName(selectedConv)}</p>
