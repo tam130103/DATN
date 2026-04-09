@@ -11,7 +11,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({ variant = 'full', classNam
       <img
         src="/humg-mark.svg"
         alt="HUMG"
-        className={className}
+        className={`${className} dark:invert dark:hue-rotate-180`}
       />
     );
   }
@@ -20,7 +20,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({ variant = 'full', classNam
     <img
       src="/logo.png"
       alt="HUMG"
-      className={className}
+      className={`${className} dark:invert dark:hue-rotate-180`}
     />
   );
 };
