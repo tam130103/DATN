@@ -406,14 +406,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
         </div>
 
         <div className="flex w-full flex-col bg-[var(--app-surface)] text-[var(--app-text)] md:w-[420px] md:border-l md:border-[var(--app-border)]">
-          <div className="flex flex-col border-b border-[var(--app-border)] px-5 py-4">
-            {localIsPinned && (
-              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-[var(--app-muted)]">
-                <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
-                Đã ghim
-              </div>
-            )}
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 border-b border-[var(--app-border)] px-5 py-4">
               <Avatar src={post.user?.avatarUrl} name={post.user?.name} username={post.user?.username} size="sm" ring />
               <div>
                 <div className="text-sm font-semibold text-[var(--app-text)]">{post.user?.username || post.user?.name || 'Thành viên'}</div>
@@ -422,10 +415,14 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                   {localIsEdited ? ' · Đã chỉnh sửa' : ''}
                 </div>
               </div>
-            </div>
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5 text-sm">
+            {localIsPinned && (
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--app-muted)]">
+                📌 Đã ghim
+              </div>
+            )}
             {isEditing ? (
               <div className="mb-4">
                 <textarea
