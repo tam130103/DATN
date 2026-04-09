@@ -64,19 +64,21 @@ export class UserController {
   @Get(':id/followers')
   getFollowers(
     @Param('id') id: string,
+    @CurrentUser() currentUser: any,
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
     @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
   ) {
-    return this.userService.getFollowers(id, page, limit);
+    return this.userService.getFollowers(id, page, limit, currentUser.id);
   }
 
   @Get(':id/following')
   getFollowing(
     @Param('id') id: string,
+    @CurrentUser() currentUser: any,
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
     @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
   ) {
-    return this.userService.getFollowing(id, page, limit);
+    return this.userService.getFollowing(id, page, limit, currentUser.id);
   }
 
   @Get(':username')

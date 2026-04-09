@@ -210,7 +210,7 @@ export class UserService {
     return !!follow;
   }
 
-  async getFollowers(userId: string, page = 1, limit = 20): Promise<User[]> {
+  async getFollowers(userId: string, page = 1, limit = 20, currentUserId?: string): Promise<any[]> {
     const follows = await this.followRepository.find({
       where: { followingId: userId },
       order: { createdAt: 'DESC' },
@@ -221,13 +221,26 @@ export class UserService {
     const followerIds = follows.map((f) => f.followerId);
     if (followerIds.length === 0) return [];
 
-    return this.userRepository
+    const users = await this.userRepository
       .createQueryBuilder('user')
       .where('user.id IN (:...ids)', { ids: followerIds })
       .getMany();
+
+    if (!currentUserId) return users;
+
+    const currentUserFollows = await this.followRepository.find({
+      where: { followerId: currentUserId },
+      select: ['followingId'],
+    });
+    const followingSet = new Set(currentUserFollows.map((f) => f.followingId));
+
+    return users.map((u) => ({
+      ...u,
+      isFollowing: followingSet.has(u.id),
+    }));
   }
 
-  async getFollowing(userId: string, page = 1, limit = 20): Promise<User[]> {
+  async getFollowing(userId: string, page = 1, limit = 20, currentUserId?: string): Promise<any[]> {
     const follows = await this.followRepository.find({
       where: { followerId: userId },
       order: { createdAt: 'DESC' },
@@ -238,10 +251,23 @@ export class UserService {
     const followingIds = follows.map((f) => f.followingId);
     if (followingIds.length === 0) return [];
 
-    return this.userRepository
+    const users = await this.userRepository
       .createQueryBuilder('user')
       .where('user.id IN (:...ids)', { ids: followingIds })
       .getMany();
+
+    if (!currentUserId) return users;
+
+    const currentUserFollows = await this.followRepository.find({
+      where: { followerId: currentUserId },
+      select: ['followingId'],
+    });
+    const followingSet = new Set(currentUserFollows.map((f) => f.followingId));
+
+    return users.map((u) => ({
+      ...u,
+      isFollowing: followingSet.has(u.id),
+    }));
   }
 
   async updateNotificationSettings(userId: string, notificationEnabled: boolean): Promise<void> {

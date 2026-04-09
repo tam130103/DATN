@@ -44,16 +44,18 @@ export const userService = {
   },
 
   getFollowers: async (userId: string, page = 1, limit = 20): Promise<User[]> => {
-    const response = await apiClient.get<User[]>(`/users/${userId}/followers`, {
+    const response = await apiClient.get<any>(`/users/${userId}/followers`, {
       params: { page, limit },
     });
-    return response.data;
+    const data = response.data;
+    return Array.isArray(data) ? data : (data?.items ?? data?.data ?? []);
   },
 
   getFollowing: async (userId: string, page = 1, limit = 20): Promise<User[]> => {
-    const response = await apiClient.get<User[]>(`/users/${userId}/following`, {
+    const response = await apiClient.get<any>(`/users/${userId}/following`, {
       params: { page, limit },
     });
-    return response.data;
+    const data = response.data;
+    return Array.isArray(data) ? data : (data?.items ?? data?.data ?? []);
   },
 };
