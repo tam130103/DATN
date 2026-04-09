@@ -73,6 +73,20 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
   const [showOptionsDropdown, setShowOptionsDropdown] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
 
+  const [localCaption, setLocalCaption] = useState(post.caption);
+  const [localIsEdited, setLocalIsEdited] = useState(post.isEdited || false);
+  const [localIsPinned, setLocalIsPinned] = useState(post.isPinned || false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editCaptionText, setEditCaptionText] = useState(post.caption);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  useEffect(() => {
+    setLocalCaption(post.caption);
+    setLocalIsEdited(post.isEdited || false);
+    setLocalIsPinned(post.isPinned || false);
+    setEditCaptionText(post.caption || '');
+  }, [post]);
+
   const media = useMemo(
     () => [...(post.media || [])].sort((a, b) => a.orderIndex - b.orderIndex),
     [post.media],
@@ -143,6 +157,40 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
     }
   };
 
+  const handleTogglePin = async () => {
+    try {
+      await postService.togglePin(post.id);
+      setLocalIsPinned(!localIsPinned);
+      toast.success(localIsPinned ? 'Đã bỏ ghim bài viết.' : 'Đã ghim bài viết.');
+    } catch {
+      toast.error('Không thể thao tác ghim.');
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editCaptionText?.trim()) {
+      toast.error('Nội dung không được để trống.');
+      return;
+    }
+    if (editCaptionText.trim() === localCaption) {
+      setIsEditing(false);
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      const updatedPost = await postService.updatePost(post.id, { caption: editCaptionText });
+      setLocalCaption(updatedPost.caption);
+      setLocalIsEdited(true);
+      setIsEditing(false);
+      toast.success('Đã cập nhật bài viết.');
+    } catch (error) {
+      toast.error(getApiMessage(error, 'Không thể sửa bài viết.'));
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   const handleSubmitComment = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!commentText.trim() || isSubmitting) return;
@@ -204,6 +252,117 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
         </button>
 
         <div className="relative flex w-full items-center justify-center bg-slate-950 md:flex-1">
+          <div className="absolute right-4 top-4 z-20 flex flex-col items-end">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(!showOptionsDropdown); }}
+              disabled={isDeleting}
+              className="rounded-full bg-black/70 p-2 text-white transition hover:bg-black disabled:opacity-50"
+              aria-label="Tùy chọn bài viết"
+            >
+              <DotsIcon className="h-5 w-5" />
+            </button>
+
+            {showOptionsDropdown && (
+              <>
+                <div 
+                  className="fixed inset-0 z-[60]" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowOptionsDropdown(false);
+                  }} 
+                />
+                <div className="absolute right-0 top-full mt-2 z-[70] w-[320px] rounded-xl bg-[var(--app-bg)] p-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] ring-1 ring-[var(--app-border)]">
+                  {isOwner ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); handleTogglePin(); }}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-800">
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-[var(--app-text)]">{localIsPinned ? 'Bỏ ghim bài viết' : 'Ghim bài viết'}</div>
+                          <div className="text-xs text-[var(--app-muted)]">{localIsPinned ? 'Gỡ bài này khỏi màn hình Profile của bạn.' : 'Đưa bài này lên đầu trang cá nhân của bạn.'}</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); setIsEditing(true); setEditCaptionText(localCaption); }}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-800">
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-[var(--app-text)]">Chỉnh sửa bài viết</div>
+                          <div className="text-xs text-[var(--app-muted)]">Cập nhật nội dung văn bản.</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); handleDelete(); }}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-800">
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-[var(--app-text)]">Xóa bài viết</div>
+                          <div className="text-xs text-[var(--app-muted)]">Gỡ bài viết này khỏi dòng thời gian.</div>
+                        </div>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); setShowReportModal(true); }}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-800">
+                          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-[var(--app-text)]">Báo cáo bài viết</div>
+                          <div className="text-xs text-[var(--app-muted)]">Chúng tôi sẽ không cho {authorLabel} biết ai đã báo cáo.</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); toast.success('Đã ẩn bài viết'); }}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-800">
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-[var(--app-text)]">Ẩn bài viết</div>
+                          <div className="text-xs text-[var(--app-muted)]">Ẩn bớt các bài viết tương tự.</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); toast.success(`Đã bỏ theo dõi ${authorLabel}`); }}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-800">
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-[var(--app-text)]">Bỏ theo dõi {authorLabel}</div>
+                          <div className="text-xs text-[var(--app-muted)]">Không nhìn thấy bài viết nữa nhưng vẫn là bạn bè.</div>
+                        </div>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
           {cover ? (
             isVideo ? (
               <video
@@ -252,104 +411,59 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
               <Avatar src={post.user?.avatarUrl} name={post.user?.name} username={post.user?.username} size="sm" ring />
               <div>
                 <div className="text-sm font-semibold text-[var(--app-text)]">{post.user?.username || post.user?.name || 'Thành viên'}</div>
-                <div className="text-xs text-[var(--app-muted)]">{createdAt}</div>
+                <div className="text-xs text-[var(--app-muted)]">
+                  {createdAt}
+                  {localIsEdited ? ' · Đã chỉnh sửa' : ''}
+                </div>
               </div>
             </div>
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowOptionsDropdown(!showOptionsDropdown)}
-                disabled={isDeleting}
-                className="rounded-full p-2 text-[var(--app-muted)] transition hover:bg-[var(--app-bg-soft)] hover:text-[var(--app-text)] disabled:opacity-50"
-                aria-label="Tùy chọn bài viết"
-              >
-                <DotsIcon className="h-5 w-5" />
-              </button>
-
-              {showOptionsDropdown && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-[60]" 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowOptionsDropdown(false);
-                    }} 
-                  />
-                  <div className="absolute right-0 top-full mt-1 z-[70] w-[320px] rounded-xl bg-[var(--app-bg)] p-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] ring-1 ring-[var(--app-border)]">
-                    {isOwner ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); handleDelete(); }}
-                          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
-                        >
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-800">
-                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                          </div>
-                          <div>
-                            <div className="font-semibold text-[var(--app-text)]">Xóa bài viết</div>
-                            <div className="text-xs text-[var(--app-muted)]">Gỡ bài viết này khỏi dòng thời gian.</div>
-                          </div>
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); setShowReportModal(true); }}
-                          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
-                        >
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-800">
-                            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-                          </div>
-                          <div>
-                            <div className="font-semibold text-[var(--app-text)]">Báo cáo bài viết</div>
-                            <div className="text-xs text-[var(--app-muted)]">Chúng tôi sẽ không cho {authorLabel} biết ai đã báo cáo.</div>
-                          </div>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); toast.success('Đã ẩn bài viết'); }}
-                          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
-                        >
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-800">
-                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                          </div>
-                          <div>
-                            <div className="font-semibold text-[var(--app-text)]">Ẩn bài viết</div>
-                            <div className="text-xs text-[var(--app-muted)]">Ẩn bớt các bài viết tương tự.</div>
-                          </div>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); toast.success(`Đã bỏ theo dõi ${authorLabel}`); }}
-                          className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
-                        >
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-800">
-                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                          </div>
-                          <div>
-                            <div className="font-semibold text-[var(--app-text)]">Bỏ theo dõi {authorLabel}</div>
-                            <div className="text-xs text-[var(--app-muted)]">Không nhìn thấy bài viết nữa nhưng vẫn là bạn bè.</div>
-                          </div>
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
+            {localIsPinned && (
+              <div className="text-xs font-semibold text-[var(--app-muted)]">
+                📌 Đã ghim
+              </div>
+            )}
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5 text-sm">
-            <PostCaption
-              text={post.caption}
-              prefixLabel={authorLabel}
-              prefixTo={profilePath}
-              collapsedLength={320}
-              className="flex-1"
-              textClassName="text-[var(--app-text)] leading-6"
-            />
+            {isEditing ? (
+              <div className="mb-4">
+                <textarea
+                  className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-bg-soft)] p-3 text-sm text-[var(--app-text)] focus:border-[var(--app-primary)] focus:outline-none"
+                  rows={4}
+                  value={editCaptionText}
+                  onChange={(e) => setEditCaptionText(e.target.value)}
+                  disabled={isSavingEdit}
+                  placeholder="Nhập nội dung bài viết..."
+                />
+                <div className="mt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    className="rounded-md px-3 py-1.5 text-sm font-semibold text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]"
+                    onClick={() => setIsEditing(false)}
+                    disabled={isSavingEdit}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md bg-[var(--app-primary)] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[var(--app-primary-strong)] disabled:opacity-50"
+                    onClick={handleSaveEdit}
+                    disabled={isSavingEdit}
+                  >
+                    {isSavingEdit ? 'Đang lưu...' : 'Lưu xong'}
+                  </button>
+                </div>
+              </div>
+            ) : localCaption?.trim() ? (
+              <PostCaption
+                text={localCaption}
+                prefixLabel={authorLabel}
+                prefixTo={profilePath}
+                collapsedLength={320}
+                className="flex-1"
+                textClassName="text-[var(--app-text)] leading-6"
+              />
+            ) : null}
 
             {isLoadingComments ? (
               <p className="text-xs font-semibold text-[var(--app-muted)]">Đang tải bình luận...</p>
