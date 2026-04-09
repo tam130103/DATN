@@ -91,8 +91,13 @@ export class AIService implements OnModuleInit {
         this.logger.log('[AI] Starting new Dify conversation');
       }
 
-      // Ensure apiUrl doesn't end with a slash to prevent double-slash issues
-      const baseApiUrl = (this.configService.get<string>('DIFY_API_URL') || 'https://api.dify.ai/v1').replace(/\/+$/, '');
+      // Standardize Dify API URL: 
+      // 1. Remove trailing slashes
+      // 2. Ensure /v1 exists (Dify standard)
+      let baseApiUrl = (this.configService.get<string>('DIFY_API_URL') || 'https://api.dify.ai/v1').replace(/\/+$/, '');
+      if (!baseApiUrl.endsWith('/v1') && baseApiUrl.includes('dify.ai')) {
+        baseApiUrl += '/v1';
+      }
 
       const res = await axios.post(`${baseApiUrl}/chat-messages`, payload, {
         headers: {
