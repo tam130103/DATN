@@ -13,9 +13,16 @@ export interface AdminStats {
   openReports: number;
 }
 
+export interface AdminDailyGrowth {
+  date: string;
+  users: number;
+  posts: number;
+}
+
 export interface AdminDashboardResponse {
   stats: AdminStats;
   recentReports: AdminReport[];
+  dailyGrowth: AdminDailyGrowth[];
 }
 
 export interface AdminUser {

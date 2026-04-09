@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike, DataSource } from 'typeorm';
+import { Repository, ILike, DataSource, MoreThanOrEqual } from 'typeorm';
 import { User, UserStatus } from '../user/entities/user.entity';
 import { Post, PostStatus } from '../post/entities/post.entity';
 import { Comment, CommentStatus } from '../engagement/entities/comment.entity';
@@ -52,6 +52,59 @@ export class AdminService {
       relations: ['reporter'],
     });
 
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const recentUsers = await this.userRepository.find({
+      select: ['createdAt'],
+      where: { createdAt: MoreThanOrEqual(sevenDaysAgo) }
+    });
+
+    const recentPosts = (await this.postRepository.find({
+      select: ['createdAt'],
+      where: { createdAt: MoreThanOrEqual(sevenDaysAgo) }
+    })) as Post[];
+
+    const growthDataMap = new Map<string, { date: string; users: number; posts: number }>();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(sevenDaysAgo.getTime());
+      d.setDate(d.getDate() + i);
+      
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      
+      growthDataMap.set(dateStr, { date: `${day}/${month}`, users: 0, posts: 0 });
+    }
+
+    recentUsers.forEach(u => {
+      if (!u.createdAt) return;
+      const d = new Date(u.createdAt);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      if (growthDataMap.has(dateStr)) {
+        growthDataMap.get(dateStr)!.users += 1;
+      }
+    });
+
+    recentPosts.forEach(p => {
+      if (!p.createdAt) return;
+      const d = new Date(p.createdAt);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      if (growthDataMap.has(dateStr)) {
+        growthDataMap.get(dateStr)!.posts += 1;
+      }
+    });
+
+    const dailyGrowth = Array.from(growthDataMap.values());
+
     return {
       stats: {
         totalUsers,
@@ -64,6 +117,7 @@ export class AdminService {
         openReports,
       },
       recentReports,
+      dailyGrowth,
     };
   }
 

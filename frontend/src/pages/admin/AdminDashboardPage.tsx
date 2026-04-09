@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { adminService, AdminDashboardResponse } from '../../services/admin.service';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const AdminDashboardPage: React.FC = () => {
   const [data, setData] = useState<AdminDashboardResponse | null>(null);
@@ -42,6 +43,28 @@ const AdminDashboardPage: React.FC = () => {
           </div>
         ))}
       </div>
+
+      {data && data.dailyGrowth && data.dailyGrowth.length > 0 && (
+        <div className="admin-table-container" style={{ padding: '24px 20px', marginTop: '24px', overflow: 'hidden' }}>
+          <h3 className="admin-section-title" style={{ marginBottom: '24px' }}>📈 Tăng trưởng 7 ngày qua</h3>
+          <div style={{ width: '100%', height: 350 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data.dailyGrowth}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#2d2d3a" vertical={false} />
+                <XAxis dataKey="date" stroke="#94a3b8" tick={{ fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <YAxis stroke="#94a3b8" tick={{ fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1e1e2d', borderColor: '#2d2d3a', borderRadius: '8px', color: '#f8fafc' }}
+                  itemStyle={{ fontWeight: 'bold' }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                <Line type="monotone" name="Người dùng mới" dataKey="users" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                <Line type="monotone" name="Bài viết mới" dataKey="posts" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {data && data.recentReports.length > 0 && (
         <div className="admin-table-container">

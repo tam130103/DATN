@@ -6,6 +6,7 @@ import { chatSocketService } from '../../services/chat-socket.service';
 import { notificationService } from '../../services/notification.service';
 import { Avatar } from '../common/Avatar';
 import { BrandLogo } from '../branding/BrandLogo';
+import { ThemeToggle } from '../common/ThemeToggle';
 
 interface AppShellProps {
   title?: string;
@@ -286,6 +287,11 @@ export const AppShell: React.FC<AppShellProps> = ({
               </div>
             ) : null}
 
+            <div className="flex items-center justify-between px-3 pb-2">
+              <span className="hidden xl:inline text-sm font-medium text-[var(--app-text)]">Giao diện</span>
+              <ThemeToggle />
+            </div>
+
             <button
               type="button"
               onClick={logout}
@@ -321,6 +327,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                 {unreadNotifications} thông báo
               </Link>
             ) : null}
+            <ThemeToggle />
             <Link to={profilePath}>
               <Avatar
                 src={user?.avatarUrl}

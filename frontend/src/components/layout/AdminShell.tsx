@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { ThemeToggle } from '../common/ThemeToggle';
 import './AdminShell.css';
 
 const AdminShell: React.FC = () => {
@@ -57,6 +58,13 @@ const AdminShell: React.FC = () => {
         </nav>
 
         <div className="admin-sidebar-footer">
+          <div className="admin-nav-item" style={{justifyContent: 'space-between', cursor: 'default'}}>
+             <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                <span className="nav-icon">🌓</span>
+                <span>Giao diện</span>
+             </div>
+             <ThemeToggle />
+          </div>
           <NavLink to="/" className="admin-nav-item">
             <span className="nav-icon">🏠</span>
             <span>Về trang chủ</span>
