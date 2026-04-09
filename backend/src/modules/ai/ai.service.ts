@@ -231,7 +231,7 @@ export class AIService implements OnModuleInit {
     );
   }
 
-  async generateCaption(prompt: string, tone = 'tu nhien'): Promise<string> {
+  async generateCaption(prompt: string, tone = 'tự nhiên'): Promise<string> {
     const apiKey = this.configService.get<string>('DIFY_CAPTION_WORKFLOW_KEY');
     const apiUrl =
       this.configService.get<string>('DIFY_API_URL') || 'https://api.dify.ai/v1';
@@ -255,7 +255,7 @@ export class AIService implements OnModuleInit {
         {
           inputs: {
             topic: normalizedPrompt,
-            tone: tone || 'tu nhien',
+            tone: tone || 'tự nhiên',
           },
           response_mode: 'blocking',
           user: 'datn-user-123',
@@ -268,13 +268,18 @@ export class AIService implements OnModuleInit {
         },
       );
 
-      const outputs = response.data?.data?.outputs;
-      if (!outputs) {
+      const data = response.data?.data;
+      if (!data || !data.outputs) {
         throw new Error(
           'Dify tra ve cau truc khong hop le (thieu data.outputs).',
         );
       }
 
+      if (data.status === 'failed') {
+        throw new Error(`Dify workflow failed: ${data.error}`);
+      }
+
+      const outputs = data.outputs;
       let resultText = '';
       for (const key in outputs) {
         if (typeof outputs[key] === 'string' && outputs[key].trim()) {

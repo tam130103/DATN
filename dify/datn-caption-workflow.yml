@@ -1,0 +1,136 @@
+app:
+  description: >-
+    Workflow tạo caption tự động cho bài đăng trên DATN Social.
+    Người dùng chỉ cần nhập chủ đề / từ khóa, AI sẽ viết một đoạn trạng thái
+    (caption) dài, tự nhiên, phong phú bằng tiếng Việt, phù hợp để đăng lên mạng xã hội.
+  icon: "✍️"
+  icon_background: "#E4FBCC"
+  mode: workflow
+  name: "DATN Caption Generator"
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.2.0
+
+workflow:
+  graph:
+    edges:
+      - data:
+          sourceType: start
+          targetType: llm
+        id: start-llm
+        source: start
+        target: llm-caption
+        type: custom
+      - data:
+          sourceType: llm
+          targetType: end
+        id: llm-end
+        source: llm-caption
+        target: end
+        type: custom
+    nodes:
+      # ─── START ────────────────────────────────────────────────────────
+      - data:
+          title: Bắt đầu
+          type: start
+          variables:
+            - label: Chủ đề / Từ khóa
+              max_length: 1000
+              options: []
+              required: true
+              type: text-input
+              variable: topic
+            - label: Giọng điệu
+              max_length: 100
+              options:
+                - tự nhiên
+                - hài hước
+                - truyền cảm hứng
+                - chuyên nghiệp
+                - Gen Z
+                - lãng mạn
+                - học thuật
+              required: false
+              type: select
+              variable: tone
+              default: tự nhiên
+        height: 90
+        id: start
+        position:
+          x: 80
+          y: 282
+        type: start
+        width: 244
+
+      # ─── LLM: Sinh Caption ───────────────────────────────────────────
+      - data:
+          title: Sinh Caption
+          type: llm
+          model:
+            completion_params:
+              temperature: 0.85
+              top_p: 0.95
+              max_tokens: 1024
+              frequency_penalty: 0.3
+              presence_penalty: 0.4
+            mode: chat
+            name: gemini-2.5-flash
+            provider: langgenius/gemini/google
+          prompt_template:
+            - role: system
+              text: |
+                Bạn là một chuyên gia sáng tạo nội dung mạng xã hội tiếng Việt cho nền tảng DATN Social — một mạng xã hội dành cho sinh viên và cộng đồng trẻ.
+
+                NHIỆM VỤ:
+                Viết MỘT đoạn caption (trạng thái) hoàn chỉnh để đăng lên mạng xã hội, dựa trên chủ đề hoặc từ khóa mà người dùng cung cấp.
+
+                QUY TẮC BẮT BUỘC:
+                1. Viết bằng tiếng Việt tự nhiên, đúng ngữ pháp, có cảm xúc.
+                2. Độ dài: 80–250 từ (không quá ngắn, không quá dài).
+                3. Giọng điệu phải phù hợp với tham số "tone" được truyền vào:
+                   - "tự nhiên": như đang chia sẻ với bạn bè
+                   - "hài hước": vui nhộn, dí dỏm, có thể dùng tiếng lóng nhẹ
+                   - "truyền cảm hứng": tích cực, tạo động lực
+                   - "chuyên nghiệp": lịch sự, trang trọng
+                   - "Gen Z": trend, xen lẫn từ tiếng Anh, emoji nhiều
+                   - "lãng mạn": mềm mại, giàu cảm xúc
+                   - "học thuật": nghiêm túc, có chiều sâu kiến thức
+                4. Có thể dùng emoji phù hợp (nhưng không lạm dụng).
+                5. Kết thúc bằng 1–2 câu hỏi mở hoặc call-to-action nhẹ nhàng để tăng tương tác.
+                6. KHÔNG bao gồm hashtag — hệ thống sẽ tự gợi ý hashtag riêng.
+                7. KHÔNG bao gồm tiêu đề, nhãn "Caption:", hay bất kỳ metadata nào.
+                8. KHÔNG xuất markdown, code block, hay JSON — CHỈ xuất nội dung caption thuần túy.
+                9. KHÔNG lặp lại đề bài hoặc giải thích lại yêu cầu.
+                10. Tập trung vào nội dung CÓ GIÁ TRỊ — chia sẻ góc nhìn, trải nghiệm, hoặc thông tin hữu ích xoay quanh chủ đề.
+            - role: user
+              text: |
+                Chủ đề: {{#start.topic#}}
+                Giọng điệu: {{#start.tone#}}
+          context:
+            enabled: false
+          vision:
+            enabled: false
+        height: 160
+        id: llm-caption
+        position:
+          x: 400
+          y: 282
+        type: llm
+        width: 244
+
+      # ─── END ──────────────────────────────────────────────────────────
+      - data:
+          title: Kết thúc
+          type: end
+          outputs:
+            - value_selector:
+                - llm-caption
+                - text
+              variable: caption
+        height: 90
+        id: end
+        position:
+          x: 720
+          y: 282
+        type: end
+        width: 244
