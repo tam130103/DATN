@@ -217,3 +217,13 @@ select:focus {
     height: 100vh;
   }
 }
+
+@keyframes blinkBg {
+  0% { background-color: var(--app-primary-soft); }
+  50% { background-color: transparent; }
+  100% { background-color: var(--app-primary-soft); }
+}
+
+.animate-blink {
+  animation: blinkBg 1.2s ease-in-out 2;
+}

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AppShell } from '../components/layout/AppShell';
 import { Avatar } from '../components/common/Avatar';
@@ -46,6 +46,7 @@ const iconForType = (type: string) => {
 };
 
 const NotificationsPage: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -87,15 +88,28 @@ const NotificationsPage: React.FC = () => {
   };
 
   const handleMarkAsRead = async (id: string) => {
+    let targetUrl = '';
+    const notification = notifications.find((n) => n.id === id);
+    if (notification) {
+      if (notification.type === 'LIKE' && notification.data?.postId) {
+        targetUrl = `/posts/${notification.data.postId}`;
+      } else if (notification.type === 'COMMENT' && notification.data?.postId) {
+        targetUrl = `/posts/${notification.data.postId}?commentId=${notification.data?.commentId || ''}`;
+      } else if (notification.type === 'FOLLOW') {
+        targetUrl = `/${notification.sender.username || notification.sender.id}`;
+      }
+    }
+
     try {
       await notificationService.markAsReadHttp(id);
       setNotifications((prev) =>
-        prev.map((notification) =>
-          notification.id === id ? { ...notification, isRead: true } : notification,
+        prev.map((n) =>
+          n.id === id ? { ...n, isRead: true } : n,
         ),
       );
+      if (targetUrl) navigate(targetUrl);
     } catch {
-      toast.error('Không thể cập nhật thông báo.');
+      if (targetUrl) navigate(targetUrl);
     }
   };
 

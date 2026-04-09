@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Comment, Post, User } from '../types';
 import { engagementService } from '../services/engagement.service';
@@ -98,6 +98,10 @@ const iconButtonClass =
   'inline-flex items-center justify-center text-[var(--app-text)] transition hover:opacity-70';
 
 export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const targetCommentId = searchParams.get('commentId');
+
   const { user } = useAuth();
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [liked, setLiked] = useState(post.liked || false);
@@ -121,6 +125,28 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
     [post.media],
   );
   const currentMedia = media[currentMediaIndex] ?? media[0];
+
+  useEffect(() => {
+    if (targetCommentId && !showComments) {
+      loadComments();
+    }
+  }, [targetCommentId, showComments, post.id]);
+
+  useEffect(() => {
+    if (targetCommentId && showComments && comments.length > 0) {
+      const timeoutId = setTimeout(() => {
+        const el = document.getElementById(`comment-${targetCommentId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('animate-blink');
+          setTimeout(() => {
+            el.classList.remove('animate-blink');
+          }, 3000);
+        }
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [targetCommentId, showComments, comments]);
 
   const handleLikeToggle = async () => {
     const originalLiked = liked;
@@ -488,7 +514,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
               <p className="text-sm text-[var(--app-muted)]">Chưa có bình luận nào.</p>
             ) : (
               comments.map((comment) => (
-                <div key={comment.id} className="flex items-start gap-3">
+                <div key={comment.id} id={`comment-${comment.id}`} className="flex items-start gap-3 rounded-lg p-2 transition-colors">
                   <Avatar
                     src={comment.user?.avatarUrl}
                     name={comment.user?.name}
