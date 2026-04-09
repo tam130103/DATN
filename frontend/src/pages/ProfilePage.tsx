@@ -547,8 +547,8 @@ const ProfilePage: React.FC = () => {
             </div>
 
             {post.isPinned && (
-              <div className="absolute right-2 top-2">
-                <svg className="h-5 w-5 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+              <div className="absolute right-2 top-2 text-lg leading-none drop-shadow-md">
+                📌
               </div>
             )}
 
