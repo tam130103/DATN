@@ -89,7 +89,7 @@ export const PostCaption: React.FC<PostCaptionProps> = ({
         ) : null}
         {content}
         {shouldCollapse && !isExpanded ? (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white via-white/90 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white via-white/90 to-transparent dark:from-black dark:via-black/90" />
         ) : null}
       </div>
 
