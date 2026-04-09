@@ -581,25 +581,32 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
           </div>
         ) : null}
 
-        {/* Action buttons */}
+        {/* Action buttons — Instagram style */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center">
+            {/* Like */}
             <button type="button" onClick={handleLikeToggle} className={iconButtonClass}>
               <HeartIcon filled={liked} />
             </button>
-            <span className="min-w-[1.5rem] text-sm font-semibold text-[var(--app-text)]">{likesCount.toLocaleString()}</span>
+            {likesCount > 0 && (
+              <span className="ml-1 text-[13px] font-semibold text-[var(--app-text)]">{likesCount.toLocaleString()}</span>
+            )}
 
+            {/* Comment */}
             <button
               type="button"
               onClick={loadComments}
               disabled={isLoadingComments}
-              className={iconButtonClass}
+              className={`${iconButtonClass} ml-3`}
             >
               <CommentIcon />
             </button>
-            <span className="min-w-[1.5rem] text-sm font-semibold text-[var(--app-text)]">{commentsCount.toLocaleString()}</span>
+            {commentsCount > 0 && (
+              <span className="ml-1 text-[13px] font-semibold text-[var(--app-text)]">{commentsCount.toLocaleString()}</span>
+            )}
 
-            <button type="button" onClick={handleShare} className={iconButtonClass}>
+            {/* Share */}
+            <button type="button" onClick={handleShare} className={`${iconButtonClass} ml-3`}>
               <ShareIcon />
             </button>
           </div>
@@ -609,13 +616,15 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={loadComments}
-          className="mt-1 text-sm text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
-        >
-          {commentsCount > 0 ? `Xem tất cả ${commentsCount} bình luận` : 'Thêm bình luận'}
-        </button>
+        {commentsCount > 0 && (
+          <button
+            type="button"
+            onClick={loadComments}
+            className="mt-2 text-sm text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
+          >
+            Xem tất cả {commentsCount} bình luận
+          </button>
+        )}
 
         {showComments ? (
           <div className="mt-3 space-y-2">
