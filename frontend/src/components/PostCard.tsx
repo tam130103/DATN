@@ -538,7 +538,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
         </div>
       ) : null}
 
-      <div className="px-4 py-3">
+      <div className="px-3 pt-1 pb-3">
         {/* Caption above action buttons */}
         {isEditing ? (
           <div className="mb-3">

@@ -455,8 +455,6 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
             ) : localCaption?.trim() ? (
               <PostCaption
                 text={localCaption}
-                prefixLabel={authorLabel}
-                prefixTo={profilePath}
                 collapsedLength={320}
                 className="flex-1"
                 textClassName="text-[var(--app-text)] leading-6"
