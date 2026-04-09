@@ -12,7 +12,7 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { Follow } from '../user/entities/follow.entity';
 import { User } from '../user/entities/user.entity';
 import { Like } from '../engagement/entities/like.entity';
-import { Comment } from '../engagement/entities/comment.entity';
+import { Comment, CommentStatus } from '../engagement/entities/comment.entity';
 import { SavedPost } from '../engagement/entities/saved-post.entity';
 import { AIService } from '../ai/ai.service';
 
@@ -396,7 +396,7 @@ export class PostService {
       }),
       this.likeRepository.find({ where: { postId: In(postIds) } }),
       this.commentRepository.find({
-        where: { postId: In(postIds) },
+        where: { postId: In(postIds), status: CommentStatus.VISIBLE },
         select: ['id', 'postId'],
       }),
       viewerId
