@@ -91,7 +91,10 @@ export class AIService implements OnModuleInit {
         this.logger.log('[AI] Starting new Dify conversation');
       }
 
-      const res = await axios.post(`${apiUrl}/chat-messages`, payload, {
+      // Ensure apiUrl doesn't end with a slash to prevent double-slash issues
+      const baseApiUrl = (this.configService.get<string>('DIFY_API_URL') || 'https://api.dify.ai/v1').replace(/\/+$/, '');
+
+      const res = await axios.post(`${baseApiUrl}/chat-messages`, payload, {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
@@ -118,8 +121,10 @@ export class AIService implements OnModuleInit {
         conversationId: conversationIdOut,
       };
     } catch (error: any) {
+      const errorData = error?.response?.data;
+      const errorStatus = error?.response?.status;
       this.logger.error(
-        `AI Assistant error: ${error?.response?.data ? JSON.stringify(error.response.data) : error?.message || error}`,
+        `AI Assistant error [${errorStatus || 'unknown'}]: ${errorData ? JSON.stringify(errorData) : error?.message || error}`,
       );
       throw new ServiceUnavailableException('AI Assistant tạm thời không khả dụng.');
     }

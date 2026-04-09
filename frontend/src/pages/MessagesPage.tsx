@@ -293,49 +293,75 @@ const MessagesPage: React.FC = () => {
             </div>
           </div>
 
-          {selectedConv ? (
-            <div className={`flex min-w-0 flex-1 flex-col bg-[#fafafa] ${selectedConversation ? 'flex' : 'hidden lg:flex'}`}>
-              <div className="border-b border-[var(--app-border)] bg-white px-4 py-4 sm:px-5">
-                <div className="flex items-center gap-3">
-                  <button type="button" onClick={() => { setSelectedConversation(null); navigate('/messages'); }} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--app-border)] bg-white text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)] lg:hidden"><ArrowLeftIcon /></button>
-                  <div className="relative"><Avatar src={selectedConv.members[0]?.avatarUrl} name={selectedConv.members[0]?.name || selectedConv.name} username={selectedConv.members[0]?.username} size="md" ring />{selectedConv.members.some((m) => onlineUsers.has(m.id)) ? <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" /> : null}</div>
-                  <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-base font-semibold text-[var(--app-text)]">{getConversationName(selectedConv)}</p>{selectedConv.isGroup ? <span className="rounded-full bg-[var(--app-bg-soft)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">Nhóm</span> : null}</div><p className="mt-1 text-sm text-[var(--app-muted)]">{getConversationSubtitle(selectedConv)}</p></div>
+          {selectedConversation ? (
+            <div className={`flex min-w-0 flex-1 flex-col bg-[#fafafa] lg:flex`}>
+              {selectedConv ? (
+                <div className="border-b border-[var(--app-border)] bg-white px-4 py-4 sm:px-5">
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => { setSelectedConversation(null); navigate('/messages'); }} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--app-border)] bg-white text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)] lg:hidden"><ArrowLeftIcon /></button>
+                    <div className="relative"><Avatar src={selectedConv.members[0]?.avatarUrl} name={selectedConv.members[0]?.name || selectedConv.name} username={selectedConv.members[0]?.username} size="md" ring />{selectedConv.members.some((m) => onlineUsers.has(m.id)) ? <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" /> : null}</div>
+                    <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-base font-semibold text-[var(--app-text)]">{getConversationName(selectedConv)}</p>{selectedConv.isGroup ? <span className="rounded-full bg-[var(--app-bg-soft)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">Nhóm</span> : null}</div><p className="mt-1 text-sm text-[var(--app-muted)]">{getConversationSubtitle(selectedConv)}</p></div>
+                  </div>
                 </div>
-              </div>
+              ) : !messagesError && !isLoadingMessages ? (
+                // If not in sidebar, not loading messages, and no error yet, show header with loading or generic info
+                <div className="border-b border-[var(--app-border)] bg-white px-4 py-4 sm:px-5">
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => { setSelectedConversation(null); navigate('/messages'); }} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--app-border)] bg-white text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)] lg:hidden"><ArrowLeftIcon /></button>
+                    <div className="h-10 w-10 animate-pulse rounded-full bg-[var(--app-bg-soft)]" />
+                    <div className="flex-1 space-y-2"><div className="h-4 w-32 animate-pulse rounded bg-[var(--app-bg-soft)]" /><div className="h-3 w-20 animate-pulse rounded bg-[var(--app-bg-soft)]" /></div>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-                {isLoadingMessages ? <div className="flex h-full items-center justify-center"><p className="text-sm text-[var(--app-muted)]">Đang tải tin nhắn...</p></div> : messagesError ? (
+                {isLoadingMessages ? (
+                  <div className="flex h-full items-center justify-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--app-primary)] border-t-transparent" />
+                      <p className="text-sm text-[var(--app-muted)]">Đang tải tin nhắn...</p>
+                    </div>
+                  </div>
+                ) : messagesError ? (
                   <div className="flex h-full flex-col items-center justify-center text-center">
                     <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-[var(--app-border)] bg-amber-50 text-amber-400">
                       <svg viewBox="0 0 24 24" className="h-10 w-10" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
                     </div>
-                    <p className="text-lg font-semibold text-[var(--app-text)]">{messagesError.code === 403 ? 'Không có quyền truy cập' : messagesError.code === 404 ? 'Không tìm thấy' : 'Có lỗi xảy ra'}</p>
+                    <p className="text-xl font-semibold text-[var(--app-text)]">
+                      {messagesError.code === 403 ? 'Không có quyền truy cập' : messagesError.code === 404 ? 'Không tìm thấy cuộc trò chuyện' : 'Có lỗi xảy ra'}
+                    </p>
                     <p className="mt-2 max-w-sm text-sm leading-6 text-[var(--app-muted)]">{messagesError.message}</p>
-                    {messagesError.code === 403 ? (
-                      <button type="button" onClick={() => { setSelectedConversation(null); navigate('/messages'); }} className="mt-5 inline-flex min-h-[38px] items-center justify-center rounded-md border border-[var(--app-border)] bg-white px-4 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]">← Quay lại danh sách</button>
-                    ) : null}
+                    <button type="button" onClick={() => { setSelectedConversation(null); navigate('/messages'); }} className="mt-6 inline-flex min-h-[40px] items-center justify-center rounded-md bg-[var(--app-primary)] px-6 text-sm font-semibold text-white transition hover:bg-[var(--app-primary-strong)]">Quay lại Tin nhắn</button>
                   </div>
                 ) : messages.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center text-center">
                     <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-[var(--app-border)] bg-white text-[var(--app-muted)]"><ChatIcon /></div>
-                    <p className="text-2xl font-semibold text-[var(--app-text)]">{getConversationName(selectedConv)}</p>
+                    <p className="text-2xl font-semibold text-[var(--app-text)]">{selectedConv ? getConversationName(selectedConv) : 'Cuộc trò chuyện'}</p>
                     <p className="mt-3 max-w-md text-sm leading-6 text-[var(--app-muted)]">Hãy nhắn tin để bắt đầu cuộc trò chuyện.</p>
                   </div>
-                ) : <div className="space-y-3">{messages.map((msg, idx) => {
-                  const isMine = msg.senderId === user?.id;
-                  const showAvatar = !isMine && (idx === 0 || messages[idx - 1]?.senderId !== msg.senderId);
-                  const isAiMessage = !isMine && msg.sender?.username === 'datn_fb';
-                  return <div key={msg.id} className={`flex items-end gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>{!isMine ? <div className="mb-1 h-7 w-7 flex-shrink-0">{showAvatar ? <Avatar src={msg.sender?.avatarUrl} name={msg.sender?.name} username={msg.sender?.username} size="xs" /> : null}</div> : null}<div className="group max-w-[82%] sm:max-w-[70%]"><div className={`rounded-[22px] px-4 py-3 text-sm leading-6 ${isMine ? 'rounded-br-[8px] bg-[var(--app-primary)] text-white' : 'rounded-bl-[8px] border border-[var(--app-border)] bg-white text-[var(--app-text)]'}`}>{isAiMessage ? <ReactMarkdown components={{ p: ({children}) => <p className="mb-2 last:mb-0">{children}</p>, strong: ({children}) => <strong className="font-semibold">{children}</strong>, em: ({children}) => <em className="italic">{children}</em>, ul: ({children}) => <ul className="my-1 ml-4 list-disc space-y-1">{children}</ul>, ol: ({children}) => <ol className="my-1 ml-4 list-decimal space-y-1">{children}</ol>, li: ({children}) => <li className="leading-6">{children}</li>, h1: ({children}) => <h1 className="mb-1 text-base font-bold">{children}</h1>, h2: ({children}) => <h2 className="mb-1 text-sm font-bold">{children}</h2>, h3: ({children}) => <h3 className="mb-1 text-sm font-semibold">{children}</h3>, a: ({href, children}) => <a href={href} className="underline text-blue-600" target="_blank" rel="noreferrer">{children}</a>, code: ({children}) => <code className="rounded bg-gray-100 px-1 font-mono text-xs text-gray-800">{children}</code>, blockquote: ({children}) => <blockquote className="border-l-4 border-gray-300 pl-3 italic text-gray-600">{children}</blockquote>, }}>{msg.content}</ReactMarkdown> : msg.content}</div>{msg.mediaUrl ? <img src={msg.mediaUrl} alt="" className="mt-2 max-h-60 rounded-lg object-cover" /> : null}<p className="mt-1 px-1 text-[11px] text-[var(--app-muted)] opacity-0 transition group-hover:opacity-100">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p></div></div>;
-                })}{typingSummary ? <div className="flex items-end gap-2"><div className="h-7 w-7" /><div className="rounded-[22px] rounded-bl-[8px] border border-[var(--app-border)] bg-white px-4 py-3"><div className="flex gap-1"><span className="h-2 w-2 animate-bounce rounded-full bg-[var(--app-muted)]" style={{ animationDelay: '0ms' }} /><span className="h-2 w-2 animate-bounce rounded-full bg-[var(--app-muted)]" style={{ animationDelay: '150ms' }} /><span className="h-2 w-2 animate-bounce rounded-full bg-[var(--app-muted)]" style={{ animationDelay: '300ms' }} /></div><p className="mt-2 text-xs text-[var(--app-muted)]">{typingSummary} đang nhắn...</p></div></div> : null}<div ref={messagesEndRef} /></div>}
+                ) : (
+                  <div className="space-y-3">
+                    {messages.map((msg, idx) => {
+                      const isMine = msg.senderId === user?.id;
+                      const showAvatar = !isMine && (idx === 0 || messages[idx - 1]?.senderId !== msg.senderId);
+                      const isAiMessage = !isMine && msg.sender?.username === 'datn_fb';
+                      return <div key={msg.id} className={`flex items-end gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>{!isMine ? <div className="mb-1 h-7 w-7 flex-shrink-0">{showAvatar ? <Avatar src={msg.sender?.avatarUrl} name={msg.sender?.name} username={msg.sender?.username} size="xs" /> : null}</div> : null}<div className="group max-w-[82%] sm:max-w-[70%]"><div className={`rounded-[22px] px-4 py-3 text-sm leading-6 ${isMine ? 'rounded-br-[8px] bg-[var(--app-primary)] text-white' : 'rounded-bl-[8px] border border-[var(--app-border)] bg-white text-[var(--app-text)]'}`}>{isAiMessage ? <ReactMarkdown components={{ p: ({children}) => <p className="mb-2 last:mb-0">{children}</p>, strong: ({children}) => <strong className="font-semibold">{children}</strong>, em: ({children}) => <em className="italic">{children}</em>, ul: ({children}) => <ul className="my-1 ml-4 list-disc space-y-1">{children}</ul>, ol: ({children}) => <ol className="my-1 ml-4 list-decimal space-y-1">{children}</ol>, li: ({children}) => <li className="leading-6">{children}</li>, h1: ({children}) => <h1 className="mb-1 text-base font-bold">{children}</h1>, h2: ({children}) => <h2 className="mb-1 text-sm font-bold">{children}</h2>, h3: ({children}) => <h3 className="mb-1 text-sm font-semibold">{children}</h3>, a: ({href, children}) => <a href={href} className="underline text-blue-600" target="_blank" rel="noreferrer">{children}</a>, code: ({children}) => <code className="rounded bg-gray-100 px-1 font-mono text-xs text-gray-800">{children}</code>, blockquote: ({children}) => <blockquote className="border-l-4 border-gray-300 pl-3 italic text-gray-600">{children}</blockquote>, }}>{msg.content}</ReactMarkdown> : msg.content}</div>{msg.mediaUrl ? <img src={msg.mediaUrl} alt="" className="mt-2 max-h-60 rounded-lg object-cover" /> : null}<p className="mt-1 px-1 text-[11px] text-[var(--app-muted)] opacity-0 transition group-hover:opacity-100">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p></div></div>;
+                    })}
+                    {typingSummary ? <div className="flex items-end gap-2"><div className="h-7 w-7" /><div className="rounded-[22px] rounded-bl-[8px] border border-[var(--app-border)] bg-white px-4 py-3"><div className="flex gap-1"><span className="h-2 w-2 animate-bounce rounded-full bg-[var(--app-muted)]" style={{ animationDelay: '0ms' }} /><span className="h-2 w-2 animate-bounce rounded-full bg-[var(--app-muted)]" style={{ animationDelay: '150ms' }} /><span className="h-2 w-2 animate-bounce rounded-full bg-[var(--app-muted)]" style={{ animationDelay: '300ms' }} /></div><p className="mt-2 text-xs text-[var(--app-muted)]">{typingSummary} đang nhắn...</p></div></div> : null}
+                    <div ref={messagesEndRef} />
+                  </div>
+                )}
               </div>
 
-              <form onSubmit={(e) => { e.preventDefault(); void sendCurrentMessage(); }} className="border-t border-[var(--app-border)] bg-white px-4 py-4 sm:px-5">
-                <div className="flex items-center gap-3 rounded-full border border-[var(--app-border)] bg-white px-4 py-2">
-                  <button type="button" className="text-[var(--app-muted)] transition hover:text-[var(--app-accent)]"><HeartIcon /></button>
-                  <input ref={inputRef} type="text" value={messageInput} onChange={(e) => { setMessageInput(e.target.value); if (selectedConversation) chatSocketService.sendTyping(selectedConversation, e.target.value.length > 0); }} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendCurrentMessage(); } }} placeholder="Tin nhắn..." className="min-h-[40px] flex-1 bg-transparent text-sm text-[var(--app-text)]" />
-                  <button type="submit" className={`inline-flex min-h-[36px] items-center justify-center rounded-full px-3 text-sm font-semibold transition ${messageInput.trim() ? 'bg-[var(--app-primary)] text-white hover:bg-[var(--app-primary-strong)]' : 'text-[var(--app-primary)] hover:text-[var(--app-primary-strong)]'}`}>{messageInput.trim() ? 'Gửi' : <SendIcon />}</button>
-                </div>
-              </form>
+              {!messagesError && (
+                <form onSubmit={(e) => { e.preventDefault(); void sendCurrentMessage(); }} className="border-t border-[var(--app-border)] bg-white px-4 py-4 sm:px-5">
+                  <div className="flex items-center gap-3 rounded-full border border-[var(--app-border)] bg-white px-4 py-2">
+                    <button type="button" className="text-[var(--app-muted)] transition hover:text-[var(--app-accent)]"><HeartIcon /></button>
+                    <input ref={inputRef} type="text" value={messageInput} onChange={(e) => { setMessageInput(e.target.value); if (selectedConversation) chatSocketService.sendTyping(selectedConversation, e.target.value.length > 0); }} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendCurrentMessage(); } }} placeholder="Tin nhắn..." className="min-h-[40px] flex-1 bg-transparent text-sm text-[var(--app-text)]" />
+                    <button type="submit" className={`inline-flex min-h-[36px] items-center justify-center rounded-full px-3 text-sm font-semibold transition ${messageInput.trim() ? 'bg-[var(--app-primary)] text-white hover:bg-[var(--app-primary-strong)]' : 'text-[var(--app-primary)] hover:text-[var(--app-primary-strong)]'}`}>{messageInput.trim() ? 'Gửi' : <SendIcon />}</button>
+                  </div>
+                </form>
+              )}
             </div>
           ) : (
             <div className="hidden flex-1 items-center justify-center bg-[#fafafa] lg:flex">
