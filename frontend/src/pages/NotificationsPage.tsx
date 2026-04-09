@@ -189,7 +189,7 @@ const NotificationsPage: React.FC = () => {
         ) : (
           <Link
             to="/feed"
-            className="inline-flex min-h-[38px] items-center justify-center rounded-md border border-[var(--app-border)] bg-white px-4 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"
+            className="inline-flex min-h-[38px] items-center justify-center rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"
           >
             Trở về Trang chủ
           </Link>

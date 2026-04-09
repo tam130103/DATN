@@ -90,7 +90,7 @@ export const NotificationBell: React.FC = () => {
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="relative flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 transition hover:border-neutral-300 hover:text-neutral-900"
+        className="relative flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 bg-[var(--app-surface)] text-neutral-700 transition hover:border-neutral-300 hover:text-neutral-900"
         aria-label="Mở thông báo"
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -112,7 +112,7 @@ export const NotificationBell: React.FC = () => {
             onClick={() => setIsOpen(false)}
             aria-label="Đóng thông báo"
           />
-          <div className="absolute right-0 top-12 z-20 w-[340px] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg">
+          <div className="absolute right-0 top-12 z-20 w-[340px] overflow-hidden rounded-xl border border-neutral-200 bg-[var(--app-surface)] shadow-lg">
             <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3">
               <h3 className="text-sm font-semibold text-neutral-900">Thông báo</h3>
               {unreadCount > 0 ? (

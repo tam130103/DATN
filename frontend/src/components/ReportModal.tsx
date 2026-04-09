@@ -45,7 +45,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({ postId, onClose }) => 
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="flex w-full max-w-sm flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+      <div className="flex w-full max-w-sm flex-col overflow-hidden rounded-xl bg-[var(--app-surface)] shadow-2xl">
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
           <h3 className="text-lg font-bold text-gray-900">Báo cáo bài viết</h3>
           <button onClick={onClose} className="rounded-full p-1.5 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">

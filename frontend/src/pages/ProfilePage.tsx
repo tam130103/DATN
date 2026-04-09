@@ -347,7 +347,7 @@ const ProfilePage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setIsEditing((prev) => !prev)}
-                      className="inline-flex min-h-[36px] items-center justify-center rounded-md border border-[var(--app-border)] bg-white px-4 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"
+                      className="inline-flex min-h-[36px] items-center justify-center rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"
                     >
                       {isEditing ? 'Đóng trình chỉnh sửa' : 'Chỉnh sửa hồ sơ'}
                     </button>
@@ -358,7 +358,7 @@ const ProfilePage: React.FC = () => {
                         onClick={handleFollowToggle}
                         className={`inline-flex min-h-[36px] items-center justify-center rounded-md px-4 text-sm font-semibold transition ${
                           isFollowing
-                            ? 'border border-[var(--app-border)] bg-white text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]'
+                            ? 'border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]'
                             : 'bg-[var(--app-primary)] text-white hover:bg-[var(--app-primary-strong)]'
                         }`}
                       >
@@ -367,7 +367,7 @@ const ProfilePage: React.FC = () => {
                       <button
                         type="button"
                         onClick={handleMessage}
-                        className="inline-flex min-h-[36px] items-center justify-center rounded-md border border-[var(--app-border)] bg-white px-4 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"
+                        className="inline-flex min-h-[36px] items-center justify-center rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"
                       >
                         Nhắn tin
                       </button>
@@ -475,7 +475,7 @@ const ProfilePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
-                  className="inline-flex min-h-[38px] items-center justify-center rounded-md border border-[var(--app-border)] bg-white px-4 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"
+                  className="inline-flex min-h-[38px] items-center justify-center rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"
                 >
                   Hủy
                 </button>

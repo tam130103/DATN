@@ -142,7 +142,7 @@ const LoginPage: React.FC = () => {
         <div className="h-px flex-1 bg-[var(--app-border)]" />
       </div>
 
-      <div className="rounded-md border border-[var(--app-border)] bg-white px-4 py-5">
+      <div className="rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-5">
         <div id="google-signin-button" className="flex justify-center" />
         {isGoogleLoading ? (
           <p className="mt-3 text-center text-sm text-[var(--app-muted)]">

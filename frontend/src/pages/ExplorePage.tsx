@@ -140,7 +140,7 @@ const ExplorePage: React.FC = () => {
           <button
             type="button"
             onClick={() => handleSearch('')}
-            className="inline-flex min-h-[38px] items-center justify-center rounded-md border border-[var(--app-border)] bg-white px-4 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"
+            className="inline-flex min-h-[38px] items-center justify-center rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"
           >
             Xóa
           </button>
@@ -215,7 +215,7 @@ const ExplorePage: React.FC = () => {
                   className={`inline-flex min-h-[36px] items-center gap-2 rounded-md px-3 text-sm font-semibold transition ${
                     activeTab === tab.key
                       ? 'bg-[var(--app-text)] text-white'
-                      : 'border border-[var(--app-border)] bg-white text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]'
+                      : 'border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]'
                   }`}
                 >
                   {tab.icon}

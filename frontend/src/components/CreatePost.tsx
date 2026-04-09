@@ -350,7 +350,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={mediaFiles.length >= 10 || isLoading}
-              className="inline-flex min-h-[38px] items-center gap-2 rounded-md border border-[var(--app-border)] bg-white px-3 text-sm font-medium text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)] disabled:opacity-40"
+              className="inline-flex min-h-[38px] items-center gap-2 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] px-3 text-sm font-medium text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)] disabled:opacity-40"
             >
               <PhotoIcon />
               Thêm tệp
