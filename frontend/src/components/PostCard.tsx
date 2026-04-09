@@ -542,37 +542,9 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
       ) : null}
 
       <div className="px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button type="button" onClick={handleLikeToggle} className={iconButtonClass}>
-              <HeartIcon filled={liked} />
-            </button>
-
-            <button
-              type="button"
-              onClick={loadComments}
-              disabled={isLoadingComments}
-              className={iconButtonClass}
-            >
-              <CommentIcon />
-            </button>
-
-            <button type="button" onClick={handleShare} className={iconButtonClass}>
-              <ShareIcon />
-            </button>
-          </div>
-
-          <button type="button" onClick={handleSaveToggle} className={`${iconButtonClass} transition-transform active:scale-90`}>
-            <BookmarkIcon filled={saved} />
-          </button>
-        </div>
-
-        <p className="mt-3 text-sm font-semibold text-[var(--app-text)]">
-          {likesCount.toLocaleString()} lượt thích
-        </p>
-
+        {/* Caption above action buttons */}
         {isEditing ? (
-          <div className="mt-3">
+          <div className="mb-3">
             <textarea
               className="w-full rounded-md border border-[var(--app-border)] bg-[var(--app-bg-soft)] p-3 text-sm text-[var(--app-text)] focus:border-[var(--app-primary)] focus:outline-none"
               rows={3}
@@ -601,15 +573,43 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
             </div>
           </div>
         ) : localCaption?.trim() ? (
-          <div className="mt-1">
+          <div className="mb-3">
             <PostCaption
               text={localCaption}
-              prefixLabel={displayName}
-              prefixTo={profilePath}
               textClassName="text-[var(--app-text)] leading-6"
             />
           </div>
         ) : null}
+
+        {/* Action buttons */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button type="button" onClick={handleLikeToggle} className={iconButtonClass}>
+              <HeartIcon filled={liked} />
+            </button>
+
+            <button
+              type="button"
+              onClick={loadComments}
+              disabled={isLoadingComments}
+              className={iconButtonClass}
+            >
+              <CommentIcon />
+            </button>
+
+            <button type="button" onClick={handleShare} className={iconButtonClass}>
+              <ShareIcon />
+            </button>
+          </div>
+
+          <button type="button" onClick={handleSaveToggle} className={`${iconButtonClass} transition-transform active:scale-90`}>
+            <BookmarkIcon filled={saved} />
+          </button>
+        </div>
+
+        <p className="mt-2 text-sm font-semibold text-[var(--app-text)]">
+          {likesCount.toLocaleString()} lượt thích
+        </p>
 
         <button
           type="button"
