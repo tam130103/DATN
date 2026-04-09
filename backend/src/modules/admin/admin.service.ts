@@ -332,29 +332,29 @@ export class AdminService {
 
   async recalculateFollowCounts(): Promise<{ cleaned: number; updated: number }> {
     const orphaned = await this.dataSource.query(`
-      DELETE FROM "follow"
-      WHERE "followerId" NOT IN (SELECT id FROM "user")
-         OR "followingId" NOT IN (SELECT id FROM "user")
+      DELETE FROM "follows"
+      WHERE "followerId" NOT IN (SELECT id FROM "users")
+         OR "followingId" NOT IN (SELECT id FROM "users")
     `);
     const cleaned = orphaned?.[1] ?? 0;
 
     await this.dataSource.query(`
-      UPDATE "user" SET "followersCount" = COALESCE(sub.cnt, 0)
-      FROM (SELECT "followingId" AS uid, COUNT(*)::int AS cnt FROM "follow" GROUP BY "followingId") sub
-      WHERE "user".id = sub.uid
+      UPDATE "users" SET "followersCount" = COALESCE(sub.cnt, 0)
+      FROM (SELECT "followingId" AS uid, COUNT(*)::int AS cnt FROM "follows" GROUP BY "followingId") sub
+      WHERE "users".id = sub.uid
     `);
     await this.dataSource.query(`
-      UPDATE "user" SET "followersCount" = 0
-      WHERE id NOT IN (SELECT DISTINCT "followingId" FROM "follow")
+      UPDATE "users" SET "followersCount" = 0
+      WHERE id NOT IN (SELECT DISTINCT "followingId" FROM "follows")
     `);
     await this.dataSource.query(`
-      UPDATE "user" SET "followingCount" = COALESCE(sub.cnt, 0)
-      FROM (SELECT "followerId" AS uid, COUNT(*)::int AS cnt FROM "follow" GROUP BY "followerId") sub
-      WHERE "user".id = sub.uid
+      UPDATE "users" SET "followingCount" = COALESCE(sub.cnt, 0)
+      FROM (SELECT "followerId" AS uid, COUNT(*)::int AS cnt FROM "follows" GROUP BY "followerId") sub
+      WHERE "users".id = sub.uid
     `);
     await this.dataSource.query(`
-      UPDATE "user" SET "followingCount" = 0
-      WHERE id NOT IN (SELECT DISTINCT "followerId" FROM "follow")
+      UPDATE "users" SET "followingCount" = 0
+      WHERE id NOT IN (SELECT DISTINCT "followerId" FROM "follows")
     `);
 
     const updated = await this.userRepository.count();
