@@ -34,7 +34,13 @@ class ChatSocketService {
   /** Track whether we manually need to reconnect after a server disconnect */
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-  connect(token: string) {
+  connect(passedToken?: string) {
+    // React's AuthContext might be stale because it doesn't auto-update when
+    // intercepts refresh the token. Always prefer the freshest token from localStorage.
+    const token = localStorage.getItem('token') || passedToken;
+    
+    if (!token) return;
+
     if (this.socket && this.token && this.token !== token) {
       this.disconnect();
     }
