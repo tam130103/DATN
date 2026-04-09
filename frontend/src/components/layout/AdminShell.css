@@ -2,8 +2,8 @@
 .admin-shell {
   display: flex;
   min-height: 100vh;
-  background: #0f0f13;
-  color: #e2e8f0;
+  background: var(--app-bg);
+  color: var(--app-text);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
@@ -11,8 +11,8 @@
 .admin-sidebar {
   width: 250px;
   min-height: 100vh;
-  background: #15151e;
-  border-right: 1px solid #2d2d3a;
+  background: var(--app-surface);
+  border-right: 1px solid var(--app-border);
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -23,7 +23,7 @@
 
 .admin-sidebar-header {
   padding: 24px 20px 16px;
-  border-bottom: 1px solid #2d2d3a;
+  border-bottom: 1px solid var(--app-border);
 }
 
 .admin-logo {
@@ -63,7 +63,7 @@
 .admin-user-name {
   font-size: 13px;
   font-weight: 600;
-  color: #e2e8f0;
+  color: var(--app-text);
 }
 
 .admin-user-role {
@@ -87,7 +87,7 @@
   gap: 12px;
   padding: 10px 12px;
   border-radius: 8px;
-  color: #94a3b8;
+  color: var(--app-muted-strong);
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
@@ -100,8 +100,8 @@
 }
 
 .admin-nav-item:hover {
-  background: #1e1e2e;
-  color: #e2e8f0;
+  background: var(--app-bg-soft);
+  color: var(--app-text);
 }
 
 .admin-nav-item.active {
@@ -118,7 +118,7 @@
 /* Sidebar Footer */
 .admin-sidebar-footer {
   padding: 12px;
-  border-top: 1px solid #2d2d3a;
+  border-top: 1px solid var(--app-border);
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -148,12 +148,12 @@
 .admin-page-title {
   font-size: 24px;
   font-weight: 700;
-  color: #f1f5f9;
+  color: var(--app-text);
   margin: 0 0 6px;
 }
 
 .admin-page-subtitle {
-  color: #64748b;
+  color: var(--app-muted);
   font-size: 14px;
   margin: 0;
 }
@@ -167,8 +167,8 @@
 }
 
 .admin-stat-card {
-  background: #15151e;
-  border: 1px solid #2d2d3a;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
   padding: 20px;
   display: flex;
@@ -183,13 +183,13 @@
 .admin-stat-value {
   font-size: 28px;
   font-weight: 700;
-  color: #f1f5f9;
+  color: var(--app-text);
   line-height: 1;
 }
 
 .admin-stat-label {
   font-size: 12px;
-  color: #64748b;
+  color: var(--app-muted);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -197,15 +197,15 @@
 
 /* Table */
 .admin-table-container {
-  background: #15151e;
-  border: 1px solid #2d2d3a;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
   border-radius: 12px;
   overflow: hidden;
 }
 
 .admin-table-toolbar {
   padding: 16px 20px;
-  border-bottom: 1px solid #2d2d3a;
+  border-bottom: 1px solid var(--app-border);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -216,10 +216,10 @@
   flex: 1;
   min-width: 200px;
   padding: 8px 14px;
-  background: #0f0f13;
-  border: 1px solid #2d2d3a;
+  background: var(--app-bg);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
-  color: #e2e8f0;
+  color: var(--app-text);
   font-size: 13px;
   outline: none;
 }
@@ -230,10 +230,10 @@
 
 .admin-filter-select {
   padding: 8px 12px;
-  background: #0f0f13;
-  border: 1px solid #2d2d3a;
+  background: var(--app-bg);
+  border: 1px solid var(--app-border);
   border-radius: 8px;
-  color: #e2e8f0;
+  color: var(--app-text);
   font-size: 13px;
   cursor: pointer;
   outline: none;
@@ -248,19 +248,19 @@
   padding: 12px 16px;
   font-size: 11px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--app-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   text-align: left;
-  border-bottom: 1px solid #2d2d3a;
-  background: #12121a;
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-surface-muted);
 }
 
 .admin-table td {
   padding: 12px 16px;
   font-size: 13px;
-  color: #cbd5e1;
-  border-bottom: 1px solid #1e1e2e;
+  color: var(--app-text);
+  border-bottom: 1px solid var(--app-border);
   vertical-align: middle;
 }
 
@@ -269,7 +269,7 @@
 }
 
 .admin-table tr:hover td {
-  background: rgba(255,255,255,0.02);
+  background: var(--app-bg-soft);
 }
 
 /* Badges */
@@ -292,7 +292,7 @@
 .status-badge.resolved { background: rgba(34,197,94,0.12); color: #4ade80; }
 .status-badge.rejected { background: rgba(100,116,139,0.12); color: #64748b; }
 .status-badge.admin { background: rgba(99,102,241,0.12); color: #818cf8; }
-.status-badge.user { background: rgba(100,116,139,0.12); color: #94a3b8; }
+.status-badge.user { background: rgba(100,116,139,0.12); color: var(--app-muted-strong); }
 
 /* Action Buttons */
 .admin-action-btn {
@@ -338,13 +338,13 @@
 
 .user-cell-name {
   font-weight: 600;
-  color: #e2e8f0;
+  color: var(--app-text);
   font-size: 13px;
 }
 
 .user-cell-email {
   font-size: 11px;
-  color: #64748b;
+  color: var(--app-muted);
 }
 
 /* Pagination */
@@ -354,7 +354,7 @@
   justify-content: center;
   gap: 8px;
   padding: 16px;
-  border-top: 1px solid #2d2d3a;
+  border-top: 1px solid var(--app-border);
 }
 
 .admin-page-btn {
@@ -362,9 +362,9 @@
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
-  border: 1px solid #2d2d3a;
-  background: #12121a;
-  color: #94a3b8;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-muted);
+  color: var(--app-muted-strong);
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -381,7 +381,7 @@
 .admin-loading, .admin-empty {
   padding: 40px;
   text-align: center;
-  color: #64748b;
+  color: var(--app-muted);
   font-size: 14px;
 }
 
@@ -389,14 +389,14 @@
 .admin-section-title {
   font-size: 15px;
   font-weight: 600;
-  color: #e2e8f0;
+  color: var(--app-text);
   margin: 0 0 16px;
 }
 
 /* Report target */
 .target-text {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--app-muted-strong);
   max-width: 200px;
   white-space: nowrap;
   overflow: hidden;

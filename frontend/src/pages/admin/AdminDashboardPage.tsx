@@ -50,11 +50,11 @@ const AdminDashboardPage: React.FC = () => {
           <div style={{ width: '100%', height: 350 }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data.dailyGrowth}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2d2d3a" vertical={false} />
-                <XAxis dataKey="date" stroke="#94a3b8" tick={{ fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis stroke="#94a3b8" tick={{ fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--app-border)" vertical={false} />
+                <XAxis dataKey="date" stroke="var(--app-muted)" tick={{ fill: 'var(--app-muted)' }} axisLine={false} tickLine={false} />
+                <YAxis stroke="var(--app-muted)" tick={{ fill: 'var(--app-muted)' }} axisLine={false} tickLine={false} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#1e1e2d', borderColor: '#2d2d3a', borderRadius: '8px', color: '#f8fafc' }}
+                  contentStyle={{ backgroundColor: 'var(--app-surface)', borderColor: 'var(--app-border)', borderRadius: '8px', color: 'var(--app-text)' }}
                   itemStyle={{ fontWeight: 'bold' }}
                 />
                 <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
