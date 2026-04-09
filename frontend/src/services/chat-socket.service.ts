@@ -3,10 +3,34 @@ import { Message } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+/** Attempt a silent token refresh. Returns the new access token or null on failure. */
+async function silentRefresh(): Promise<string | null> {
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (!refreshToken) return null;
+  try {
+    const res = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data?.accessToken) {
+      localStorage.setItem('token', data.accessToken);
+      return data.accessToken;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 class ChatSocketService {
   private socket: Socket | null = null;
   private listeners = new Map<string, Set<Function>>();
   private token: string | null = null;
+  /** Prevent concurrent refresh calls */
+  private refreshing = false;
 
   connect(token: string) {
     if (this.socket && this.token && this.token !== token) {
@@ -26,8 +50,9 @@ class ChatSocketService {
     this.socket = io(`${API_URL}/chat`, {
       auth: { token },
       reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 10000,
+      reconnectionAttempts: Infinity,
       withCredentials: true,
     });
 
@@ -39,8 +64,48 @@ class ChatSocketService {
       console.log('Disconnected from chat');
     });
 
-    this.socket.on('connect_error', (error: Error) => {
+    // Before each reconnect attempt, silently refresh the token if expired
+    this.socket.io.on('reconnect_attempt', async () => {
+      if (this.refreshing) return;
+      this.refreshing = true;
+      try {
+        const fresh = await silentRefresh();
+        if (fresh && this.socket) {
+          this.token = fresh;
+          this.socket.auth = { token: fresh };
+        }
+      } finally {
+        this.refreshing = false;
+      }
+    });
+
+    this.socket.on('connect_error', async (error: Error) => {
       console.error('Chat socket connection error:', error.message);
+
+      // If the error looks like an expired/invalid token, attempt refresh immediately
+      const msg = error.message?.toLowerCase() ?? '';
+      if (
+        msg.includes('expired') ||
+        msg.includes('unauthorized') ||
+        msg.includes('jwt') ||
+        msg.includes('auth')
+      ) {
+        if (this.refreshing) return;
+        this.refreshing = true;
+        try {
+          const fresh = await silentRefresh();
+          if (fresh && this.socket) {
+            this.token = fresh;
+            this.socket.auth = { token: fresh };
+          } else {
+            // Refresh failed — redirect to login
+            this.disconnect();
+            window.location.href = '/login';
+          }
+        } finally {
+          this.refreshing = false;
+        }
+      }
     });
 
     this.socket.on('newMessage', (message: Message) => {

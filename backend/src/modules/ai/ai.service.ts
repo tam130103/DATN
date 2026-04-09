@@ -127,16 +127,22 @@ export class AIService implements OnModuleInit {
 
             try {
               const event = JSON.parse(jsonStr) as Record<string, any>;
+              // Log every event type for diagnostics
+              this.logger.debug(`[AI] SSE event: ${event.event ?? 'unknown'} keys=${Object.keys(event).join(',')}`);
               // Capture conversation_id whenever it appears
               if (event.conversation_id) {
                 conversationIdOut = event.conversation_id as string;
               }
-              // Collect text delta from 'message' events
-              if (event.event === 'message' && typeof event.answer === 'string') {
+              // Collect text delta from 'message' or 'agent_message' events
+              // Dify Chatbot apps use 'message'; Dify Agent apps use 'agent_message'
+              if (
+                (event.event === 'message' || event.event === 'agent_message') &&
+                typeof event.answer === 'string'
+              ) {
                 answerBuffer += event.answer;
               }
-              // 'message_end' signals the stream is complete
-              if (event.event === 'message_end') {
+              // 'message_end' / 'agent_message_end' signals the stream is complete
+              if (event.event === 'message_end' || event.event === 'agent_message_end') {
                 if (event.conversation_id) {
                   conversationIdOut = event.conversation_id as string;
                 }
@@ -152,8 +158,28 @@ export class AIService implements OnModuleInit {
         });
 
         res.data.on('end', () => {
+          // Flush any remaining data in the buffer (no trailing newline case)
+          if (rawChunk.trim()) {
+            const leftover = rawChunk.trim();
+            if (leftover.startsWith('data: ')) {
+              const jsonStr = leftover.slice(6).trim();
+              if (jsonStr && jsonStr !== '[DONE]') {
+                try {
+                  const event = JSON.parse(jsonStr) as Record<string, any>;
+                  if (event.conversation_id) conversationIdOut = event.conversation_id as string;
+                  if (
+                    (event.event === 'message' || event.event === 'agent_message') &&
+                    typeof event.answer === 'string'
+                  ) {
+                    answerBuffer += event.answer;
+                  }
+                } catch { /* ignore */ }
+              }
+            }
+          }
           const answer = this.cleanPlainTextResponse(answerBuffer);
           if (!answer) {
+            this.logger.warn(`[AI] Stream ended with empty buffer. dify_conv_id=${conversationIdOut ?? 'null'}`);
             reject(new Error('Dify trả về phản hồi trống.'));
           } else {
             this.logger.log(
