@@ -359,26 +359,23 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
   return (
     <article className="surface-card overflow-hidden rounded-xl">
       {localIsPinned && (
-        <div className="px-4 pt-3 flex items-center gap-1.5 text-xs font-semibold text-[var(--app-muted)]">
-          <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
-          Đã ghim
+        <div className="px-3 pt-2.5 flex items-center gap-1 text-[11px] font-semibold text-[var(--app-muted)]">
+          📌 Đã ghim
         </div>
       )}
-      <div className="flex items-center justify-between gap-3 px-4 py-3">
-        <Link to={profilePath} className="flex min-w-0 items-center gap-3">
+      <div className="flex items-center justify-between gap-2 px-3 py-2">
+        <Link to={profilePath} className="flex min-w-0 items-center gap-2">
           <Avatar
             src={post.user?.avatarUrl}
             name={post.user?.name}
             username={post.user?.username}
-            size="md"
+            size="sm"
             ring
           />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-[var(--app-text)]">{displayName}</p>
-            <p className="text-xs text-[var(--app-muted)]">
-              {timeAgo(post.createdAt)}
-              {localIsEdited ? ' · Đã chỉnh sửa' : ''}
-            </p>
+          <div className="min-w-0 leading-tight">
+            <span className="text-sm font-semibold text-[var(--app-text)]">{displayName}</span>
+            <span className="mx-1 text-xs text-[var(--app-muted)]">·</span>
+            <span className="text-xs text-[var(--app-muted)]">{timeAgo(post.createdAt)}{localIsEdited ? ' · Đã sửa' : ''}</span>
           </div>
         </Link>
 
