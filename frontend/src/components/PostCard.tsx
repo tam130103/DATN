@@ -583,10 +583,11 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
 
         {/* Action buttons */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <button type="button" onClick={handleLikeToggle} className={iconButtonClass}>
               <HeartIcon filled={liked} />
             </button>
+            <span className="min-w-[1.5rem] text-sm font-semibold text-[var(--app-text)]">{likesCount.toLocaleString()}</span>
 
             <button
               type="button"
@@ -596,6 +597,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
             >
               <CommentIcon />
             </button>
+            <span className="min-w-[1.5rem] text-sm font-semibold text-[var(--app-text)]">{commentsCount.toLocaleString()}</span>
 
             <button type="button" onClick={handleShare} className={iconButtonClass}>
               <ShareIcon />
@@ -606,10 +608,6 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
             <BookmarkIcon filled={saved} />
           </button>
         </div>
-
-        <p className="mt-2 text-sm font-semibold text-[var(--app-text)]">
-          {likesCount.toLocaleString()} lượt thích
-        </p>
 
         <button
           type="button"
