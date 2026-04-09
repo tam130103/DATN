@@ -1,6 +1,7 @@
 import {
   Injectable,
   Logger,
+  NotFoundException,
   OnModuleInit,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -196,11 +197,23 @@ export class AIService implements OnModuleInit {
 
       return result;
     } catch (error: any) {
-      const errorData = error?.response?.data;
-      const errorStatus = error?.response?.status;
-      this.logger.error(
-        `AI Assistant error [${errorStatus || 'unknown'}]: ${errorData ? JSON.stringify(errorData) : error?.message || error}`,
-      );
+      const errorStatus = error?.response?.status as number | undefined;
+      // When responseType:'stream', error.response.data is a raw stream — avoid JSON.stringify
+      const errorMsg: string =
+        typeof error?.response?.data === 'string'
+          ? error.response.data
+          : error?.message || String(error);
+
+      // Dify 404 means the stored conversation_id is no longer valid.
+      // Throw a specific exception so the caller can clear it and retry.
+      if (errorStatus === 404) {
+        this.logger.warn(
+          `[AI] Dify conversation not found (id=${difyConversationId ?? 'none'}). Will start fresh.`,
+        );
+        throw new NotFoundException('DIFY_CONVERSATION_NOT_FOUND');
+      }
+
+      this.logger.error(`AI Assistant error [${errorStatus ?? 'unknown'}]: ${errorMsg}`);
       throw new ServiceUnavailableException('AI Assistant tạm thời không khả dụng.');
     }
   }

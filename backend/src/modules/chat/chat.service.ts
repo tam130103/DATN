@@ -318,12 +318,36 @@ export class ChatService {
     if (!botIsMember) return null;
 
     try {
-      // Call Dify AI
-      const aiResult = await this.aiService.chatWithAssistant(
-        trimmed,
-        conversation.difyConversationId,
-        `conv:${conversationId}`,
-      );
+      let aiResult: { answer: string; conversationId: string | null };
+      try {
+        // First attempt: use stored difyConversationId for memory continuity
+        aiResult = await this.aiService.chatWithAssistant(
+          trimmed,
+          conversation.difyConversationId,
+          `conv:${conversationId}`,
+        );
+      } catch (firstErr: any) {
+        // If Dify says the conversation_id no longer exists, clear it and retry fresh
+        if (
+          firstErr?.status === 404 ||
+          firstErr?.message === 'DIFY_CONVERSATION_NOT_FOUND'
+        ) {
+          this.logger.warn(
+            `[ChatService] Stale difyConversationId on conv ${conversationId} — clearing and retrying fresh`,
+          );
+          await this.conversationRepository.update(conversationId, {
+            difyConversationId: null as any,
+          });
+          // Retry without the stale id — this starts a new Dify conversation
+          aiResult = await this.aiService.chatWithAssistant(
+            trimmed,
+            null,
+            `conv:${conversationId}`,
+          );
+        } else {
+          throw firstErr;
+        }
+      }
 
       // Always persist Dify's conversation_id so memory is maintained correctly
       if (aiResult.conversationId) {
