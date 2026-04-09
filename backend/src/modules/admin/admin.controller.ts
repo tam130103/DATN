@@ -118,6 +118,13 @@ export class AdminController {
   ) {
     return this.adminService.reviewReport(id, dto, req.user.id);
   }
+
+  // ─── Maintenance ────────────────────────────────────────────────────────────
+
+  @Post('maintenance/recalculate-follows')
+  recalculateFollows() {
+    return this.adminService.recalculateFollowCounts();
+  }
 }
 
 // ─── User-facing report endpoint ─────────────────────────────────────────────

@@ -327,4 +327,37 @@ export class AdminService {
 
     return this.reportRepository.save(report);
   }
+
+  // ─── Maintenance ────────────────────────────────────────────────────────────
+
+  async recalculateFollowCounts(): Promise<{ cleaned: number; updated: number }> {
+    const orphaned = await this.dataSource.query(`
+      DELETE FROM "follow"
+      WHERE "followerId" NOT IN (SELECT id FROM "user")
+         OR "followingId" NOT IN (SELECT id FROM "user")
+    `);
+    const cleaned = orphaned?.[1] ?? 0;
+
+    await this.dataSource.query(`
+      UPDATE "user" SET "followersCount" = COALESCE(sub.cnt, 0)
+      FROM (SELECT "followingId" AS uid, COUNT(*)::int AS cnt FROM "follow" GROUP BY "followingId") sub
+      WHERE "user".id = sub.uid
+    `);
+    await this.dataSource.query(`
+      UPDATE "user" SET "followersCount" = 0
+      WHERE id NOT IN (SELECT DISTINCT "followingId" FROM "follow")
+    `);
+    await this.dataSource.query(`
+      UPDATE "user" SET "followingCount" = COALESCE(sub.cnt, 0)
+      FROM (SELECT "followerId" AS uid, COUNT(*)::int AS cnt FROM "follow" GROUP BY "followerId") sub
+      WHERE "user".id = sub.uid
+    `);
+    await this.dataSource.query(`
+      UPDATE "user" SET "followingCount" = 0
+      WHERE id NOT IN (SELECT DISTINCT "followerId" FROM "follow")
+    `);
+
+    const updated = await this.userRepository.count();
+    return { cleaned, updated };
+  }
 }

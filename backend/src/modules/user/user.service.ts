@@ -273,4 +273,52 @@ export class UserService {
   async updateNotificationSettings(userId: string, notificationEnabled: boolean): Promise<void> {
     await this.userRepository.update(userId, { notificationEnabled });
   }
+
+  /** Remove orphaned follows and recalculate followersCount / followingCount for all users */
+  async recalculateFollowCounts(): Promise<{ cleaned: number; updated: number }> {
+    // 1. Delete follows where follower or following user no longer exists
+    const orphaned = await this.dataSource.query(`
+      DELETE FROM "follow"
+      WHERE "followerId" NOT IN (SELECT id FROM "user")
+         OR "followingId" NOT IN (SELECT id FROM "user")
+    `);
+    const cleaned = orphaned?.[1] ?? 0;
+
+    // 2. Recalculate followersCount
+    await this.dataSource.query(`
+      UPDATE "user" SET "followersCount" = sub.cnt
+      FROM (
+        SELECT "followingId" AS uid, COUNT(*)::int AS cnt
+        FROM "follow"
+        GROUP BY "followingId"
+      ) sub
+      WHERE "user".id = sub.uid
+    `);
+
+    // 3. Set followersCount = 0 for users with no followers
+    await this.dataSource.query(`
+      UPDATE "user" SET "followersCount" = 0
+      WHERE id NOT IN (SELECT DISTINCT "followingId" FROM "follow")
+    `);
+
+    // 4. Recalculate followingCount
+    await this.dataSource.query(`
+      UPDATE "user" SET "followingCount" = sub.cnt
+      FROM (
+        SELECT "followerId" AS uid, COUNT(*)::int AS cnt
+        FROM "follow"
+        GROUP BY "followerId"
+      ) sub
+      WHERE "user".id = sub.uid
+    `);
+
+    // 5. Set followingCount = 0 for users following nobody
+    await this.dataSource.query(`
+      UPDATE "user" SET "followingCount" = 0
+      WHERE id NOT IN (SELECT DISTINCT "followerId" FROM "follow")
+    `);
+
+    const users = await this.userRepository.count();
+    return { cleaned, updated: users };
+  }
 }
