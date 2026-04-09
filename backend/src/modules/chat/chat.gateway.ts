@@ -34,32 +34,45 @@ export class ChatGateway
   ) {}
 
   afterInit(server: Server) {
+    // Auth middleware: runs BEFORE the connection is established.
+    // Rejecting via next(error) fires 'connect_error' on the client
+    // (vs client.disconnect() which fires 'disconnect' and suppresses auto-reconnect).
+    server.use((socket: Socket, next: (err?: Error) => void) => {
+      const token =
+        socket.handshake.auth?.token ||
+        socket.handshake.headers?.authorization?.replace('Bearer ', '');
+
+      if (!token) {
+        return next(new Error('NO_TOKEN'));
+      }
+
+      try {
+        const payload = this.jwtService.verify(token, {
+          secret: this.configService.get<string>('JWT_SECRET'),
+        }) as { sub: string };
+        // Attach userId so handleConnection can read it
+        socket.data.userId = payload.sub;
+        return next();
+      } catch (err: any) {
+        // Use a specific code so the frontend can detect token expiry
+        const code =
+          err?.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN';
+        console.warn(`[ChatGateway] Auth rejected (${code}): ${err?.message}`);
+        return next(new Error(code));
+      }
+    });
+
     console.log('Chat gateway initialized');
   }
 
   async handleConnection(client: Socket) {
-    const token =
-      client.handshake.auth.token ||
-      client.handshake.headers.authorization?.replace('Bearer ', '');
-
-    if (!token) {
+    // userId is already validated and set by the middleware above
+    const userId = client.data.userId as string;
+    if (!userId) {
+      // Shouldn't happen — middleware would have rejected already
       client.disconnect();
       return;
     }
-
-    let payload: { sub: string };
-    try {
-      payload = this.jwtService.verify(token, {
-        secret: this.configService.get<string>('JWT_SECRET'),
-      }) as { sub: string };
-    } catch (error) {
-      console.error('Chat auth error:', error);
-      client.disconnect();
-      return;
-    }
-
-    const userId = payload.sub;
-    client.data.userId = userId;
 
     // Add to online users
     if (!onlineUsers.has(userId)) {

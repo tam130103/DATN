@@ -31,6 +31,8 @@ class ChatSocketService {
   private token: string | null = null;
   /** Prevent concurrent refresh calls */
   private refreshing = false;
+  /** Track whether we manually need to reconnect after a server disconnect */
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   connect(token: string) {
     if (this.socket && this.token && this.token !== token) {
@@ -47,8 +49,13 @@ class ChatSocketService {
     }
 
     this.token = token;
+    this._createSocket(token);
+  }
+
+  private _createSocket(token: string) {
     this.socket = io(`${API_URL}/chat`, {
       auth: { token },
+      // Let Socket.IO auto-reconnect on connect_error (middleware rejection)
       reconnection: true,
       reconnectionDelay: 2000,
       reconnectionDelayMax: 10000,
@@ -57,55 +64,45 @@ class ChatSocketService {
     });
 
     this.socket.on('connect', () => {
-      console.log('Connected to chat');
+      console.log('[Chat] Connected');
     });
 
-    this.socket.on('disconnect', () => {
-      console.log('Disconnected from chat');
+    // ── Handle server-initiated disconnect ──────────────────────────────
+    // When server middleware rejects, Socket.IO fires 'disconnect' with
+    // reason 'io server disconnect'. Auto-reconnect is suppressed in this
+    // case, so we handle it manually.
+    this.socket.on('disconnect', (reason: string) => {
+      console.log('[Chat] Disconnected:', reason);
+      if (reason === 'io server disconnect') {
+        this._scheduleRefreshAndReconnect();
+      }
     });
 
-    // Before each reconnect attempt, silently refresh the token if expired
+    // ── Handle connection errors (middleware rejection → connect_error) ──
+    // When the backend middleware calls next(new Error('TOKEN_EXPIRED')),
+    // Socket.IO fires connect_error with that message. Auto-reconnect
+    // IS active here, but we still need to refresh the token first.
+    this.socket.on('connect_error', async (error: Error) => {
+      const code = error.message?.trim();
+      console.warn('[Chat] connect_error:', code);
+
+      const isAuthError =
+        code === 'TOKEN_EXPIRED' ||
+        code === 'INVALID_TOKEN' ||
+        code === 'NO_TOKEN' ||
+        code?.toLowerCase().includes('expired') ||
+        code?.toLowerCase().includes('jwt') ||
+        code?.toLowerCase().includes('auth');
+
+      if (isAuthError) {
+        await this._doRefresh();
+      }
+    });
+
+    // ── Before each auto-reconnect attempt, refresh token ───────────────
     this.socket.io.on('reconnect_attempt', async () => {
       if (this.refreshing) return;
-      this.refreshing = true;
-      try {
-        const fresh = await silentRefresh();
-        if (fresh && this.socket) {
-          this.token = fresh;
-          this.socket.auth = { token: fresh };
-        }
-      } finally {
-        this.refreshing = false;
-      }
-    });
-
-    this.socket.on('connect_error', async (error: Error) => {
-      console.error('Chat socket connection error:', error.message);
-
-      // If the error looks like an expired/invalid token, attempt refresh immediately
-      const msg = error.message?.toLowerCase() ?? '';
-      if (
-        msg.includes('expired') ||
-        msg.includes('unauthorized') ||
-        msg.includes('jwt') ||
-        msg.includes('auth')
-      ) {
-        if (this.refreshing) return;
-        this.refreshing = true;
-        try {
-          const fresh = await silentRefresh();
-          if (fresh && this.socket) {
-            this.token = fresh;
-            this.socket.auth = { token: fresh };
-          } else {
-            // Refresh failed — redirect to login
-            this.disconnect();
-            window.location.href = '/login';
-          }
-        } finally {
-          this.refreshing = false;
-        }
-      }
+      await this._doRefresh();
     });
 
     this.socket.on('newMessage', (message: Message) => {
@@ -133,7 +130,48 @@ class ChatSocketService {
     });
   }
 
+  /** Refresh the JWT and update socket auth. Redirects to /login if refresh fails. */
+  private async _doRefresh(): Promise<void> {
+    if (this.refreshing) return;
+    this.refreshing = true;
+    try {
+      const fresh = await silentRefresh();
+      if (fresh && this.socket) {
+        this.token = fresh;
+        this.socket.auth = { token: fresh };
+        console.log('[Chat] Token refreshed, will retry connection');
+      } else {
+        // Refresh failed — session is truly expired, force re-login
+        console.warn('[Chat] Token refresh failed, redirecting to login');
+        this.disconnect();
+        window.location.href = '/login';
+      }
+    } finally {
+      this.refreshing = false;
+    }
+  }
+
+  /**
+   * Server-initiated disconnects suppress auto-reconnect.
+   * We refresh the token then manually reconnect after a short delay.
+   */
+  private _scheduleRefreshAndReconnect() {
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = setTimeout(async () => {
+      this.reconnectTimer = null;
+      await this._doRefresh();
+      if (this.socket && this.token) {
+        console.log('[Chat] Manually reconnecting after server disconnect');
+        this.socket.connect();
+      }
+    }, 2000);
+  }
+
   disconnect() {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     this.socket?.disconnect();
     this.socket = null;
     this.token = null;
