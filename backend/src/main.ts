@@ -20,6 +20,11 @@ async function bootstrap() {
   }
   app.use('/uploads', express.static(uploadDir));
 
+  // Health check endpoint — outside global prefix so UptimeRobot can ping at /health
+  app.use('/health', (_req: express.Request, res: express.Response) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
   app.setGlobalPrefix(configService.get<string>('API_PREFIX', 'api/v1'));
 
   app.enableCors({
