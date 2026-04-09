@@ -1,23 +1,36 @@
-# Build stage
-FROM node:18-alpine AS builder
+# ─── Stage 1: Build ───────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
+# Copy package files first for better layer caching
 COPY package*.json ./
-RUN npm install
+RUN npm ci --frozen-lockfile
 
+# Copy source and build
 COPY . .
 RUN npm run build
 
-# Production stage
-FROM node:18-alpine
+# Remove dev dependencies for production
+RUN npm prune --production
 
-WORKDIR /usr/src/app
+# ─── Stage 2: Production ──────────────────────────────────────────────────────
+FROM node:20-alpine AS production
 
-COPY package*.json ./
-RUN npm install --only=production
+WORKDIR /app
 
-COPY --from=builder /usr/src/app/dist ./dist
+# Security: run as non-root user
+RUN addgroup -S app && adduser -S app -G app
+
+# Copy built artifacts and production deps only
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+
+# Create uploads dir
+RUN mkdir -p uploads && chown -R app:app /app
+
+USER app
 
 EXPOSE 3000
 
