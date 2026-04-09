@@ -65,7 +65,6 @@ export class AIService implements OnModuleInit {
     userId = 'datn-user',
   ): Promise<AssistantChatResult> {
     const apiKey = this.getAssistantApiKey();
-    const apiUrl = this.configService.get<string>('DIFY_API_URL') || 'https://api.dify.ai/v1';
 
     if (!apiKey) {
       throw new ServiceUnavailableException('AI Assistant chưa được cấu hình.');
@@ -76,11 +75,18 @@ export class AIService implements OnModuleInit {
       throw new ServiceUnavailableException('Không thể gửi tin nhắn trống cho AI.');
     }
 
+    // Standardize Dify API URL: remove trailing slashes, ensure /v1 suffix
+    let baseApiUrl = (this.configService.get<string>('DIFY_API_URL') || 'https://api.dify.ai/v1').replace(/\/+$/, '');
+    if (!baseApiUrl.endsWith('/v1') && !baseApiUrl.includes('/v1/')) {
+      baseApiUrl += '/v1';
+    }
+
     try {
       const payload: Record<string, unknown> = {
         inputs: {},
         query: trimmed,
-        response_mode: 'blocking',
+        // Agent Chat App REQUIRES streaming mode — blocking is not supported
+        response_mode: 'streaming',
         user: userId,
       };
 
@@ -91,40 +97,78 @@ export class AIService implements OnModuleInit {
         this.logger.log('[AI] Starting new Dify conversation');
       }
 
-      // Standardize Dify API URL: 
-      // 1. Remove trailing slashes
-      // 2. Ensure /v1 exists (Dify standard)
-      let baseApiUrl = (this.configService.get<string>('DIFY_API_URL') || 'https://api.dify.ai/v1').replace(/\/+$/, '');
-      if (!baseApiUrl.endsWith('/v1') && baseApiUrl.includes('dify.ai')) {
-        baseApiUrl += '/v1';
-      }
-
+      // Use responseType: 'stream' to read SSE chunks
       const res = await axios.post(`${baseApiUrl}/chat-messages`, payload, {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
         },
         timeout: 120_000,
+        responseType: 'stream',
       });
 
-      const data = res.data;
-      const conversationIdOut: string | null =
-        data?.conversation_id || difyConversationId || null;
-      const rawAnswer: string = data?.answer || '';
+      // Parse SSE stream: collect answer chunks and grab conversation_id from message_end event
+      const result = await new Promise<AssistantChatResult>((resolve, reject) => {
+        let answerBuffer = '';
+        let conversationIdOut: string | null = difyConversationId || null;
+        let rawChunk = '';
 
-      this.logger.log(
-        `[AI] Got reply. dify_conv_id=${conversationIdOut ?? 'null'}, answer_length=${rawAnswer.length}`,
-      );
+        res.data.on('data', (chunk: Buffer) => {
+          rawChunk += chunk.toString('utf8');
+          const lines = rawChunk.split('\n');
+          // Keep the last potentially-incomplete line in the buffer
+          rawChunk = lines.pop() ?? '';
 
-      const answer = this.cleanPlainTextResponse(rawAnswer);
-      if (!answer) {
-        throw new Error('Dify trả về phản hồi trống.');
-      }
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const jsonStr = line.slice(6).trim();
+            if (!jsonStr || jsonStr === '[DONE]') continue;
 
-      return {
-        answer,
-        conversationId: conversationIdOut,
-      };
+            try {
+              const event = JSON.parse(jsonStr) as Record<string, any>;
+              // Capture conversation_id whenever it appears
+              if (event.conversation_id) {
+                conversationIdOut = event.conversation_id as string;
+              }
+              // Collect text delta from 'message' events
+              if (event.event === 'message' && typeof event.answer === 'string') {
+                answerBuffer += event.answer;
+              }
+              // 'message_end' signals the stream is complete
+              if (event.event === 'message_end') {
+                if (event.conversation_id) {
+                  conversationIdOut = event.conversation_id as string;
+                }
+              }
+              // Handle error events from Dify
+              if (event.event === 'error') {
+                reject(new Error(`Dify stream error: ${event.message || JSON.stringify(event)}`));
+              }
+            } catch {
+              // Non-JSON line — skip
+            }
+          }
+        });
+
+        res.data.on('end', () => {
+          const answer = this.cleanPlainTextResponse(answerBuffer);
+          if (!answer) {
+            reject(new Error('Dify trả về phản hồi trống.'));
+          } else {
+            this.logger.log(
+              `[AI] Stream done. dify_conv_id=${conversationIdOut ?? 'null'}, answer_length=${answer.length}`,
+            );
+            resolve({ answer, conversationId: conversationIdOut });
+          }
+        });
+
+        res.data.on('error', (err: Error) => {
+          reject(err);
+        });
+      });
+
+      return result;
     } catch (error: any) {
       const errorData = error?.response?.data;
       const errorStatus = error?.response?.status;
