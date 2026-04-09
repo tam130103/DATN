@@ -548,7 +548,8 @@ export class PostService {
       .createQueryBuilder('post')
       .where('post.userId = :userId', { userId: targetUserId })
       .andWhere('post.status = :status', { status: PostStatus.VISIBLE })
-      .orderBy(sortExpression, 'DESC')
+      .orderBy('post.isPinned', 'DESC')
+      .addOrderBy(sortExpression, 'DESC')
       .addOrderBy('post.id', 'DESC')
       .limit(limit + 1);
 
@@ -578,6 +579,80 @@ export class PostService {
 
     const [enrichedPost] = await this.enrichPosts([post], viewerId);
     return enrichedPost;
+  }
+
+  async togglePin(postId: string, userId: string): Promise<boolean> {
+    const post = await this.postRepository.findOne({
+      where: { id: postId, userId },
+      select: ['id', 'isPinned'],
+    });
+
+    if (!post) {
+      throw new NotFoundException('Post not found or unauthorized');
+    }
+
+    const newPinnedStatus = !post.isPinned;
+
+    if (newPinnedStatus) {
+      await this.postRepository.update(
+        { userId, isPinned: true },
+        { isPinned: false },
+      );
+    }
+
+    await this.postRepository.update(post.id, { isPinned: newPinnedStatus });
+    return newPinnedStatus;
+  }
+
+  async updateCaption(postId: string, userId: string, caption: string): Promise<Post> {
+    const post = await this.postRepository.findOne({
+      where: { id: postId, userId },
+    });
+
+    if (!post) {
+      throw new NotFoundException('Post not found or unauthorized');
+    }
+
+    const normalizedCaption = (caption ?? '').trim();
+
+    if (normalizedCaption !== post.caption) {
+      if (normalizedCaption) {
+        const moderation = await this.aiService.moderateContent(normalizedCaption);
+        if (!moderation.isSafe) {
+          const reason = moderation.reason || 'Vi phạm chính sách cộng đồng.';
+          this.logger.warn(
+            `Blocked unsafe post edit from user ${userId}: ${reason} (length=${normalizedCaption.length})`,
+          );
+          throw new BadRequestException(`Nội dung không phù hợp: ${reason}`);
+        }
+      }
+
+      await this.dataSource.transaction(async (manager) => {
+        await manager.update(Post, post.id, {
+          caption: normalizedCaption,
+          isEdited: true,
+        });
+
+        const oldPostHashtags = await manager.find(PostHashtag, { where: { postId: post.id } });
+        if (oldPostHashtags.length > 0) {
+          const hashtagIds = oldPostHashtags.map((ph) => ph.hashtagId);
+          await manager
+            .createQueryBuilder()
+            .update(Hashtag)
+            .set({ count: () => '"count" - 1' })
+            .whereInIds(hashtagIds)
+            .execute();
+          await manager.delete(PostHashtag, { postId: post.id });
+        }
+
+        await manager.delete(PostMention, { postId: post.id });
+
+        await this.processHashtags(manager, post.id, normalizedCaption);
+        await this.processMentions(manager, post.id, normalizedCaption);
+      });
+    }
+
+    return this.findById(post.id, userId);
   }
 
   async delete(id: string, userId: string): Promise<void> {

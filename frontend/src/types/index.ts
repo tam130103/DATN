@@ -46,6 +46,9 @@ export interface Post {
   saved?: boolean;
   likesCount?: number;
   commentsCount?: number;
+  isPinned?: boolean;
+  isEdited?: boolean;
+  updatedAt?: string;
 }
 
 export interface Comment {

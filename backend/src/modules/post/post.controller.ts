@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Delete,
+  Patch,
   Body,
   Param,
   Query,
@@ -108,6 +109,16 @@ export class PostController {
   @Get(':id')
   getById(@Param('id') id: string) {
     return this.postService.findById(id);
+  }
+
+  @Patch(':id/pin')
+  togglePin(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.postService.togglePin(id, user.id);
+  }
+
+  @Patch(':id')
+  update(@CurrentUser() user: any, @Param('id') id: string, @Body() body: { caption: string }) {
+    return this.postService.updateCaption(id, user.id, body.caption);
   }
 
   @Delete(':id')

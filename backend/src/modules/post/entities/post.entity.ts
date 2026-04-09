@@ -3,6 +3,7 @@ import {
   Column,
   PrimaryGeneratedColumn,
   CreateDateColumn,
+  UpdateDateColumn,
   ManyToOne,
   JoinColumn,
   OneToMany,
@@ -60,6 +61,15 @@ export class Post {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @Column({ type: 'boolean', default: false })
+  isPinned: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  isEdited: boolean;
 
   // Relations
   @ManyToOne(() => User)

@@ -44,6 +44,15 @@ export const postService = {
     await apiClient.delete(`/posts/${id}`);
   },
 
+  updatePost: async (id: string, data: { caption: string }): Promise<Post> => {
+    const response = await apiClient.patch<Post>(`/posts/${id}`, data);
+    return response.data;
+  },
+
+  togglePin: async (id: string): Promise<void> => {
+    await apiClient.patch(`/posts/${id}/pin`);
+  },
+
   getTaggedPosts: async (userId: string, cursor?: string, limit = 24): Promise<FeedResponse> => {
     const params: Record<string, string | number> = { limit };
     if (cursor) params.cursor = cursor;
