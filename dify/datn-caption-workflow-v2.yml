@@ -1,0 +1,232 @@
+app:
+  description: >-
+    Workflow tạo caption tự động cho bài đăng trên DATN Social.
+    Người dùng chỉ cần nhập chủ đề hoặc từ khóa, AI sẽ viết một caption
+    tiếng Việt dài, tự nhiên, có chiều sâu và phù hợp để đăng mạng xã hội.
+  icon: "✍️"
+  icon_background: "#E4FBCC"
+  mode: workflow
+  name: "DATN Caption Generator"
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.3.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+      allowed_file_extensions: []
+      allowed_file_types: []
+      allowed_file_upload_methods: []
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+          - local_file
+          - remote_url
+      number_limits: 3
+    opening_statement: ""
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ""
+      voice: ""
+  graph:
+    edges:
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: start
+          targetType: llm
+        id: start-node-source-caption-llm-target
+        selected: false
+        source: start-node
+        sourceHandle: source
+        target: caption-llm
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: llm
+          targetType: end
+        id: caption-llm-source-end-node-target
+        selected: false
+        source: caption-llm
+        sourceHandle: source
+        target: end-node
+        targetHandle: target
+        type: custom
+        zIndex: 0
+    nodes:
+      - data:
+          desc: "Nhập chủ đề và chọn giọng điệu cho caption."
+          selected: false
+          title: Bắt đầu
+          type: start
+          variables:
+            - label: Chủ đề / Từ khóa
+              max_length: 1000
+              options: []
+              required: true
+              type: paragraph
+              variable: topic
+            - default: tự nhiên
+              label: Giọng điệu
+              max_length: 100
+              options:
+                - tự nhiên
+                - hài hước
+                - truyền cảm hứng
+                - chuyên nghiệp
+                - Gen Z
+                - lãng mạn
+                - học thuật
+              required: false
+              type: select
+              variable: tone
+        height: 116
+        id: start-node
+        position:
+          x: 80
+          y: 282
+        positionAbsolute:
+          x: 80
+          y: 282
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: "Sinh một caption tiếng Việt hoàn chỉnh cho DATN Social."
+          model:
+            completion_params:
+              frequency_penalty: 0.2
+              max_tokens: 512
+              presence_penalty: 0.1
+              temperature: 0.6
+              top_p: 0.85
+            mode: chat
+            name: gemini-2.0-flash
+            provider: langgenius/gemini/google
+          prompt_template:
+            - role: system
+              text: |-
+                Bạn là chuyên gia sáng tạo nội dung mạng xã hội tiếng Việt cho DATN Social, một nền tảng dành cho sinh viên và cộng đồng trẻ.
+
+                Nhiệm vụ của bạn là viết đúng một caption hoàn chỉnh để người dùng có thể đăng ngay lên mạng xã hội.
+
+                Yêu cầu bắt buộc:
+                - Viết hoàn toàn bằng tiếng Việt tự nhiên, mạch lạc, giàu cảm xúc và đúng chính tả.
+                - Độ dài mục tiêu từ 80 đến 250 từ.
+                - Giọng điệu phải bám sát biến "tone" mà người dùng đã chọn.
+                - Chủ đề người dùng cung cấp là trọng tâm bắt buộc của caption.
+                - Nội dung phải có giá trị thực, ưu tiên góc nhìn, trải nghiệm, cảm nhận hoặc thông tin hữu ích xoay quanh đúng chủ đề.
+                - Câu mở đầu phải nhắc trực tiếp chủ đề hoặc diễn đạt lại thật sát nghĩa chủ đề.
+                - Thân đoạn phải triển khai ít nhất 2 ý có liên hệ trực tiếp đến chủ đề.
+                - Có thể dùng emoji phù hợp nhưng không lạm dụng.
+                - Kết thúc bằng 1 hoặc 2 câu hỏi mở hay lời mời tương tác nhẹ nhàng.
+
+                Quy định theo giọng điệu:
+                - "tự nhiên": gần gũi như đang chia sẻ với bạn bè.
+                - "hài hước": vui nhộn, dí dỏm, có thể dùng tiếng lóng nhẹ.
+                - "truyền cảm hứng": tích cực, tạo động lực, nâng tinh thần.
+                - "chuyên nghiệp": lịch sự, chỉn chu, rõ ý.
+                - "Gen Z": trẻ trung, bắt trend, có thể xen từ tiếng Anh và emoji hợp lý.
+                - "lãng mạn": mềm mại, tinh tế, giàu cảm xúc.
+                - "học thuật": nghiêm túc, có chiều sâu và tư duy phân tích.
+
+                Không được làm:
+                - Không viết tiêu đề.
+                - Không thêm "Caption:", "Bài đăng:", hay bất kỳ nhãn nào.
+                - Không thêm hashtag.
+                - Không xuất markdown, JSON, code block hoặc ghi chú giải thích.
+                - Không lặp lại nguyên văn đề bài của người dùng.
+                - Không viết caption chung chung có thể áp dụng cho nhiều chủ đề khác nhau.
+                - Không chuyển sang một chủ đề khác chỉ vì muốn viết hay hơn.
+
+                Quy tắc xử lý chủ đề:
+                - Nếu chủ đề là một từ khóa ngắn, hãy suy ra ngữ cảnh gần nhất nhưng vẫn phải bám chặt vào từ khóa đó.
+                - Nếu chủ đề là một cảm xúc, câu cảm thán hoặc trạng thái như "buồn cười quá đi mất", hãy viết caption xoay quanh chính cảm xúc hoặc trạng thái đó, không chuyển sang nội dung đời sống chung chung.
+                - Nếu chủ đề hơi mơ hồ, hãy chọn cách hiểu hợp lý nhất và giữ nhất quán từ đầu đến cuối.
+
+                Tự kiểm tra trước khi trả lời:
+                - Nếu xóa dòng "Chủ đề" khỏi đề bài mà caption vẫn đúng y nguyên, thì caption đó chưa đạt.
+                - Chỉ trả về caption sau khi đã chắc rằng người đọc có thể nhận ra chủ đề chính ngay từ 1 đến 2 câu đầu.
+
+                Chỉ trả về đúng nội dung caption cuối cùng.
+            - role: user
+              text: |-
+                Hãy viết một caption duy nhất, bám thật sát chủ đề sau.
+
+                Chủ đề trung tâm: {{#start-node.topic#}}
+                Giọng điệu: {{#start-node.tone#}}
+
+                Nhắc lại: caption phải liên quan trực tiếp đến chủ đề trung tâm này, không được lan man sang chủ đề khác.
+          selected: false
+          title: Sinh Caption
+          type: llm
+          variables: []
+          vision:
+            enabled: false
+        height: 98
+        id: caption-llm
+        position:
+          x: 400
+          y: 282
+        positionAbsolute:
+          x: 400
+          y: 282
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+      - data:
+          desc: "Trả ra caption cuối cùng."
+          outputs:
+            - value_selector:
+                - caption-llm
+                - text
+              variable: caption
+          selected: false
+          title: Kết thúc
+          type: end
+        height: 90
+        id: end-node
+        position:
+          x: 720
+          y: 282
+        positionAbsolute:
+          x: 720
+          y: 282
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1

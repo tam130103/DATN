@@ -38,10 +38,10 @@ const AdminReportsPage: React.FC = () => {
     if (report.targetType === 'post') {
       navigate(`/posts/${report.targetId}`);
     } else {
-      // For comment, navigate to its parent post
       const postId = report.postId;
       if (postId) {
-        navigate(`/posts/${postId}`);
+        // Navigate to the post and highlight the reported comment
+        navigate(`/posts/${postId}?highlightComment=${report.targetId}`);
       } else {
         alert('Không tìm thấy bài viết chứa bình luận này.');
       }

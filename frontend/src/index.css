@@ -219,11 +219,15 @@ select:focus {
 }
 
 @keyframes blinkBg {
-  0% { background-color: var(--app-primary-soft); }
-  50% { background-color: transparent; }
-  100% { background-color: var(--app-primary-soft); }
+  0%   { background-color: transparent; box-shadow: none; }
+  20%  { background-color: rgba(0, 149, 246, 0.18); box-shadow: 0 0 0 2px var(--app-primary); }
+  50%  { background-color: transparent; box-shadow: none; }
+  70%  { background-color: rgba(0, 149, 246, 0.18); box-shadow: 0 0 0 2px var(--app-primary); }
+  100% { background-color: transparent; box-shadow: none; }
 }
 
 .animate-blink {
-  animation: blinkBg 1.2s ease-in-out 2;
+  animation: blinkBg 1.4s ease-in-out 2;
+  border-radius: 12px;
+  transition: box-shadow 0.2s;
 }

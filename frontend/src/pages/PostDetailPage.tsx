@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AppShell } from '../components/layout/AppShell';
 import { PostCard } from '../components/PostCard';
@@ -9,6 +9,8 @@ import { Post } from '../types';
 
 const PostDetailPage: React.FC = () => {
   const { postId } = useParams();
+  const [searchParams] = useSearchParams();
+  const highlightCommentId = searchParams.get('highlightComment') || undefined;
   const navigate = useNavigate();
   const [post, setPost] = useState<Post | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,6 +100,7 @@ const PostDetailPage: React.FC = () => {
     >
       <PostCard
         post={post}
+        highlightCommentId={highlightCommentId}
         onDeleted={() => {
           setPost(null);
           navigate('/feed');

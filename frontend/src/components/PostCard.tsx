@@ -15,6 +15,7 @@ import { CommentItem } from './CommentItem';
 
 interface PostCardProps {
   post: Post;
+  highlightCommentId?: string;
   onDeleted?: (postId: string) => void;
 }
 
@@ -98,10 +99,11 @@ function timeAgo(date: string | Date): string {
 const iconButtonClass =
   'inline-flex items-center justify-center text-[var(--app-text)] transition hover:opacity-70';
 
-export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
+export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, onDeleted }) => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
-  const targetCommentId = searchParams.get('commentId');
+  // Support both explicit prop and URL param
+  const targetCommentId = highlightCommentId || searchParams.get('commentId') || searchParams.get('highlightComment');
 
   const { user } = useAuth();
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
