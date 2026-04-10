@@ -238,7 +238,7 @@ const FollowListModal: React.FC<FollowListModalProps> = ({
                       type="button"
                       onClick={() => {
                         onClose();
-                        navigate(`/${u.username}`);
+                        navigate(`/${u.username ?? u.id}`);
                       }}
                       className="flex-shrink-0"
                     >
@@ -255,7 +255,7 @@ const FollowListModal: React.FC<FollowListModalProps> = ({
                       type="button"
                       onClick={() => {
                         onClose();
-                        navigate(`/${u.username}`);
+                        navigate(`/${u.username ?? u.id}`);
                       }}
                       className="min-w-0 flex-1 text-left"
                     >
