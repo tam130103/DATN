@@ -30,6 +30,7 @@ export type SentimentResult = {
 export class AIService implements OnModuleInit {
   private readonly logger = new Logger(AIService.name);
   private static readonly CAPTION_RETRY_DELAYS_MS = [800, 1600];
+  private static readonly HASHTAG_RETRY_DELAYS_MS = [600, 1200];
   private static readonly TRANSIENT_DIFY_STATUS_CODES = new Set([
     408, 429, 500, 502, 503, 504,
   ]);
@@ -351,30 +352,20 @@ Tra ve JSON duy nhat: {"label":"positive|neutral|negative|mixed","score":0.8,"su
   }
 
   async suggestHashtags(text: string): Promise<string[]> {
-    if (!this.configService.get<string>('DIFY_GENERAL_API_KEY')) {
+    const normalizedText = text.trim();
+    if (!normalizedText) {
       return [];
     }
 
-    try {
-      const raw = await this.generateGenericChat(
-        `Dua tren caption sau, hay goi y 5 den 8 hashtag ngan, phu hop de dang bai. Noi dung: "${text}".
-Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu thua.`,
-      );
+    if (!this.configService.get<string>('DIFY_GENERAL_API_KEY')) {
+      return this.buildLocalHashtagFallback(normalizedText);
+    }
 
-      const parsed = this.parseJsonPayload<{ hashtags?: string[] }>(raw);
-      const tags = parsed?.hashtags || [];
-      return tags
-        .map((tag) =>
-          typeof tag === 'string'
-            ? tag.startsWith('#')
-              ? tag
-              : `#${tag}`
-            : '',
-        )
-        .filter((tag) => tag.length > 1)
-        .slice(0, 8);
-    } catch {
-      return [];
+    try {
+      return await this.runHashtagSuggestionWithRetry(normalizedText);
+    } catch (error) {
+      this.logger.warn(`Hashtag suggestion failed: ${this.summarizeDifyError(error)}`);
+      return this.buildLocalHashtagFallback(normalizedText);
     }
   }
 
@@ -454,6 +445,59 @@ Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu
     return this.buildLocalCaptionFallback(topic, tone);
   }
 
+  private async runHashtagSuggestionWithRetry(text: string): Promise<string[]> {
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt <= AIService.HASHTAG_RETRY_DELAYS_MS.length; attempt += 1) {
+      try {
+        const raw = await this.generateGenericChat(
+          `Dua tren caption sau, hay goi y 5 den 8 hashtag ngan, phu hop de dang bai. Noi dung: "${text}".
+Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu thua.`,
+        );
+
+        const tags = this.extractHashtagsFromRawText(raw);
+        if (tags.length > 0) {
+          return tags;
+        }
+
+        throw new Error('Dify hashtag response did not contain parseable hashtags.');
+      } catch (error) {
+        lastError = error;
+        const attemptNumber = attempt + 1;
+        const isTransient = this.isTransientDifyError(error);
+
+        if (
+          isTransient &&
+          attempt < AIService.HASHTAG_RETRY_DELAYS_MS.length
+        ) {
+          const delayMs = AIService.HASHTAG_RETRY_DELAYS_MS[attempt];
+          this.logger.warn(
+            `Hashtag suggestion transient failure on attempt ${attemptNumber}. Retrying in ${delayMs}ms. ${this.summarizeDifyError(error)}`,
+          );
+          await this.sleep(delayMs);
+          continue;
+        }
+
+        if (!isTransient) {
+          this.logger.warn(
+            `Hashtag suggestion falling back due to non-standard model output after ${attemptNumber} attempt(s). ${this.summarizeDifyError(error)}`,
+          );
+        } else {
+          this.logger.warn(
+            `Hashtag suggestion fallback activated after ${attemptNumber} attempt(s). ${this.summarizeDifyError(error)}`,
+          );
+        }
+
+        return this.buildLocalHashtagFallback(text);
+      }
+    }
+
+    this.logger.warn(
+      `Hashtag suggestion fallback activated after exhausting retries. ${this.summarizeDifyError(lastError)}`,
+    );
+    return this.buildLocalHashtagFallback(text);
+  }
+
   private async invokeCaptionWorkflow(
     apiUrl: string,
     apiKey: string,
@@ -511,6 +555,37 @@ Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu
     }
 
     return '';
+  }
+
+  private extractHashtagsFromRawText(raw: string): string[] {
+    const parsed = this.parseJsonPayload<{ hashtags?: unknown; tags?: unknown }>(raw);
+    const candidates: string[] = [];
+
+    const parsedHashtags =
+      (Array.isArray(parsed?.hashtags) ? parsed?.hashtags : null) ||
+      (Array.isArray(parsed?.tags) ? parsed?.tags : null);
+
+    if (parsedHashtags) {
+      for (const value of parsedHashtags) {
+        if (typeof value === 'string') {
+          candidates.push(value);
+        }
+      }
+    } else if (typeof parsed?.hashtags === 'string') {
+      candidates.push(...parsed.hashtags.split(/[,\n]/g));
+    }
+
+    const inlineHashtags = this.cleanPlainTextResponse(raw).match(/#[\p{L}\p{N}_]+/gu) || [];
+    candidates.push(...inlineHashtags);
+
+    return Array.from(
+      new Map(
+        candidates
+          .map((tag) => this.normalizeHashtag(tag))
+          .filter((tag) => tag.length > 1)
+          .map((tag) => [tag.toLowerCase(), tag] as const),
+      ).values(),
+    ).slice(0, 8);
   }
 
   private isTransientDifyError(error: unknown): boolean {
@@ -628,6 +703,79 @@ Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu
     return this.cleanPlainTextResponse(`${intro} ${body} ${outro}`);
   }
 
+  private buildLocalHashtagFallback(text: string): string[] {
+    const normalized = this.normalizeModerationText(text)
+      .replace(/#[a-z0-9_]+/g, ' ')
+      .replace(/[^a-z0-9\s]/g, ' ');
+    const words = normalized
+      .split(/\s+/)
+      .map((word) => word.trim())
+      .filter(Boolean);
+
+    const stopWords = new Set([
+      'anh', 'chi', 'cho', 'chua', 'cung', 'cua', 'dang', 'day', 'de', 'den',
+      'di', 'do', 'duoc', 'em', 'gan', 'hay', 'het', 'hom', 'khi', 'khong',
+      'la', 'lam', 'lai', 'len', 'luc', 'ma', 'minh', 'mot', 'nay', 'neu',
+      'ngay', 'nguoi', 'nhung', 'nha', 'noi', 'sau', 'se', 'that', 'the',
+      'theo', 'thay', 'thi', 'thu', 'tren', 'troi', 'tu', 'va', 'van', 'vay',
+      've', 'voi', 'vua', 'yeu',
+    ]);
+
+    const keywordCandidates = words.filter(
+      (word) => word.length >= 3 && !stopWords.has(word),
+    );
+    const phraseCandidates = words.filter(
+      (word) => word.length >= 2 && !stopWords.has(word),
+    );
+
+    const tags: string[] = [];
+    for (let index = 0; index < phraseCandidates.length - 1; index += 1) {
+      const current = phraseCandidates[index];
+      const next = phraseCandidates[index + 1];
+      if (!current || !next || current === next) continue;
+
+      if (current.length + next.length <= 18) {
+        tags.push(this.normalizeHashtag(`${current}${next}`));
+      }
+
+      if (tags.length >= 14) {
+        break;
+      }
+    }
+
+    for (let index = 0; index < keywordCandidates.length; index += 1) {
+      const current = keywordCandidates[index];
+      if (!current) continue;
+
+      tags.push(this.normalizeHashtag(current));
+
+      if (tags.length >= 14) {
+        break;
+      }
+    }
+
+    const deduped = Array.from(
+      new Map(
+        tags
+          .filter((tag) => tag.length > 2)
+          .map((tag) => [tag.toLowerCase(), tag] as const),
+      ).values(),
+    ).slice(0, 8);
+
+    if (deduped.length > 0) {
+      return deduped;
+    }
+
+    return ['#chiase', '#camxuc', '#cuocsong'];
+  }
+
+  private normalizeHashtag(tag: string): string {
+    const normalized = this.normalizeModerationText(tag.replace(/^#+/, ''))
+      .replace(/[^a-z0-9_]/g, '');
+
+    return normalized ? `#${normalized}` : '';
+  }
+
   private parseJsonPayload<T>(raw: string): T | null {
     const withoutThink = raw.replace(/<think>[\s\S]*?<\/think>/gi, '');
     const candidate =
@@ -703,6 +851,7 @@ Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu
 
   private normalizeModerationText(text: string): string {
     return text
+      .replace(/[đĐ]/g, 'd')
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()

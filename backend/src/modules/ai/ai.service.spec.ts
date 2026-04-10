@@ -66,6 +66,27 @@ describe('AIService', () => {
     ).resolves.toContain('buồn cười quá đi mất');
   });
 
+  it('extracts hashtags even when the model responds with free-form text', async () => {
+    mockedAxios.post.mockResolvedValue({
+      data: {
+        answer: 'Gợi ý nhanh: #dalat #dulich #cuoituan',
+      },
+    } as any);
+
+    await expect(
+      service.suggestHashtags('Cuối tuần muốn đi Đà Lạt đổi gió'),
+    ).resolves.toEqual(['#dalat', '#dulich', '#cuoituan']);
+  });
+
+  it('falls back to local hashtags when Dify stays unavailable', async () => {
+    jest.spyOn(service as any, 'sleep').mockResolvedValue(undefined);
+    mockedAxios.post.mockRejectedValue(new Error('503 UNAVAILABLE'));
+
+    await expect(
+      service.suggestHashtags('Chuyến đi Đà Lạt cuối tuần cùng hội bạn thân'),
+    ).resolves.toContain('#dalat');
+  });
+
   it('skips AI moderation for short benign captions', async () => {
     await expect(service.moderateContent('Hom nay troi dep 12345')).resolves.toEqual({
       isSafe: true,

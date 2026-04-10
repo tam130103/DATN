@@ -223,6 +223,11 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
     setAiAction('hashtags');
     try {
       const tags = await postService.suggestHashtags(caption);
+      if (!tags.length) {
+        toast.error('Không thể tạo hashtag phù hợp lúc này. Vui lòng thử lại sau.');
+        return;
+      }
+
       const updatedCaption = appendUniqueHashtags(caption, tags);
 
       if (updatedCaption === caption) {
