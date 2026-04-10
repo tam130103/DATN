@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { adminService, AdminReport } from '../../services/admin.service';
 
 const AdminReportsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [reports, setReports] = useState<AdminReport[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -29,6 +31,20 @@ const AdminReportsPage: React.FC = () => {
       fetchReports();
     } catch {
       alert('Có lỗi xảy ra');
+    }
+  };
+
+  const handleViewContent = (report: AdminReport) => {
+    if (report.targetType === 'post') {
+      navigate(`/posts/${report.targetId}`);
+    } else {
+      // For comment, navigate to its parent post
+      const postId = report.postId;
+      if (postId) {
+        navigate(`/posts/${postId}`);
+      } else {
+        alert('Không tìm thấy bài viết chứa bình luận này.');
+      }
     }
   };
 
@@ -90,6 +106,13 @@ const AdminReportsPage: React.FC = () => {
                   </td>
                   <td>{new Date(report.createdAt).toLocaleDateString('vi-VN')}</td>
                   <td>
+                    <button
+                      className="admin-action-btn view"
+                      onClick={() => handleViewContent(report)}
+                      title={report.targetType === 'post' ? 'Xem bài viết bị báo cáo' : 'Xem bình luận bị báo cáo'}
+                    >
+                      👁 Xem
+                    </button>
                     {report.status === 'open' && (
                       <>
                         <button className="admin-action-btn resolve" onClick={() => handleReview(report.id, 'resolved')}>

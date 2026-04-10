@@ -65,6 +65,7 @@ export interface AdminReport {
   id: string;
   targetType: 'post' | 'comment';
   targetId: string;
+  postId: string | null; // populated for comment reports
   reason: string;
   status: 'open' | 'resolved' | 'rejected';
   createdAt: string;

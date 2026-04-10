@@ -308,8 +308,29 @@ export class AdminService {
     }
 
     const [reports, total] = await qb.getManyAndCount();
+
+    // For comment-type reports, fetch the postId so frontend can navigate to the post
+    const commentReports = reports.filter(r => r.targetType === 'comment');
+    let commentPostMap: Map<string, string> = new Map();
+
+    if (commentReports.length > 0) {
+      const commentIds = commentReports.map(r => r.targetId);
+      const comments = await this.commentRepository
+        .createQueryBuilder('comment')
+        .select(['comment.id', 'comment.postId'])
+        .where('comment.id IN (:...ids)', { ids: commentIds })
+        .getMany();
+
+      comments.forEach(c => commentPostMap.set(c.id, c.postId));
+    }
+
+    const enrichedReports = reports.map(r => ({
+      ...r,
+      postId: r.targetType === 'comment' ? (commentPostMap.get(r.targetId) ?? null) : null,
+    }));
+
     return {
-      reports,
+      reports: enrichedReports,
       total,
       page,
       limit,

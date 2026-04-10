@@ -320,6 +320,8 @@
 .admin-action-btn.resolve:hover { background: rgba(34,197,94,0.25); }
 .admin-action-btn.reject { background: rgba(100,116,139,0.15); color: #94a3b8; }
 .admin-action-btn.reject:hover { background: rgba(100,116,139,0.25); }
+.admin-action-btn.view { background: rgba(99,102,241,0.15); color: #818cf8; }
+.admin-action-btn.view:hover { background: rgba(99,102,241,0.25); }
 
 /* User cell */
 .user-cell {
