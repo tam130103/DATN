@@ -239,11 +239,6 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
     }
   };
 
-  const handleHideComment = (commentId: string) => {
-    setComments(prev => prev.filter(c => c.id !== commentId));
-    toast.success('Đã ẩn bình luận.');
-  };
-
   const handleDeletedComment = (commentId: string) => {
     setComments(prev => prev.filter(c => c.id !== commentId));
   };
@@ -483,7 +478,6 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                   currentUserId={user?.id}
                   onDeleted={handleDeletedComment}
                   onReport={(id) => setReportTarget({ id, type: 'comment' })}
-                  onHide={handleHideComment}
                 />
               ))
             )}

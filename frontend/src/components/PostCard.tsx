@@ -357,11 +357,6 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
   const isOwner = user?.id === post.userId;
   const commentsCount = showComments ? comments.length : (post.commentsCount ?? 0);
 
-  const handleHideComment = (commentId: string) => {
-    setComments(prev => prev.filter(c => c.id !== commentId));
-    toast.success('Đã ẩn bình luận.');
-  };
-
   const handleDeletedComment = (commentId: string) => {
     setComments(prev => prev.filter(c => c.id !== commentId));
   };
@@ -645,7 +640,6 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
                   currentUserId={user?.id}
                   onDeleted={handleDeletedComment}
                   onReport={(id) => setReportTarget({ id, type: 'comment' })}
-                  onHide={handleHideComment}
                 />
               ))
             )}

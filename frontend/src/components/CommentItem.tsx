@@ -3,13 +3,13 @@ import toast from 'react-hot-toast';
 import { Comment } from '../types';
 import { Avatar } from './common/Avatar';
 import { engagementService } from '../services/engagement.service';
+import { userService } from '../services/user.service';
 
 interface CommentItemProps {
   comment: Comment;
   currentUserId?: string;
   onDeleted: (commentId: string) => void;
   onReport: (commentId: string) => void;
-  onHide: (commentId: string) => void;
 }
 
 const DotsIcon = ({ className }: { className?: string }) => (
@@ -25,7 +25,6 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   currentUserId,
   onDeleted,
   onReport,
-  onHide,
 }) => {
   const [showOptionsDropdown, setShowOptionsDropdown] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -33,6 +32,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [localContent, setLocalContent] = useState(comment.content);
+  const [isFollowing, setIsFollowing] = useState(!!comment.user?.isFollowing);
 
   const isOwner = currentUserId === comment.userId;
   const authorLabel = comment.user?.username || comment.user?.name || 'Thành viên';
@@ -71,6 +71,25 @@ export const CommentItem: React.FC<CommentItemProps> = ({
     } catch {
       toast.error('Không thể xóa bình luận.');
       setIsDeleting(false);
+    }
+  };
+
+  const handleToggleFollow = async () => {
+    if (!comment.user?.id) return;
+    const previouslyFollowing = isFollowing;
+    setIsFollowing(!previouslyFollowing);
+
+    try {
+      if (previouslyFollowing) {
+        await userService.unfollowUser(comment.user.id);
+        toast.success(`Đã bỏ theo dõi ${authorLabel}`);
+      } else {
+        await userService.followUser(comment.user.id);
+        toast.success(`Đã theo dõi ${authorLabel}`);
+      }
+    } catch {
+      setIsFollowing(previouslyFollowing);
+      toast.error('Có lỗi xảy ra, vui lòng thử lại.');
     }
   };
 
@@ -177,11 +196,11 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowOptionsDropdown(false);
-                        onHide(comment.id);
+                        handleToggleFollow();
                       }}
                       className="w-full px-4 py-2 text-left text-sm font-medium text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]"
                     >
-                      Ẩn bình luận
+                      {isFollowing ? `Bỏ theo dõi ${authorLabel}` : `Theo dõi ${authorLabel}`}
                     </button>
                     <button
                       onClick={(e) => {
