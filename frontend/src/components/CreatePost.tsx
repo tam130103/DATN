@@ -204,8 +204,12 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
 
     setAiAction('caption');
     try {
-      const suggested = await postService.generateCaption(normalizedPrompt);
-      setCaption(suggested);
+      const result = await postService.generateCaption(normalizedPrompt);
+      setCaption(result.text);
+      if (result.meta?.degraded) {
+        toast.success('AI dang ban, da tao ban nhap tam dua tren chu de.');
+        return;
+      }
       toast.success('AI đã viết xong bản nháp. Bạn có thể sửa trực tiếp ở trên.');
     } catch (error) {
       toast.error(getApiMessage(error, 'AI hiện tại đang bị lỗi. Vui lòng thử lại sau.'));
@@ -222,8 +226,13 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
 
     setAiAction('hashtags');
     try {
-      const tags = await postService.suggestHashtags(caption);
+      const result = await postService.suggestHashtags(caption);
+      const tags = result.hashtags;
       if (!tags.length) {
+        if (result.meta?.degraded) {
+          toast.error('AI dang ban va chua tao duoc hashtag tam phu hop.');
+          return;
+        }
         toast.error('Không thể tạo hashtag phù hợp lúc này. Vui lòng thử lại sau.');
         return;
       }
@@ -231,9 +240,17 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
       const updatedCaption = appendUniqueHashtags(caption, tags);
 
       if (updatedCaption === caption) {
+        if (result.meta?.degraded) {
+          toast.error('AI dang ban, chua co hashtag moi phu hop de them vao.');
+          return;
+        }
         toast.success('Không có hashtag nào mới được thêm vào.');
       } else {
         setCaption(updatedCaption);
+        if (result.meta?.degraded) {
+          toast.success('AI dang ban, da them hashtag goi y tam.');
+          return;
+        }
         toast.success('Đã thêm hashtag đề xuất.');
       }
     } catch (error) {

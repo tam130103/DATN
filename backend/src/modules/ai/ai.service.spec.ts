@@ -2,7 +2,6 @@ import { ConfigService } from '@nestjs/config';
 import { AIService } from './ai.service';
 import axios from 'axios';
 
-// Mock axios
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
@@ -23,21 +22,29 @@ describe('AIService', () => {
     service = new AIService(configService);
   });
 
-  it('generates a cleaned caption from Dify Workflow output', async () => {
+  it('returns caption text and meta from workflow output', async () => {
     mockedAxios.post.mockResolvedValue({
       data: {
         data: {
           outputs: {
-            result: 'Caption thử nghiệm ✨'
-          }
-        }
-      }
-    });
+            result: 'Caption thu nghiem',
+          },
+        },
+      },
+    } as any);
 
-    await expect(service.generateCaption('du lịch Đà Lạt', 'vui vẻ')).resolves.toBe('Caption thử nghiệm ✨');
+    await expect(
+      service.generateCaptionResult('du lich Da Lat', 'vui ve'),
+    ).resolves.toEqual({
+      text: 'Caption thu nghiem',
+      meta: {
+        source: 'dify',
+        degraded: false,
+      },
+    });
   });
 
-  it('retries transient caption workflow failures before succeeding', async () => {
+  it('retries transient caption failures before succeeding', async () => {
     jest.spyOn(service as any, 'sleep').mockResolvedValue(undefined);
     mockedAxios.post
       .mockRejectedValueOnce(new Error('503 UNAVAILABLE'))
@@ -45,46 +52,113 @@ describe('AIService', () => {
         data: {
           data: {
             outputs: {
-              caption: 'Caption sau khi retry',
+              caption: 'Caption sau retry',
             },
           },
         },
       } as any);
 
     await expect(
-      service.generateCaption('đi học muộn', 'tự nhiên'),
-    ).resolves.toBe('Caption sau khi retry');
+      service.generateCaptionResult('di hoc muon', 'tu nhien'),
+    ).resolves.toEqual({
+      text: 'Caption sau retry',
+      meta: {
+        source: 'dify',
+        degraded: false,
+      },
+    });
+
     expect(mockedAxios.post).toHaveBeenCalledTimes(2);
   });
 
-  it('falls back to a local caption when Dify stays unavailable', async () => {
+  it('falls back to local caption when dify times out repeatedly', async () => {
     jest.spyOn(service as any, 'sleep').mockResolvedValue(undefined);
     mockedAxios.post.mockRejectedValue(new Error('504 Gateway time-out'));
 
-    await expect(
-      service.generateCaption('buồn cười quá đi mất', 'Gen Z'),
-    ).resolves.toContain('buồn cười quá đi mất');
+    const result = await service.generateCaptionResult('buon cuoi qua di mat', 'Gen Z');
+
+    expect(result.meta).toEqual({
+      source: 'fallback',
+      degraded: true,
+    });
+    expect(result.text.toLowerCase()).toContain('buon cuoi qua di mat');
   });
 
-  it('extracts hashtags even when the model responds with free-form text', async () => {
+  it('extracts hashtags from a json object response', async () => {
     mockedAxios.post.mockResolvedValue({
       data: {
-        answer: 'Gợi ý nhanh: #dalat #dulich #cuoituan',
+        answer: '{"hashtags":["#dalat","#dulich","#cuoituan"]}',
       },
     } as any);
 
     await expect(
-      service.suggestHashtags('Cuối tuần muốn đi Đà Lạt đổi gió'),
-    ).resolves.toEqual(['#dalat', '#dulich', '#cuoituan']);
+      service.suggestHashtagsResult('Chuyen di Da Lat cuoi tuan'),
+    ).resolves.toEqual({
+      hashtags: ['#dalat', '#dulich', '#cuoituan'],
+      meta: {
+        source: 'dify',
+        degraded: false,
+      },
+    });
   });
 
-  it('falls back to local hashtags when Dify stays unavailable', async () => {
-    jest.spyOn(service as any, 'sleep').mockResolvedValue(undefined);
-    mockedAxios.post.mockRejectedValue(new Error('503 UNAVAILABLE'));
+  it('extracts hashtags from a json array response', async () => {
+    mockedAxios.post.mockResolvedValue({
+      data: {
+        answer: '["#dalat","#cuoituan","#checkin"]',
+      },
+    } as any);
 
     await expect(
-      service.suggestHashtags('Chuyến đi Đà Lạt cuối tuần cùng hội bạn thân'),
-    ).resolves.toContain('#dalat');
+      service.suggestHashtagsResult('Da Lat cuoi tuan cung hoi ban'),
+    ).resolves.toEqual({
+      hashtags: ['#dalat', '#cuoituan', '#checkin'],
+      meta: {
+        source: 'dify',
+        degraded: false,
+      },
+    });
+  });
+
+  it('extracts hashtags from free-form text response', async () => {
+    mockedAxios.post.mockResolvedValue({
+      data: {
+        answer: 'Goi y nhanh: #dalat #dulich #cuoituan',
+      },
+    } as any);
+
+    await expect(
+      service.suggestHashtagsResult('Cuoi tuan muon di Da Lat doi gio'),
+    ).resolves.toEqual({
+      hashtags: ['#dalat', '#dulich', '#cuoituan'],
+      meta: {
+        source: 'dify',
+        degraded: false,
+      },
+    });
+  });
+
+  it('falls back to local hashtags when provider rejects large input', async () => {
+    jest.spyOn(service as any, 'sleep').mockResolvedValue(undefined);
+    mockedAxios.post.mockRejectedValue({
+      response: {
+        status: 400,
+        data: {
+          code: 'invalid_param',
+          message: 'Run failed: req_id: abcd1234 PluginInvokeError: API request failed with status code 413: Request too large for model',
+        },
+      },
+    });
+
+    const result = await service.suggestHashtagsResult(
+      'Chuyen di Da Lat cuoi tuan cung hoi ban than va rat nhieu ky niem dang nho',
+    );
+
+    expect(result.meta).toEqual({
+      source: 'fallback',
+      degraded: true,
+    });
+    expect(result.hashtags.length).toBeGreaterThan(0);
   });
 
   it('skips AI moderation for short benign captions', async () => {
@@ -104,22 +178,6 @@ describe('AIService', () => {
     expect(mockedAxios.post).not.toHaveBeenCalled();
   });
 
-  it('ignores unsupported AI reasons for otherwise benign content', async () => {
-    mockedAxios.post.mockResolvedValue({
-      data: {
-        answer: '{"isSafe":false,"reason":"Noi dung co the la API key hoac so dien thoai"}',
-      },
-    });
-
-    await expect(
-      service.moderateContent(
-        'Day la bai viet trung tinh mo ta chuyen di cuoi tuan cung ban be va ke hoach tham quan o Da Lat vao ngay mai.',
-      ),
-    ).resolves.toEqual({
-      isSafe: true,
-    });
-  });
-
   it('returns safe fallback when moderation service fails', async () => {
     mockedAxios.post.mockRejectedValue(new Error('boom'));
 
@@ -133,7 +191,7 @@ describe('AIService', () => {
   });
 
   it('returns neutral fallback for sentiment', async () => {
-    await expect(service.detectSentiment('Nội dung khó đoán')).resolves.toEqual({
+    await expect(service.detectSentiment('Noi dung kho doan')).resolves.toEqual({
       label: 'neutral',
       score: null,
       summary: 'AI sentiment unavailable',

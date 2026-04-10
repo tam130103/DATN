@@ -1,5 +1,5 @@
 import { apiClient } from './api';
-import { Post, FeedResponse } from '../types';
+import { Post, FeedResponse, AICaptionResponse, AIHashtagResponse } from '../types';
 
 export interface CreatePostInput {
   caption: string;
@@ -60,14 +60,14 @@ export const postService = {
     return response.data;
   },
   
-  generateCaption: async (prompt: string, tone?: string): Promise<string> => {
-    const response = await apiClient.post<{ text: string }>('/posts/ai/generate-caption', { prompt, tone });
-    return response.data.text;
+  generateCaption: async (prompt: string, tone?: string): Promise<AICaptionResponse> => {
+    const response = await apiClient.post<AICaptionResponse>('/posts/ai/generate-caption', { prompt, tone });
+    return response.data;
   },
 
-  suggestHashtags: async (text: string): Promise<string[]> => {
-    const response = await apiClient.post<{ hashtags: string[] }>('/posts/ai/suggest-hashtags', { text });
-    return response.data.hashtags;
+  suggestHashtags: async (text: string): Promise<AIHashtagResponse> => {
+    const response = await apiClient.post<AIHashtagResponse>('/posts/ai/suggest-hashtags', { text });
+    return response.data;
   },
 
   getSavedPosts: async (userId: string, cursor?: string, limit = 24): Promise<{ posts: any[]; nextCursor: string | null }> => {

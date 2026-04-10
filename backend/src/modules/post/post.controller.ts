@@ -132,8 +132,7 @@ export class PostController {
     if (!prompt) {
       throw new BadRequestException('Vui lòng nhập chủ đề hoặc từ khóa để AI tạo nội dung.');
     }
-    const text = await this.aiService.generateCaption(prompt, body.tone?.trim());
-    return { text };
+    return this.aiService.generateCaptionResult(prompt, body.tone?.trim());
   }
 
   @Post('ai/suggest-hashtags')
@@ -142,8 +141,7 @@ export class PostController {
     if (!text) {
       throw new BadRequestException('Vui lòng nhập nội dung trước khi gợi ý hashtag.');
     }
-    const hashtags = await this.aiService.suggestHashtags(text);
-    return { hashtags };
+    return this.aiService.suggestHashtagsResult(text);
   }
 }
 

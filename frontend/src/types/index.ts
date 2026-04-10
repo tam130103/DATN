@@ -112,3 +112,18 @@ export interface FeedResponse {
   posts: Post[];
   nextCursor: string | null;
 }
+
+export interface AIMeta {
+  source: 'dify' | 'fallback';
+  degraded: boolean;
+}
+
+export interface AICaptionResponse {
+  text: string;
+  meta?: AIMeta;
+}
+
+export interface AIHashtagResponse {
+  hashtags: string[];
+  meta?: AIMeta;
+}

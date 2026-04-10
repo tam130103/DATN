@@ -26,11 +26,43 @@ export type SentimentResult = {
   summary?: string;
 };
 
+export type AIResultMeta = {
+  source: 'dify' | 'fallback';
+  degraded: boolean;
+};
+
+export type CaptionGenerationResult = {
+  text: string;
+  meta: AIResultMeta;
+};
+
+export type HashtagSuggestionResult = {
+  hashtags: string[];
+  meta: AIResultMeta;
+};
+
+type DifyErrorKind =
+  | 'dify_timeout'
+  | 'dify_5xx'
+  | 'dify_413'
+  | 'workflow_mismatch';
+
+type DifyErrorSnapshot = {
+  status: number | null;
+  kind: DifyErrorKind;
+  reqId: string | null;
+  detail: string;
+};
+
 @Injectable()
 export class AIService implements OnModuleInit {
   private readonly logger = new Logger(AIService.name);
   private static readonly CAPTION_RETRY_DELAYS_MS = [800, 1600];
   private static readonly HASHTAG_RETRY_DELAYS_MS = [600, 1200];
+  private static readonly CAPTION_TOPIC_LIMIT = 220;
+  private static readonly HASHTAG_INPUT_LIMIT = 520;
+  private static readonly CAPTION_WORKFLOW_TIMEOUT_MS = 18_000;
+  private static readonly HASHTAG_CHAT_TIMEOUT_MS = 18_000;
   private static readonly TRANSIENT_DIFY_STATUS_CODES = new Set([
     408, 429, 500, 502, 503, 504,
   ]);
@@ -267,6 +299,51 @@ export class AIService implements OnModuleInit {
     }
   }
 
+  async generateCaptionResult(
+    prompt: string,
+    tone = 't\u1EF1 nhi\u00EAn',
+  ): Promise<CaptionGenerationResult> {
+    const apiKey = this.configService.get<string>('DIFY_CAPTION_WORKFLOW_KEY');
+    const apiUrl = this.normalizeDifyApiUrl(
+      this.configService.get<string>('DIFY_API_URL'),
+    );
+    const normalizedPrompt = this.normalizeCaptionTopic(prompt);
+    const normalizedTone = this.normalizeToneValue(tone);
+
+    if (!apiKey) {
+      throw new ServiceUnavailableException(
+        'Tinh nang AI Caption chua duoc cau hinh Dify API Key.',
+      );
+    }
+
+    if (!normalizedPrompt) {
+      throw new ServiceUnavailableException(
+        'Khong the tao caption AI khi noi dung goi y dang trong.',
+      );
+    }
+
+    try {
+      return await this.runCaptionWorkflowDetailedWithRetry(
+        apiUrl,
+        apiKey,
+        normalizedPrompt,
+        normalizedTone,
+      );
+    } catch (error) {
+      const snapshot = this.extractDifyErrorSnapshot(error);
+      this.logger.error(
+        `context=caption kind=fallback_used upstream_kind=${snapshot.kind} status=${snapshot.status ?? 'unknown'} req_id=${snapshot.reqId ?? 'n/a'} degraded=true source=fallback detail=${snapshot.detail}`,
+      );
+      return {
+        text: this.buildLocalCaptionFallback(normalizedPrompt, normalizedTone),
+        meta: {
+          source: 'fallback',
+          degraded: true,
+        },
+      };
+    }
+  }
+
   async moderateContent(text: string): Promise<ModerationResult> {
     const heuristicResult = this.getHeuristicModerationResult(text);
     if (heuristicResult) {
@@ -369,7 +446,47 @@ Tra ve JSON duy nhat: {"label":"positive|neutral|negative|mixed","score":0.8,"su
     }
   }
 
-  private async generateGenericChat(query: string): Promise<string> {
+  async suggestHashtagsResult(text: string): Promise<HashtagSuggestionResult> {
+    const normalizedText = this.normalizeHashtagSourceText(text);
+
+    if (!normalizedText) {
+      return {
+        hashtags: [],
+        meta: {
+          source: 'fallback',
+          degraded: true,
+        },
+      };
+    }
+
+    if (!this.configService.get<string>('DIFY_GENERAL_API_KEY')) {
+      return {
+        hashtags: this.buildLocalHashtagFallback(normalizedText),
+        meta: {
+          source: 'fallback',
+          degraded: true,
+        },
+      };
+    }
+
+    try {
+      return await this.runHashtagSuggestionDetailedWithRetry(normalizedText);
+    } catch (error) {
+      const snapshot = this.extractDifyErrorSnapshot(error);
+      this.logger.warn(
+        `context=hashtags kind=fallback_used upstream_kind=${snapshot.kind} status=${snapshot.status ?? 'unknown'} req_id=${snapshot.reqId ?? 'n/a'} degraded=true source=fallback detail=${snapshot.detail}`,
+      );
+      return {
+        hashtags: this.buildLocalHashtagFallback(normalizedText),
+        meta: {
+          source: 'fallback',
+          degraded: true,
+        },
+      };
+    }
+  }
+
+  private async generateGenericChat(query: string, timeoutMs = 30_000): Promise<string> {
     const apiKey = this.configService.get<string>('DIFY_GENERAL_API_KEY');
     const apiUrl = this.normalizeDifyApiUrl(
       this.configService.get<string>('DIFY_API_URL'),
@@ -388,7 +505,7 @@ Tra ve JSON duy nhat: {"label":"positive|neutral|negative|mixed","score":0.8,"su
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        timeout: 30_000,
+        timeout: timeoutMs,
       },
     );
 
@@ -445,6 +562,67 @@ Tra ve JSON duy nhat: {"label":"positive|neutral|negative|mixed","score":0.8,"su
     return this.buildLocalCaptionFallback(topic, tone);
   }
 
+  private async runCaptionWorkflowDetailedWithRetry(
+    apiUrl: string,
+    apiKey: string,
+    topic: string,
+    tone: string,
+  ): Promise<CaptionGenerationResult> {
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt <= AIService.CAPTION_RETRY_DELAYS_MS.length; attempt += 1) {
+      try {
+        return {
+          text: await this.invokeCaptionWorkflow(apiUrl, apiKey, topic, tone),
+          meta: {
+            source: 'dify',
+            degraded: false,
+          },
+        };
+      } catch (error) {
+        lastError = error;
+        const attemptNumber = attempt + 1;
+        const isTransient = this.isTransientDifyError(error);
+        const snapshot = this.extractDifyErrorSnapshot(error);
+
+        if (
+          isTransient &&
+          attempt < AIService.CAPTION_RETRY_DELAYS_MS.length
+        ) {
+          const delayMs = AIService.CAPTION_RETRY_DELAYS_MS[attempt];
+          this.logger.warn(
+            `context=caption kind=${snapshot.kind} status=${snapshot.status ?? 'unknown'} req_id=${snapshot.reqId ?? 'n/a'} degraded=false source=dify attempt=${attemptNumber} action=retry delay_ms=${delayMs} detail=${snapshot.detail}`,
+          );
+          await this.sleep(delayMs);
+          continue;
+        }
+
+        this.logger.warn(
+          `context=caption kind=fallback_used upstream_kind=${snapshot.kind} status=${snapshot.status ?? 'unknown'} req_id=${snapshot.reqId ?? 'n/a'} degraded=true source=fallback attempt=${attemptNumber} detail=${snapshot.detail}`,
+        );
+        return {
+          text: this.buildLocalCaptionFallback(topic, tone),
+          meta: {
+            source: 'fallback',
+            degraded: true,
+          },
+        };
+      }
+    }
+
+    const snapshot = this.extractDifyErrorSnapshot(lastError);
+    this.logger.warn(
+      `context=caption kind=fallback_used upstream_kind=${snapshot.kind} status=${snapshot.status ?? 'unknown'} req_id=${snapshot.reqId ?? 'n/a'} degraded=true source=fallback detail=${snapshot.detail}`,
+    );
+    return {
+      text: this.buildLocalCaptionFallback(topic, tone),
+      meta: {
+        source: 'fallback',
+        degraded: true,
+      },
+    };
+  }
+
   private async runHashtagSuggestionWithRetry(text: string): Promise<string[]> {
     let lastError: unknown;
 
@@ -498,6 +676,80 @@ Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu
     return this.buildLocalHashtagFallback(text);
   }
 
+  private async runHashtagSuggestionDetailedWithRetry(
+    text: string,
+  ): Promise<HashtagSuggestionResult> {
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt <= AIService.HASHTAG_RETRY_DELAYS_MS.length; attempt += 1) {
+      try {
+        const raw = await this.generateGenericChat(
+          `Doc noi dung sau va goi y 5 den 8 hashtag ngan, sat chu de.
+Noi dung: "${text}"
+Tra ve duy nhat mot trong 3 dinh dang hop le:
+1. {"hashtags":["#tag1","#tag2"]}
+2. ["#tag1","#tag2"]
+3. Chuoi text chi chua cac hashtag cach nhau boi dau cach.
+Khong them giai thich, khong markdown, khong lap lai noi dung.`,
+          AIService.HASHTAG_CHAT_TIMEOUT_MS,
+        );
+
+        const tags = this.extractHashtagsFromRawText(raw);
+        if (tags.length > 0) {
+          return {
+            hashtags: tags,
+            meta: {
+              source: 'dify',
+              degraded: false,
+            },
+          };
+        }
+
+        throw new Error('Dify hashtag response did not contain parseable hashtags.');
+      } catch (error) {
+        lastError = error;
+        const attemptNumber = attempt + 1;
+        const isTransient = this.isTransientDifyError(error);
+        const snapshot = this.extractDifyErrorSnapshot(error);
+
+        if (
+          isTransient &&
+          attempt < AIService.HASHTAG_RETRY_DELAYS_MS.length
+        ) {
+          const delayMs = AIService.HASHTAG_RETRY_DELAYS_MS[attempt];
+          this.logger.warn(
+            `context=hashtags kind=${snapshot.kind} status=${snapshot.status ?? 'unknown'} req_id=${snapshot.reqId ?? 'n/a'} degraded=false source=dify attempt=${attemptNumber} action=retry delay_ms=${delayMs} detail=${snapshot.detail}`,
+          );
+          await this.sleep(delayMs);
+          continue;
+        }
+
+        this.logger.warn(
+          `context=hashtags kind=fallback_used upstream_kind=${snapshot.kind} status=${snapshot.status ?? 'unknown'} req_id=${snapshot.reqId ?? 'n/a'} degraded=true source=fallback attempt=${attemptNumber} detail=${snapshot.detail}`,
+        );
+        return {
+          hashtags: this.buildLocalHashtagFallback(text),
+          meta: {
+            source: 'fallback',
+            degraded: true,
+          },
+        };
+      }
+    }
+
+    const snapshot = this.extractDifyErrorSnapshot(lastError);
+    this.logger.warn(
+      `context=hashtags kind=fallback_used upstream_kind=${snapshot.kind} status=${snapshot.status ?? 'unknown'} req_id=${snapshot.reqId ?? 'n/a'} degraded=true source=fallback detail=${snapshot.detail}`,
+    );
+    return {
+      hashtags: this.buildLocalHashtagFallback(text),
+      meta: {
+        source: 'fallback',
+        degraded: true,
+      },
+    };
+  }
+
   private async invokeCaptionWorkflow(
     apiUrl: string,
     apiKey: string,
@@ -519,7 +771,7 @@ Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        timeout: 35_000,
+        timeout: AIService.CAPTION_WORKFLOW_TIMEOUT_MS,
       },
     );
 
@@ -558,21 +810,30 @@ Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu
   }
 
   private extractHashtagsFromRawText(raw: string): string[] {
-    const parsed = this.parseJsonPayload<{ hashtags?: unknown; tags?: unknown }>(raw);
+    const parsed = this.parseJsonPayload<unknown>(raw);
     const candidates: string[] = [];
 
-    const parsedHashtags =
-      (Array.isArray(parsed?.hashtags) ? parsed?.hashtags : null) ||
-      (Array.isArray(parsed?.tags) ? parsed?.tags : null);
-
-    if (parsedHashtags) {
-      for (const value of parsedHashtags) {
+    if (Array.isArray(parsed)) {
+      for (const value of parsed) {
         if (typeof value === 'string') {
           candidates.push(value);
         }
       }
-    } else if (typeof parsed?.hashtags === 'string') {
-      candidates.push(...parsed.hashtags.split(/[,\n]/g));
+    } else if (parsed && typeof parsed === 'object') {
+      const parsedRecord = parsed as { hashtags?: unknown; tags?: unknown };
+      const parsedHashtags =
+        (Array.isArray(parsedRecord.hashtags) ? parsedRecord.hashtags : null) ||
+        (Array.isArray(parsedRecord.tags) ? parsedRecord.tags : null);
+
+      if (parsedHashtags) {
+        for (const value of parsedHashtags) {
+          if (typeof value === 'string') {
+            candidates.push(value);
+          }
+        }
+      } else if (typeof parsedRecord.hashtags === 'string') {
+        candidates.push(...parsedRecord.hashtags.split(/[,\n]/g));
+      }
     }
 
     const inlineHashtags = this.cleanPlainTextResponse(raw).match(/#[\p{L}\p{N}_]+/gu) || [];
@@ -624,16 +885,8 @@ Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu
   }
 
   private summarizeDifyError(error: unknown): string {
-    const axiosError = error as {
-      response?: { status?: number; data?: unknown };
-      message?: string;
-    };
-    const status = axiosError?.response?.status;
-    const payload = axiosError?.response?.data;
-    const detail = this.summarizeErrorPayload(
-      typeof payload === 'undefined' ? axiosError?.message : payload,
-    );
-    return `status=${status ?? 'unknown'} detail=${detail}`;
+    const snapshot = this.extractDifyErrorSnapshot(error);
+    return `status=${snapshot.status ?? 'unknown'} kind=${snapshot.kind} req_id=${snapshot.reqId ?? 'n/a'} detail=${snapshot.detail}`;
   }
 
   private summarizeErrorPayload(payload: unknown): string {
@@ -656,6 +909,71 @@ Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu
     }
 
     return String(payload ?? 'unknown');
+  }
+
+  private extractDifyErrorSnapshot(
+    error: unknown,
+    fallbackKind: DifyErrorKind = 'workflow_mismatch',
+  ): DifyErrorSnapshot {
+    const axiosError = error as {
+      response?: { status?: number; data?: unknown };
+      message?: string;
+    };
+    const status =
+      typeof axiosError?.response?.status === 'number'
+        ? axiosError.response.status
+        : null;
+    const rawPayload =
+      typeof axiosError?.response?.data === 'undefined'
+        ? axiosError?.message
+        : axiosError.response.data;
+    const rawText =
+      typeof rawPayload === 'string'
+        ? rawPayload
+        : rawPayload && typeof rawPayload === 'object'
+          ? JSON.stringify(rawPayload)
+          : String(rawPayload ?? '');
+    const detail = this.summarizeErrorPayload(rawPayload);
+    const haystack = `${axiosError?.message || ''} ${rawText}`.toLowerCase();
+    let kind: DifyErrorKind = fallbackKind;
+
+    if (
+      status === 413 ||
+      haystack.includes('request too large') ||
+      haystack.includes('status code 413')
+    ) {
+      kind = 'dify_413';
+    } else if (
+      haystack.includes('timeout') ||
+      haystack.includes('timed out') ||
+      haystack.includes('gateway time-out') ||
+      haystack.includes('gateway timeout') ||
+      haystack.includes('etimedout') ||
+      haystack.includes('econnreset') ||
+      haystack.includes('socket hang up')
+    ) {
+      kind = 'dify_timeout';
+    } else if (
+      (typeof status === 'number' && status >= 500) ||
+      haystack.includes('503 unavailable') ||
+      haystack.includes('temporar')
+    ) {
+      kind = 'dify_5xx';
+    } else if (
+      haystack.includes('workflow failed') ||
+      haystack.includes('caption output') ||
+      haystack.includes('thieu data') ||
+      haystack.includes('parseable hashtags')
+    ) {
+      kind = 'workflow_mismatch';
+    }
+
+    return {
+      status,
+      kind,
+      reqId: rawText.match(/req[_-]?id[:=\s]+([a-z0-9-]+)/i)?.[1] || null,
+      detail,
+    };
   }
 
   private async sleep(ms: number): Promise<void> {
@@ -859,6 +1177,43 @@ Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu
   }
 
 
+
+  private normalizeCaptionTopic(text: string): string {
+    return this.truncateText(
+      this.collapseWhitespace(this.cleanPlainTextResponse(text)),
+      AIService.CAPTION_TOPIC_LIMIT,
+    );
+  }
+
+  private normalizeToneValue(tone?: string): string {
+    const normalizedTone = this.collapseWhitespace(this.cleanPlainTextResponse(tone || ''));
+    return normalizedTone || 't\u1EF1 nhi\u00EAn';
+  }
+
+  private normalizeHashtagSourceText(text: string): string {
+    const sanitized = this.cleanPlainTextResponse(text)
+      .replace(/https?:\/\/\S+/gi, ' ')
+      .replace(/www\.\S+/gi, ' ')
+      .replace(/#[\p{L}\p{N}_]+/gu, ' ')
+      .replace(/@[\p{L}\p{N}._]+/gu, ' ');
+
+    return this.truncateText(
+      this.collapseWhitespace(sanitized),
+      AIService.HASHTAG_INPUT_LIMIT,
+    );
+  }
+
+  private collapseWhitespace(text: string): string {
+    return text.replace(/\s+/g, ' ').trim();
+  }
+
+  private truncateText(text: string, maxLength: number): string {
+    if (text.length <= maxLength) {
+      return text;
+    }
+
+    return text.slice(0, maxLength).trim();
+  }
 
   private cleanPlainTextResponse(raw: string): string {
     return raw

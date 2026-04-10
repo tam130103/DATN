@@ -10,8 +10,8 @@ describe('PostController AI endpoints', () => {
 
   beforeEach(() => {
     aiService = {
-      generateCaption: jest.fn(),
-      suggestHashtags: jest.fn(),
+      generateCaptionResult: jest.fn(),
+      suggestHashtagsResult: jest.fn(),
     } as unknown as jest.Mocked<AIService>;
 
     controller = new PostController(
@@ -26,15 +26,25 @@ describe('PostController AI endpoints', () => {
   });
 
   it('trims prompt before generating a caption', async () => {
-    aiService.generateCaption.mockResolvedValue('Caption từ AI');
-
-    await expect(
-      controller.generateCaption({ prompt: '  du lịch biển  ', tone: '  vui vẻ  ' }),
-    ).resolves.toEqual({
-      text: 'Caption từ AI',
+    aiService.generateCaptionResult.mockResolvedValue({
+      text: 'Caption tu AI',
+      meta: {
+        source: 'dify',
+        degraded: false,
+      },
     });
 
-    expect(aiService.generateCaption).toHaveBeenCalledWith('du lịch biển', 'vui vẻ');
+    await expect(
+      controller.generateCaption({ prompt: '  du lich bien  ', tone: '  vui ve  ' }),
+    ).resolves.toEqual({
+      text: 'Caption tu AI',
+      meta: {
+        source: 'dify',
+        degraded: false,
+      },
+    });
+
+    expect(aiService.generateCaptionResult).toHaveBeenCalledWith('du lich bien', 'vui ve');
   });
 
   it('returns 400 when suggest-hashtags text is missing', async () => {
@@ -42,12 +52,22 @@ describe('PostController AI endpoints', () => {
   });
 
   it('returns hashtags for valid text input', async () => {
-    aiService.suggestHashtags.mockResolvedValue(['#dulich', '#dalat']);
-
-    await expect(controller.suggestHashtags({ text: '  Chuyến đi Đà Lạt  ' })).resolves.toEqual({
+    aiService.suggestHashtagsResult.mockResolvedValue({
       hashtags: ['#dulich', '#dalat'],
+      meta: {
+        source: 'fallback',
+        degraded: true,
+      },
     });
 
-    expect(aiService.suggestHashtags).toHaveBeenCalledWith('Chuyến đi Đà Lạt');
+    await expect(controller.suggestHashtags({ text: '  Chuyen di Da Lat  ' })).resolves.toEqual({
+      hashtags: ['#dulich', '#dalat'],
+      meta: {
+        source: 'fallback',
+        degraded: true,
+      },
+    });
+
+    expect(aiService.suggestHashtagsResult).toHaveBeenCalledWith('Chuyen di Da Lat');
   });
 });
