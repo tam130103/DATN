@@ -155,8 +155,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, on
     let cancelled = false;
     let removeTimer: ReturnType<typeof setTimeout>;
 
-    const raf1 = requestAnimationFrame(() => {
-      const raf2 = requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
         if (cancelled) return;
 
         const el = document.getElementById(`comment-${targetCommentId}`);

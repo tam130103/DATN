@@ -217,7 +217,6 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
   const createdAt = new Date(post.createdAt).toLocaleDateString();
   const cover = media[currentMediaIndex];
   const isVideo = cover?.type === 'VIDEO';
-  const profilePath = post.user?.username ? `/${post.user.username}` : undefined;
   const authorLabel = post.user?.username || post.user?.name || 'Thành viên';
   const isOwner = user?.id === post.userId;
 
