@@ -58,17 +58,24 @@ export class UserService {
     googleId: string,
     email: string,
     name: string,
-    avatarUrl?: string,
+    _avatarUrl?: string,
   ): Promise<User> {
     let user = await this.findByGoogleId(googleId);
     if (!user) {
+      // Always use our default avatar, ignore Google's profile picture
       user = await this.create({
         googleId,
         email,
         name,
-        avatarUrl: avatarUrl || null,
         provider: UserProvider.GOOGLE,
       });
+    } else if (
+      !user.avatarUrl ||
+      user.avatarUrl.includes('googleusercontent.com')
+    ) {
+      // Migrate existing Google users to default avatar
+      user.avatarUrl = UserService.DEFAULT_AVATAR_URL;
+      user = await this.userRepository.save(user);
     }
     return user;
   }
