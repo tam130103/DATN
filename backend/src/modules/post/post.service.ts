@@ -519,7 +519,7 @@ export class PostService {
       .where('post.userId IN (:...userIds)', { userIds })
       .andWhere('post.status = :status', { status: PostStatus.VISIBLE })
       // Own pinned post bubbles to top; others' posts are purely chronological
-      .orderBy(`CASE WHEN post."userId" = :currentUserId AND post."isPinned" = true THEN 1 ELSE 0 END`, 'DESC')
+      .orderBy(`CASE WHEN "post"."user_id" = :currentUserId AND "post"."is_pinned" = true THEN 1 ELSE 0 END`, 'DESC')
       .addOrderBy(sortExpression, 'DESC')
       .addOrderBy('post.id', 'DESC')
       .setParameter('currentUserId', userId)
