@@ -58,6 +58,15 @@ export class EngagementController {
     return this.engagementService.getPostComments(postId, page, limit);
   }
 
+  @Patch('comments/:commentId')
+  updateComment(
+    @CurrentUser() user: any,
+    @Param('commentId') commentId: string,
+    @Body('content') content: string,
+  ) {
+    return this.engagementService.updateComment(commentId, user.id, content);
+  }
+
   @Delete('comments/:commentId')
   deleteComment(@CurrentUser() user: any, @Param('commentId') commentId: string) {
     return this.engagementService.deleteComment(commentId, user.id);

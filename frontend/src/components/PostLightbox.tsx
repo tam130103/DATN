@@ -7,6 +7,7 @@ import { postService } from '../services/post.service';
 import { useAuth } from '../contexts/AuthContext';
 import { PostCaption } from './PostCaption';
 import { ReportModal } from './ReportModal';
+import { CommentItem } from './CommentItem';
 
 const CloseIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -71,7 +72,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showOptionsDropdown, setShowOptionsDropdown] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{ id: string; type: 'post' | 'comment' } | null>(null);
 
   const [localCaption, setLocalCaption] = useState(post.caption);
   const [localIsEdited, setLocalIsEdited] = useState(post.isEdited || false);
@@ -238,6 +239,15 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
     }
   };
 
+  const handleHideComment = (commentId: string) => {
+    setComments(prev => prev.filter(c => c.id !== commentId));
+    toast.success('Đã ẩn bình luận.');
+  };
+
+  const handleDeletedComment = (commentId: string) => {
+    setComments(prev => prev.filter(c => c.id !== commentId));
+  };
+
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-0 backdrop-blur-sm sm:p-6" onClick={handleBackdropClick}>
@@ -319,7 +329,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                     <>
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); setShowReportModal(true); }}
+                        onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); setReportTarget({ id: post.id, type: 'post' }); }}
                         className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
                       >
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-800">
@@ -467,15 +477,14 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
               <div className="rounded-lg bg-[var(--app-bg-soft)] px-4 py-4 text-xs font-semibold text-[var(--app-muted)]">Chưa có bình luận nào.</div>
             ) : (
               comments.map((comment) => (
-                <div key={comment.id} className="flex items-start gap-3">
-                  <Avatar src={comment.user?.avatarUrl} name={comment.user?.name} username={comment.user?.username} size="sm" />
-                  <p className="text-[var(--app-text)]">
-                    <span className="font-semibold text-[var(--app-text)]">
-                      {comment.user?.username || comment.user?.name || 'Thành viên'}
-                    </span>{' '}
-                    {comment.content}
-                  </p>
-                </div>
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  currentUserId={user?.id}
+                  onDeleted={handleDeletedComment}
+                  onReport={(id) => setReportTarget({ id, type: 'comment' })}
+                  onHide={handleHideComment}
+                />
               ))
             )}
           </div>
@@ -512,8 +521,8 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
         </div>
       </div>
     </div>
-      {showReportModal ? (
-        <ReportModal postId={post.id} onClose={() => setShowReportModal(false)} />
+      {reportTarget ? (
+        <ReportModal targetId={reportTarget.id} targetType={reportTarget.type} onClose={() => setReportTarget(null)} />
       ) : null}
     </>
   );

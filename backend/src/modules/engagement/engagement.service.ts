@@ -126,6 +126,20 @@ export class EngagementService {
     await this.commentRepository.remove(comment);
   }
 
+  async updateComment(commentId: string, userId: string, content: string): Promise<Comment> {
+    const comment = await this.commentRepository.findOne({
+      where: { id: commentId },
+      relations: ['user'],
+    });
+
+    if (!comment || comment.userId !== userId) {
+      throw new Error('Comment not found or unauthorized');
+    }
+
+    comment.content = content;
+    return this.commentRepository.save(comment);
+  }
+
   async toggleSave(userId: string, postId: string): Promise<{ saved: boolean }> {
     const post = await this.postRepository.findOne({
       where: { id: postId, status: PostStatus.VISIBLE },

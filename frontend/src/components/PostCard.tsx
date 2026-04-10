@@ -11,6 +11,7 @@ import { userService } from '../services/user.service';
 
 import { PostCaption } from './PostCaption';
 import { ReportModal } from './ReportModal';
+import { CommentItem } from './CommentItem';
 
 interface PostCardProps {
   post: Post;
@@ -118,7 +119,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
   const [selectedShareUsers, setSelectedShareUsers] = useState<Set<string>>(new Set());
   const [isSendingShare, setIsSendingShare] = useState(false);
   const [showOptionsDropdown, setShowOptionsDropdown] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{ id: string; type: 'post' | 'comment' } | null>(null);
 
   const [localCaption, setLocalCaption] = useState(post.caption);
   const [localIsEdited, setLocalIsEdited] = useState(post.isEdited || false);
@@ -356,6 +357,15 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
   const isOwner = user?.id === post.userId;
   const commentsCount = showComments ? comments.length : (post.commentsCount ?? 0);
 
+  const handleHideComment = (commentId: string) => {
+    setComments(prev => prev.filter(c => c.id !== commentId));
+    toast.success('Đã ẩn bình luận.');
+  };
+
+  const handleDeletedComment = (commentId: string) => {
+    setComments(prev => prev.filter(c => c.id !== commentId));
+  };
+
   return (
     <article className="surface-card overflow-hidden rounded-xl">
       {localIsPinned && (
@@ -446,7 +456,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
                   <>
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); setShowReportModal(true); }}
+                      onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); setReportTarget({ id: post.id, type: 'post' }); }}
                       className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
                     >
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-800">
@@ -629,20 +639,14 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
               <p className="text-sm text-[var(--app-muted)]">Chưa có bình luận nào.</p>
             ) : (
               comments.map((comment) => (
-                <div key={comment.id} id={`comment-${comment.id}`} className="flex items-start gap-3 rounded-lg p-2 transition-colors">
-                  <Avatar
-                    src={comment.user?.avatarUrl}
-                    name={comment.user?.name}
-                    username={comment.user?.username}
-                    size="sm"
-                  />
-                  <div className="min-w-0 flex-1 text-sm leading-6 text-[var(--app-text)]">
-                    <span className="mr-1 font-semibold text-[var(--app-text)]">
-                      {comment.user?.username || comment.user?.name || user?.username || 'user'}
-                    </span>
-                    {comment.content}
-                  </div>
-                </div>
+                <CommentItem
+                  key={comment.id}
+                  comment={comment}
+                  currentUserId={user?.id}
+                  onDeleted={handleDeletedComment}
+                  onReport={(id) => setReportTarget({ id, type: 'comment' })}
+                  onHide={handleHideComment}
+                />
               ))
             )}
           </div>
@@ -776,8 +780,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onDeleted }) => {
         </div>
       ) : null}
 
-      {showReportModal && (
-        <ReportModal postId={post.id} onClose={() => setShowReportModal(false)} />
+      {reportTarget && (
+        <ReportModal targetId={reportTarget.id} targetType={reportTarget.type} onClose={() => setReportTarget(null)} />
       )}
     </article>
   );

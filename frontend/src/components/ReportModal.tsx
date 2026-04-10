@@ -3,7 +3,8 @@ import toast from 'react-hot-toast';
 import { adminService } from '../services/admin.service';
 
 interface ReportModalProps {
-  postId: string;
+  targetId: string;
+  targetType: 'post' | 'comment';
   onClose: () => void;
 }
 
@@ -17,7 +18,7 @@ const REPORT_REASONS = [
   'Vấn đề khác'
 ];
 
-export const ReportModal: React.FC<ReportModalProps> = ({ postId, onClose }) => {
+export const ReportModal: React.FC<ReportModalProps> = ({ targetId, targetType, onClose }) => {
   const [selectedReason, setSelectedReason] = useState('');
   const [otherReason, setOtherReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,8 +32,8 @@ export const ReportModal: React.FC<ReportModalProps> = ({ postId, onClose }) => 
 
     setIsSubmitting(true);
     try {
-      await adminService.createReport('post', postId, finalReason);
-      toast.success('Cảm ơn bạn đã báo cáo. Chúng tôi sẽ xem xét bài viết này.');
+      await adminService.createReport(targetType, targetId, finalReason);
+      toast.success(targetType === 'post' ? 'Cảm ơn bạn đã báo cáo. Chúng tôi sẽ xem xét bài viết này.' : 'Cảm ơn bạn đã báo cáo. Chúng tôi sẽ xem xét bình luận này.');
       onClose();
     } catch {
       toast.error('Lỗi khi gửi báo cáo.');
@@ -47,7 +48,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({ postId, onClose }) => 
     >
       <div className="flex w-full max-w-sm flex-col overflow-hidden rounded-xl bg-[var(--app-surface)] shadow-2xl">
         <div className="flex items-center justify-between border-b border-[var(--app-border)] px-4 py-3">
-          <h3 className="text-lg font-bold text-[var(--app-text)]">Báo cáo bài viết</h3>
+          <h3 className="text-lg font-bold text-[var(--app-text)]">{targetType === 'post' ? 'Báo cáo bài viết' : 'Báo cáo bình luận'}</h3>
           <button onClick={onClose} className="rounded-full p-1.5 text-[var(--app-muted)] transition hover:bg-[var(--app-bg-soft)] hover:text-[var(--app-text)]">
              <svg viewBox="0 0 24 24" className="h-5 w-5"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" strokeWidth="2"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" strokeWidth="2"/></svg>
           </button>

@@ -27,6 +27,11 @@ export const engagementService = {
     return response.data;
   },
 
+  updateComment: async (commentId: string, content: string): Promise<Comment> => {
+    const response = await apiClient.patch<Comment>(`/posts/comments/${commentId}`, { content });
+    return response.data;
+  },
+
   deleteComment: async (commentId: string): Promise<void> => {
     await apiClient.delete(`/posts/comments/${commentId}`);
   },
