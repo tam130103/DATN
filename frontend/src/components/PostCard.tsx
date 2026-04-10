@@ -384,7 +384,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, on
 
   return (
     <article className="surface-card overflow-hidden rounded-xl">
-      {localIsPinned && (
+      {localIsPinned && user?.id === post.userId && (
         <div className="px-3 pt-2.5 flex items-center gap-1 text-[11px] font-semibold text-[var(--app-muted)]">
           📌 Đã ghim
         </div>

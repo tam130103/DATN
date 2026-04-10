@@ -518,9 +518,11 @@ export class PostService {
       .createQueryBuilder('post')
       .where('post.userId IN (:...userIds)', { userIds })
       .andWhere('post.status = :status', { status: PostStatus.VISIBLE })
-      .orderBy('post.isPinned', 'DESC')
+      // Own pinned post bubbles to top; others' posts are purely chronological
+      .orderBy(`CASE WHEN post."userId" = :currentUserId AND post."isPinned" = true THEN 1 ELSE 0 END`, 'DESC')
       .addOrderBy(sortExpression, 'DESC')
       .addOrderBy('post.id', 'DESC')
+      .setParameter('currentUserId', userId)
       .limit(limit + 1);
 
     if (cursor) {
