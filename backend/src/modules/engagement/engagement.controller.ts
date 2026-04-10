@@ -52,11 +52,12 @@ export class EngagementController {
 
   @Get(':id/comments')
   getPostComments(
+    @CurrentUser() user: any,
     @Param('id') postId: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
-    return this.engagementService.getPostComments(postId, page, limit);
+    return this.engagementService.getPostComments(postId, user?.id, page, limit);
   }
 
   @Patch('comments/:commentId')

@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Like } from './entities/like.entity';
 import { Comment, CommentStatus } from './entities/comment.entity';
 import { SavedPost } from './entities/saved-post.entity';
 import { CreateCommentDto } from './dto/create-comment.dto';
+import { Follow } from '../user/entities/follow.entity';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationGateway } from '../notification/notification.gateway';
 import { Post, PostStatus } from '../post/entities/post.entity';
@@ -20,6 +21,8 @@ export class EngagementService {
     private readonly savedPostRepository: Repository<SavedPost>,
     @InjectRepository(Post)
     private readonly postRepository: Repository<Post>,
+    @InjectRepository(Follow)
+    private readonly followRepository: Repository<Follow>,
     private readonly notificationService: NotificationService,
     private readonly notificationGateway: NotificationGateway,
   ) {}
@@ -104,14 +107,36 @@ export class EngagementService {
     return savedComment;
   }
 
-  async getPostComments(postId: string, page = 1, limit = 20): Promise<Comment[]> {
-    return this.commentRepository.find({
+  async getPostComments(postId: string, userId: string, page = 1, limit = 20): Promise<Comment[]> {
+    const comments = await this.commentRepository.find({
       where: { postId, parentId: null, status: CommentStatus.VISIBLE },
       relations: ['user'],
       order: { createdAt: 'DESC' },
       take: limit,
       skip: (page - 1) * limit,
     });
+
+    if (comments.length === 0 || !userId) {
+      return comments;
+    }
+
+    const commenterIds = Array.from(new Set(comments.map(c => c.userId)));
+    const follows = await this.followRepository.find({
+      where: {
+        followerId: userId,
+        followingId: In(commenterIds),
+      },
+    });
+
+    const followingSet = new Set(follows.map(f => f.followingId));
+
+    for (const comment of comments) {
+      if (comment.user) {
+        comment.user.isFollowing = followingSet.has(comment.user.id);
+      }
+    }
+
+    return comments;
   }
 
   async deleteComment(commentId: string, userId: string): Promise<void> {

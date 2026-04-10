@@ -8,8 +8,10 @@ import { SavedPost } from './entities/saved-post.entity';
 import { Post } from '../post/entities/post.entity';
 import { NotificationModule } from '../notification/notification.module';
 
+import { Follow } from '../user/entities/follow.entity';
+
 @Module({
-  imports: [TypeOrmModule.forFeature([Like, Comment, SavedPost, Post]), NotificationModule],
+  imports: [TypeOrmModule.forFeature([Like, Comment, SavedPost, Post, Follow]), NotificationModule],
   controllers: [EngagementController],
   providers: [EngagementService],
   exports: [EngagementService],
