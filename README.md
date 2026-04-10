@@ -308,7 +308,7 @@ cd frontend && npx playwright test
 
 ## 👨‍💻 Tác giả
 
-- **Nguyễn Minh Tâm** — Sinh viên Đại học Mỏ - Địa chất (HUMG)
+- **Nguyễn Thế Tâm** — Sinh viên Đại học Mỏ - Địa chất (HUMG)
 - GitHub: [@tam130103](https://github.com/tam130103)
 
 ---
