@@ -129,8 +129,8 @@ const NotificationsPage: React.FC = () => {
       key={notification.id}
       type="button"
       onClick={() => handleMarkAsRead(notification.id)}
-      className={`flex w-full items-start gap-3 rounded-xl px-4 py-4 text-left transition hover:bg-[var(--app-bg-soft)] ${
-        !notification.isRead ? 'bg-[#eef6ff]' : ''
+      className={`flex w-full items-start gap-3 rounded-xl px-4 py-4 text-left transition-colors duration-500 hover:bg-[var(--app-bg-soft)] ${
+        !notification.isRead ? 'notification-unread' : ''
       }`}
     >
       <Avatar

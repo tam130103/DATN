@@ -149,19 +149,38 @@ export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, on
   }, [targetCommentId, showComments, post.id]);
 
   useEffect(() => {
-    if (targetCommentId && showComments && comments.length > 0) {
-      const timeoutId = setTimeout(() => {
+    if (!targetCommentId || !showComments || comments.length === 0) return;
+
+    // Use double rAF to ensure React has fully committed to the DOM
+    let cancelled = false;
+    let removeTimer: ReturnType<typeof setTimeout>;
+
+    const raf1 = requestAnimationFrame(() => {
+      const raf2 = requestAnimationFrame(() => {
+        if (cancelled) return;
+
         const el = document.getElementById(`comment-${targetCommentId}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          el.classList.add('animate-blink');
+        if (!el) return;
+
+        // Scroll first, then apply animation after scroll has time to complete
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Wait for smooth scroll to finish (~600ms) before blinking
+        removeTimer = setTimeout(() => {
+          if (cancelled) return;
+          el.classList.add('comment-highlight');
+          // Remove after full animation duration (2 cycles × 2.4s + buffer)
           setTimeout(() => {
-            el.classList.remove('animate-blink');
-          }, 3000);
-        }
-      }, 100);
-      return () => clearTimeout(timeoutId);
-    }
+            el.classList.remove('comment-highlight');
+          }, 5500);
+        }, 700);
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(removeTimer);
+    };
   }, [targetCommentId, showComments, comments]);
 
   const handleLikeToggle = async () => {

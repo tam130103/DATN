@@ -218,16 +218,44 @@ select:focus {
   }
 }
 
+/* ── Facebook-style unread notification highlight ── */
+@keyframes notifFadeIn {
+  0%   { background-color: transparent; }
+  30%  { background-color: rgba(0, 149, 246, 0.10); }
+  100% { background-color: rgba(0, 149, 246, 0.10); }
+}
+
+.notification-unread {
+  animation: notifFadeIn 0.8s ease-out forwards;
+  background-color: rgba(0, 149, 246, 0.10);
+}
+
+.dark .notification-unread {
+  background-color: rgba(0, 149, 246, 0.12);
+}
+
+/* ── Facebook-style comment highlight (slow fade in → hold → fade out) ── */
+@keyframes commentHighlightFade {
+  0%   { background-color: transparent; }
+  12%  { background-color: rgba(0, 149, 246, 0.15); }
+  60%  { background-color: rgba(0, 149, 246, 0.15); }
+  100% { background-color: transparent; }
+}
+
+.comment-highlight {
+  animation: commentHighlightFade 2.4s ease-in-out 2 forwards;
+  border-radius: 10px;
+}
+
+/* Kept for backward compat */
 @keyframes blinkBg {
-  0%   { background-color: transparent; box-shadow: none; }
-  20%  { background-color: rgba(0, 149, 246, 0.18); box-shadow: 0 0 0 2px var(--app-primary); }
-  50%  { background-color: transparent; box-shadow: none; }
-  70%  { background-color: rgba(0, 149, 246, 0.18); box-shadow: 0 0 0 2px var(--app-primary); }
-  100% { background-color: transparent; box-shadow: none; }
+  0%   { background-color: transparent; }
+  20%  { background-color: rgba(0, 149, 246, 0.15); }
+  60%  { background-color: rgba(0, 149, 246, 0.15); }
+  100% { background-color: transparent; }
 }
 
 .animate-blink {
-  animation: blinkBg 1.4s ease-in-out 2;
-  border-radius: 12px;
-  transition: box-shadow 0.2s;
+  animation: blinkBg 2.4s ease-in-out 2 forwards;
+  border-radius: 10px;
 }
