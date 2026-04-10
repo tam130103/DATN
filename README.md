@@ -159,9 +159,10 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret
 
 # AI Services
 GEMINI_API_KEY=your_gemini_api_key
-DIFY_API_KEY=your_dify_api_key
 DIFY_API_URL=https://api.dify.ai/v1
-DIFY_CAPTION_WORKFLOW_API_KEY=your_caption_workflow_key
+DIFY_CAPTION_WORKFLOW_KEY=your_caption_workflow_key
+DIFY_GENERAL_API_KEY=your_general_dify_key
+DIFY_CHATBOT_API_KEY=your_chatbot_dify_key
 
 # Cloudinary
 CLOUDINARY_CLOUD_NAME=your_cloud_name
@@ -229,8 +230,8 @@ docker compose up --build
 | `PATCH` | `/api/v1/posts/:id/caption` | Sửa caption |
 | `PATCH` | `/api/v1/posts/:id/pin` | Ghim / bỏ ghim bài viết |
 | `DELETE` | `/api/v1/posts/:id` | Xóa bài viết |
-| `POST` | `/api/v1/posts/generate-caption` | AI gợi ý caption |
-| `POST` | `/api/v1/posts/suggest-hashtags` | AI gợi ý hashtag |
+| `POST` | `/api/v1/posts/ai/generate-caption` | AI gợi ý caption |
+| `POST` | `/api/v1/posts/ai/suggest-hashtags` | AI gợi ý hashtag |
 
 ### Engagement
 | Method | Endpoint | Mô tả |

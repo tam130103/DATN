@@ -33,41 +33,54 @@ export class NotificationGateway
   ) {}
 
   afterInit(server: Server) {
+    server.use((socket: Socket, next: (err?: Error) => void) => {
+      const token =
+        socket.handshake.auth?.token ||
+        socket.handshake.headers?.authorization?.replace('Bearer ', '');
+
+      if (!token) {
+        return next(new Error('NO_TOKEN'));
+      }
+
+      try {
+        const payload = this.jwtService.verify(token, {
+          secret: this.configService.get<string>('JWT_SECRET'),
+        }) as { sub: string };
+        socket.data.userId = payload.sub;
+        return next();
+      } catch (err: any) {
+        const code =
+          err?.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN';
+        console.warn(`[NotificationGateway] Auth rejected (${code}): ${err?.message}`);
+        return next(new Error(code));
+      }
+    });
+
     console.log('Notification gateway initialized');
   }
 
   async handleConnection(client: Socket) {
+    const userId = client.data.userId as string;
+    if (!userId) {
+      client.disconnect();
+      return;
+    }
+
+    if (!this.userSockets.has(userId)) {
+      this.userSockets.set(userId, new Set());
+    }
+    this.userSockets.get(userId)!.add(client.id);
+
+    client.join(`user:${userId}`);
+
     try {
-      const token = client.handshake.auth.token || client.handshake.headers.authorization?.replace('Bearer ', '');
-      if (!token) {
-        client.disconnect();
-        return;
-      }
-
-      const payload = this.jwtService.verify(token, {
-        secret: this.configService.get<string>('JWT_SECRET'),
-      });
-
-      const userId = payload.sub;
-      client.data.userId = userId;
-
-      if (!this.userSockets.has(userId)) {
-        this.userSockets.set(userId, new Set());
-      }
-      this.userSockets.get(userId)!.add(client.id);
-
-      // Join user's personal room
-      client.join(`user:${userId}`);
-
-      // Send unread count
       const unreadCount = await this.notificationService.getUnreadCount(userId);
       client.emit('unreadCount', unreadCount);
-
-      console.log(`User ${userId} connected to notifications`);
     } catch (error) {
-      console.error('Notification connection error:', error);
-      client.disconnect();
+      console.warn(`Notification unread count error for user ${userId}:`, error);
     }
+
+    console.log(`User ${userId} connected to notifications`);
   }
 
   handleDisconnect(client: Socket) {

@@ -29,6 +29,10 @@ export type SentimentResult = {
 @Injectable()
 export class AIService implements OnModuleInit {
   private readonly logger = new Logger(AIService.name);
+  private static readonly CAPTION_RETRY_DELAYS_MS = [800, 1600];
+  private static readonly TRANSIENT_DIFY_STATUS_CODES = new Set([
+    408, 429, 500, 502, 503, 504,
+  ]);
   private static readonly HIGH_SEVERITY_CONTENT_PATTERN =
     /\b(dit me|dit may|dmm|vai lon|vcl|con cho|thang cho|mat day|do ngu|may ngu|chet di|giet|kill you|rape|terrorist|nazi)\b/i;
   private static readonly NON_HARMFUL_REASON_PATTERN =
@@ -76,11 +80,9 @@ export class AIService implements OnModuleInit {
       throw new ServiceUnavailableException('Không thể gửi tin nhắn trống cho AI.');
     }
 
-    // Standardize Dify API URL: remove trailing slashes, ensure /v1 suffix
-    let baseApiUrl = (this.configService.get<string>('DIFY_API_URL') || 'https://api.dify.ai/v1').replace(/\/+$/, '');
-    if (!baseApiUrl.endsWith('/v1') && !baseApiUrl.includes('/v1/')) {
-      baseApiUrl += '/v1';
-    }
+    const baseApiUrl = this.normalizeDifyApiUrl(
+      this.configService.get<string>('DIFY_API_URL'),
+    );
 
     try {
       const payload: Record<string, unknown> = {
@@ -233,8 +235,9 @@ export class AIService implements OnModuleInit {
 
   async generateCaption(prompt: string, tone = 'tự nhiên'): Promise<string> {
     const apiKey = this.configService.get<string>('DIFY_CAPTION_WORKFLOW_KEY');
-    const apiUrl =
-      this.configService.get<string>('DIFY_API_URL') || 'https://api.dify.ai/v1';
+    const apiUrl = this.normalizeDifyApiUrl(
+      this.configService.get<string>('DIFY_API_URL'),
+    );
 
     if (!apiKey) {
       throw new ServiceUnavailableException(
@@ -250,62 +253,16 @@ export class AIService implements OnModuleInit {
     }
 
     try {
-      const response = await axios.post(
-        `${apiUrl}/workflows/run`,
-        {
-          inputs: {
-            topic: normalizedPrompt,
-            tone: tone || 'tự nhiên',
-          },
-          response_mode: 'blocking',
-          user: 'datn-user-123',
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-        },
+      return await this.runCaptionWorkflowWithRetry(
+        apiUrl,
+        apiKey,
+        normalizedPrompt,
+        tone?.trim() || 'tự nhiên',
       );
-
-      const data = response.data?.data;
-      if (!data || !data.outputs) {
-        throw new Error(
-          'Dify tra ve cau truc khong hop le (thieu data.outputs).',
-        );
-      }
-
-      if (data.status === 'failed') {
-        throw new Error(`Dify workflow failed: ${data.error}`);
-      }
-
-      const outputs = data.outputs;
-      let resultText = '';
-      for (const key in outputs) {
-        if (typeof outputs[key] === 'string' && outputs[key].trim()) {
-          resultText = outputs[key].trim();
-          break;
-        }
-      }
-
-      const cleaned = this.cleanPlainTextResponse(
-        resultText || JSON.stringify(outputs),
-      );
-      if (!cleaned || cleaned === '{}') {
-        throw new ServiceUnavailableException(
-          'AI chua tao duoc caption phu hop. Vui long thu lai.',
-        );
-      }
-
-      return cleaned;
     } catch (error: any) {
-      const errorMsg = error?.response?.data
-        ? JSON.stringify(error.response.data)
-        : error?.message;
-      this.logger.error(`Caption generation failed: ${errorMsg}`);
-      throw new ServiceUnavailableException(
-        'Loi may chu AI Dify, vui long thu lai sau.',
-      );
+      const errorSummary = this.summarizeDifyError(error);
+      this.logger.error(`Caption generation failed: ${errorSummary}`);
+      throw new ServiceUnavailableException('Loi may chu AI Dify, vui long thu lai sau.');
     }
   }
 
@@ -423,8 +380,9 @@ Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu
 
   private async generateGenericChat(query: string): Promise<string> {
     const apiKey = this.configService.get<string>('DIFY_GENERAL_API_KEY');
-    const apiUrl =
-      this.configService.get<string>('DIFY_API_URL') || 'https://api.dify.ai/v1';
+    const apiUrl = this.normalizeDifyApiUrl(
+      this.configService.get<string>('DIFY_API_URL'),
+    );
 
     const response = await axios.post(
       `${apiUrl}/chat-messages`,
@@ -439,10 +397,235 @@ Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
+        timeout: 30_000,
       },
     );
 
     return response.data?.answer || '';
+  }
+
+  private normalizeDifyApiUrl(rawUrl?: string): string {
+    let baseApiUrl = (rawUrl || 'https://api.dify.ai/v1').replace(/\/+$/, '');
+    if (!baseApiUrl.endsWith('/v1') && !baseApiUrl.includes('/v1/')) {
+      baseApiUrl += '/v1';
+    }
+    return baseApiUrl;
+  }
+
+  private async runCaptionWorkflowWithRetry(
+    apiUrl: string,
+    apiKey: string,
+    topic: string,
+    tone: string,
+  ): Promise<string> {
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt <= AIService.CAPTION_RETRY_DELAYS_MS.length; attempt += 1) {
+      try {
+        return await this.invokeCaptionWorkflow(apiUrl, apiKey, topic, tone);
+      } catch (error) {
+        lastError = error;
+        const attemptNumber = attempt + 1;
+        const isTransient = this.isTransientDifyError(error);
+
+        if (
+          isTransient &&
+          attempt < AIService.CAPTION_RETRY_DELAYS_MS.length
+        ) {
+          const delayMs = AIService.CAPTION_RETRY_DELAYS_MS[attempt];
+          this.logger.warn(
+            `Caption workflow transient failure on attempt ${attemptNumber}. Retrying in ${delayMs}ms. ${this.summarizeDifyError(error)}`,
+          );
+          await this.sleep(delayMs);
+          continue;
+        }
+
+        const reason = isTransient ? 'upstream-unavailable' : 'workflow-error';
+        this.logger.warn(
+          `Caption workflow fallback activated (${reason}) after ${attemptNumber} attempt(s). ${this.summarizeDifyError(error)}`,
+        );
+        return this.buildLocalCaptionFallback(topic, tone);
+      }
+    }
+
+    this.logger.warn(
+      `Caption workflow fallback activated after exhausting retries. ${this.summarizeDifyError(lastError)}`,
+    );
+    return this.buildLocalCaptionFallback(topic, tone);
+  }
+
+  private async invokeCaptionWorkflow(
+    apiUrl: string,
+    apiKey: string,
+    topic: string,
+    tone: string,
+  ): Promise<string> {
+    const response = await axios.post(
+      `${apiUrl}/workflows/run`,
+      {
+        inputs: {
+          topic,
+          tone,
+        },
+        response_mode: 'blocking',
+        user: 'datn-user-123',
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 35_000,
+      },
+    );
+
+    const data = response.data?.data;
+    if (!data) {
+      throw new Error('Dify tra ve cau truc khong hop le (thieu data).');
+    }
+
+    if (data.status === 'failed') {
+      throw new Error(`Dify workflow failed: ${data.error || 'unknown error'}`);
+    }
+
+    const cleaned = this.extractCaptionFromWorkflowResponse(data.outputs);
+    if (!cleaned) {
+      throw new Error('Dify tra ve cau truc khong hop le (thieu caption output).');
+    }
+
+    return cleaned;
+  }
+
+  private extractCaptionFromWorkflowResponse(outputs: Record<string, unknown> | undefined): string {
+    if (!outputs) {
+      return '';
+    }
+
+    for (const value of Object.values(outputs)) {
+      if (typeof value === 'string' && value.trim()) {
+        const cleaned = this.cleanPlainTextResponse(value);
+        if (cleaned && cleaned !== '{}') {
+          return cleaned;
+        }
+      }
+    }
+
+    return '';
+  }
+
+  private isTransientDifyError(error: unknown): boolean {
+    const axiosError = error as {
+      response?: { status?: number; data?: unknown };
+      message?: string;
+    };
+    const status = axiosError?.response?.status;
+    const dataText =
+      typeof axiosError?.response?.data === 'string'
+        ? axiosError.response.data
+        : axiosError?.response?.data
+          ? JSON.stringify(axiosError.response.data)
+          : '';
+    const haystack = `${axiosError?.message || ''} ${dataText}`.toLowerCase();
+
+    if (
+      typeof status === 'number' &&
+      AIService.TRANSIENT_DIFY_STATUS_CODES.has(status)
+    ) {
+      return true;
+    }
+
+    return (
+      haystack.includes('503 unavailable') ||
+      haystack.includes('504') ||
+      haystack.includes('gateway time-out') ||
+      haystack.includes('gateway timeout') ||
+      haystack.includes('temporar') ||
+      haystack.includes('timed out') ||
+      haystack.includes('timeout') ||
+      haystack.includes('socket hang up') ||
+      haystack.includes('econnreset') ||
+      haystack.includes('etimedout')
+    );
+  }
+
+  private summarizeDifyError(error: unknown): string {
+    const axiosError = error as {
+      response?: { status?: number; data?: unknown };
+      message?: string;
+    };
+    const status = axiosError?.response?.status;
+    const payload = axiosError?.response?.data;
+    const detail = this.summarizeErrorPayload(
+      typeof payload === 'undefined' ? axiosError?.message : payload,
+    );
+    return `status=${status ?? 'unknown'} detail=${detail}`;
+  }
+
+  private summarizeErrorPayload(payload: unknown): string {
+    if (typeof payload === 'string') {
+      const compact = payload.replace(/\s+/g, ' ').trim();
+      if (!compact) {
+        return 'empty';
+      }
+      if (compact.includes('<title>dify.ai | 504: Gateway time-out</title>')) {
+        return 'Cloudflare 504 Gateway time-out from api.dify.ai';
+      }
+      if (compact.includes('503 UNAVAILABLE')) {
+        return compact.slice(0, 240);
+      }
+      return compact.slice(0, 240);
+    }
+
+    if (payload && typeof payload === 'object') {
+      return JSON.stringify(payload).slice(0, 240);
+    }
+
+    return String(payload ?? 'unknown');
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private buildLocalCaptionFallback(topic: string, tone: string): string {
+    const cleanedTopic = this.cleanPlainTextResponse(topic).replace(/\s+/g, ' ').trim();
+    const toneKey = tone.trim().toLowerCase();
+
+    const introByTone: Record<string, string> = {
+      'hài hước': `Chỉ cần nhắc tới "${cleanedTopic}" là mình đã thấy có gì đó vừa buồn cười vừa đáng để kể rồi 😄`,
+      'truyền cảm hứng': `Có những chủ đề như "${cleanedTopic}" nghe qua tưởng đơn giản, nhưng nghĩ kỹ lại lại nhắc mình về rất nhiều động lực để bước tiếp.`,
+      'chuyên nghiệp': `Chủ đề "${cleanedTopic}" là một điểm chạm đáng chú ý vì nó phản ánh khá rõ cách chúng ta nhìn nhận trải nghiệm và giá trị thực tế xung quanh mình.`,
+      'gen z': `"${cleanedTopic}" đúng kiểu topic chạm mood luôn, càng nghĩ càng thấy có quá trời thứ để nói 😌`,
+      'lãng mạn': `"${cleanedTopic}" làm mình nghĩ đến những cảm xúc rất nhẹ nhưng ở lại khá lâu, kiểu càng im lặng lại càng thấy rõ.`,
+      'học thuật': `Từ góc nhìn phân tích, "${cleanedTopic}" không chỉ là một chủ đề cảm tính mà còn gợi ra nhiều lớp ý nghĩa đáng để quan sát.`,
+      'tự nhiên': `Dạo này mình cứ nghĩ mãi về "${cleanedTopic}", vì nó gợi ra khá nhiều cảm xúc và câu chuyện rất thật.`,
+    };
+
+    const bodyByTone: Record<string, string> = {
+      'hài hước': `Nhiều khi cuộc sống không cần drama quá lớn, chỉ cần một khoảnh khắc đúng kiểu trúng tim đen là đủ để cả ngày tự nhiên vui hơn. Điều mình thích ở chủ đề này là nó vừa gần gũi, vừa tạo cảm giác ai cũng có thể thấy bản thân mình đâu đó trong câu chuyện.`,
+      'truyền cảm hứng': `Mỗi lần chạm vào chủ đề này, mình lại thấy rõ hơn rằng giá trị không nằm ở việc mọi thứ hoàn hảo ngay từ đầu, mà nằm ở cách mình hiểu, đón nhận và biến trải nghiệm đó thành một điều tích cực hơn cho bản thân.`,
+      'chuyên nghiệp': `Khi nhìn sâu hơn, đây không chỉ là một nội dung để chia sẻ cho vui mà còn là cơ hội để kết nối góc nhìn cá nhân với cách chúng ta giao tiếp, tạo ảnh hưởng và xây dựng sự đồng cảm trong cộng đồng.`,
+      'gen z': `Có những thứ nghe qua tưởng bình thường thôi nhưng lại cực kỳ relatable, càng kể càng cuốn. Chủ đề này hay ở chỗ nó không bị xa vời, mà rất dễ chạm vào trải nghiệm thật, cảm xúc thật và cả những câu chuyện nhỏ nhưng đủ khiến người ta muốn tương tác thêm.`,
+      'lãng mạn': `Có lẽ điều đẹp nhất ở chủ đề này là nó khiến người ta chậm lại một chút để lắng nghe bản thân, nhớ về một khoảnh khắc nào đó, rồi nhận ra cảm xúc của mình cũng xứng đáng được gọi tên và giữ gìn.`,
+      'học thuật': `Nếu nhìn theo chiều sâu nội dung, chủ đề này mở ra ít nhất hai hướng đáng chú ý: một là khía cạnh trải nghiệm cá nhân, hai là cách nó phản ánh nhận thức, hành vi hoặc sự thay đổi trong bối cảnh xã hội hiện tại.`,
+      'tự nhiên': `Có những chuyện nghe thì nhỏ thôi nhưng lại chạm đúng cảm giác của mình ở một thời điểm nào đó. Chủ đề này làm mình thấy vừa gần gũi, vừa có chút gì đó đáng để ngẫm, vì nó không chỉ là một ý tưởng thoáng qua mà còn gắn với trải nghiệm rất thật.`,
+    };
+
+    const outroByTone: Record<string, string> = {
+      'hài hước': `Thế mới thấy đôi khi niềm vui đến từ những thứ rất không ngờ tới. Mọi người đã từng gặp tình huống nào liên quan đến chuyện này chưa? Kể mình nghe với được không?`,
+      'truyền cảm hứng': `Có lẽ chính những điều như vậy mới làm hành trình của mỗi người trở nên đáng nhớ hơn. Còn bạn, bạn nhìn thấy điều tích cực nào từ chủ đề này?`,
+      'chuyên nghiệp': `Những cuộc trao đổi như vậy thường tạo ra giá trị nhiều hơn mình tưởng. Theo bạn, đâu là góc nhìn đáng chú ý nhất khi nhắc đến chủ đề này?`,
+      'gen z': `Nói chung là topic này đủ để vừa đăng bài vừa mở combat nhẹ phần bình luận luôn. Nếu là bạn thì bạn sẽ kể câu chuyện này theo vibe nào?`,
+      'lãng mạn': `Có những cảm xúc không cần quá ồn ào, chỉ cần đúng người hiểu là đủ. Còn bạn, chủ đề này gợi cho bạn nhớ đến điều gì?`,
+      'học thuật': `Chủ đề này vẫn còn nhiều lớp nghĩa có thể đào sâu thêm nếu tiếp tục quan sát và đối chiếu. Theo bạn, cách hiểu nào là thuyết phục nhất?`,
+      'tự nhiên': `Mình nghĩ những điều như vậy luôn đáng để chia sẻ thêm một lần nữa. Còn bạn thì sao, chủ đề này làm bạn nhớ đến điều gì nhất?`,
+    };
+
+    const intro = introByTone[toneKey] || introByTone['tự nhiên'];
+    const body = bodyByTone[toneKey] || bodyByTone['tự nhiên'];
+    const outro = outroByTone[toneKey] || outroByTone['tự nhiên'];
+
+    return this.cleanPlainTextResponse(`${intro} ${body} ${outro}`);
   }
 
   private parseJsonPayload<T>(raw: string): T | null {

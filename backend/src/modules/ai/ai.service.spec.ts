@@ -37,6 +37,35 @@ describe('AIService', () => {
     await expect(service.generateCaption('du lịch Đà Lạt', 'vui vẻ')).resolves.toBe('Caption thử nghiệm ✨');
   });
 
+  it('retries transient caption workflow failures before succeeding', async () => {
+    jest.spyOn(service as any, 'sleep').mockResolvedValue(undefined);
+    mockedAxios.post
+      .mockRejectedValueOnce(new Error('503 UNAVAILABLE'))
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            outputs: {
+              caption: 'Caption sau khi retry',
+            },
+          },
+        },
+      } as any);
+
+    await expect(
+      service.generateCaption('đi học muộn', 'tự nhiên'),
+    ).resolves.toBe('Caption sau khi retry');
+    expect(mockedAxios.post).toHaveBeenCalledTimes(2);
+  });
+
+  it('falls back to a local caption when Dify stays unavailable', async () => {
+    jest.spyOn(service as any, 'sleep').mockResolvedValue(undefined);
+    mockedAxios.post.mockRejectedValue(new Error('504 Gateway time-out'));
+
+    await expect(
+      service.generateCaption('buồn cười quá đi mất', 'Gen Z'),
+    ).resolves.toContain('buồn cười quá đi mất');
+  });
+
   it('skips AI moderation for short benign captions', async () => {
     await expect(service.moderateContent('Hom nay troi dep 12345')).resolves.toEqual({
       isSafe: true,
