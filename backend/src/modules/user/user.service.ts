@@ -18,7 +18,14 @@ export class UserService {
     private readonly configService: ConfigService,
   ) {}
 
+  static readonly DEFAULT_AVATAR_URL =
+    'https://res.cloudinary.com/dctovnwlk/image/upload/v1775806448/datn-social/defaults/default-avatar.jpg';
+
   async create(data: Partial<User>, options?: { skipAutoFollow?: boolean }): Promise<User> {
+    // Set default avatar if not provided
+    if (!data.avatarUrl) {
+      data.avatarUrl = UserService.DEFAULT_AVATAR_URL;
+    }
     const user = this.userRepository.create(data);
     const saved = await this.userRepository.save(user);
     if (!options?.skipAutoFollow) {

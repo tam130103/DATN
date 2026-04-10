@@ -17,6 +17,9 @@ const sizeMap = {
   xl: 'h-[150px] w-[150px] text-4xl',
 };
 
+const DEFAULT_AVATAR =
+  'https://res.cloudinary.com/dctovnwlk/image/upload/v1775806448/datn-social/defaults/default-avatar.jpg';
+
 export const Avatar: React.FC<AvatarProps> = ({
   src,
   name,
@@ -26,27 +29,16 @@ export const Avatar: React.FC<AvatarProps> = ({
   ring,
 }) => {
   const sizeClass = sizeMap[size];
-  const initials = (name || username || '?').charAt(0).toUpperCase();
   const wrapperClass = ring
     ? 'inline-flex rounded-full bg-[linear-gradient(135deg,#f9ce34,#ee2a7b,#6228d7)] p-[2px]'
     : 'inline-flex';
   const innerClass = `${sizeClass} rounded-full border border-[var(--app-border)] bg-[#efefef] object-cover ${ring ? 'border-2 border-white' : ''} ${className}`.trim();
 
-  if (src) {
-    return (
-      <div className={wrapperClass}>
-        <img src={src} alt={name || username || 'Avatar'} className={innerClass} />
-      </div>
-    );
-  }
+  const imgSrc = src || DEFAULT_AVATAR;
 
   return (
     <div className={wrapperClass}>
-      <div
-        className={`${innerClass} flex items-center justify-center bg-[linear-gradient(180deg,#fafafa,#efefef)] font-semibold text-[var(--app-muted-strong)]`}
-      >
-        {initials}
-      </div>
+      <img src={imgSrc} alt={name || username || 'Avatar'} className={innerClass} />
     </div>
   );
 };
