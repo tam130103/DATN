@@ -93,6 +93,9 @@ export class User {
   @OneToMany(() => Follow, (follow) => follow.followingId)
   following: Follow[];
 
+  // Virtual field – populated at query time, not stored in DB
+  isFollowing?: boolean;
+
   // Exclude password from JSON responses
   toJSON() {
     const { password, ...rest } = this;
