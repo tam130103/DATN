@@ -518,7 +518,8 @@ export class PostService {
       .createQueryBuilder('post')
       .where('post.userId IN (:...userIds)', { userIds })
       .andWhere('post.status = :status', { status: PostStatus.VISIBLE })
-      .orderBy(sortExpression, 'DESC')
+      .orderBy('post.isPinned', 'DESC')
+      .addOrderBy(sortExpression, 'DESC')
       .addOrderBy('post.id', 'DESC')
       .limit(limit + 1);
 
