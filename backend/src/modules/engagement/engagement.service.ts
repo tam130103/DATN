@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Like } from './entities/like.entity';
@@ -27,14 +27,15 @@ export class EngagementService {
     private readonly notificationGateway: NotificationGateway,
   ) {}
 
-  async toggleLike(userId: string, postId: string): Promise<{ liked: boolean }> {
+  async toggleLike(userId: string, postId: string): Promise<{ liked: boolean; likesCount: number }> {
     const existingLike = await this.likeRepository.findOne({
       where: { userId, postId },
     });
 
     if (existingLike) {
       await this.likeRepository.remove(existingLike);
-      return { liked: false };
+      const likesCount = await this.likeRepository.count({ where: { postId } });
+      return { liked: false, likesCount };
     }
 
     // Check if user is liking their own post AND post is visible
@@ -61,7 +62,8 @@ export class EngagementService {
 
     const like = this.likeRepository.create({ userId, postId });
     await this.likeRepository.save(like);
-    return { liked: true };
+    const likesCount = await this.likeRepository.count({ where: { postId } });
+    return { liked: true, likesCount };
   }
 
   async getPostLikes(postId: string): Promise<Like[]> {
@@ -144,8 +146,12 @@ export class EngagementService {
       where: { id: commentId },
     });
 
-    if (!comment || comment.userId !== userId) {
-      throw new Error('Comment not found or unauthorized');
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    if (comment.userId !== userId) {
+      throw new ForbiddenException('You are not authorized to delete this comment');
     }
 
     await this.commentRepository.remove(comment);
@@ -157,8 +163,12 @@ export class EngagementService {
       relations: ['user'],
     });
 
-    if (!comment || comment.userId !== userId) {
-      throw new Error('Comment not found or unauthorized');
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    if (comment.userId !== userId) {
+      throw new ForbiddenException('You are not authorized to edit this comment');
     }
 
     comment.content = content;

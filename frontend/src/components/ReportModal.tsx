@@ -43,14 +43,23 @@ export const ReportModal: React.FC<ReportModalProps> = ({ targetId, targetType, 
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="flex w-full max-w-sm flex-col overflow-hidden rounded-xl bg-[var(--app-surface)] shadow-2xl">
-        <div className="flex items-center justify-between border-b border-[var(--app-border)] px-4 py-3">
-          <h3 className="text-lg font-bold text-[var(--app-text)]">{targetType === 'post' ? 'Báo cáo bài viết' : 'Báo cáo bình luận'}</h3>
-          <button onClick={onClose} className="rounded-full p-1.5 text-[var(--app-muted)] transition hover:bg-[var(--app-bg-soft)] hover:text-[var(--app-text)]">
-             <svg viewBox="0 0 24 24" className="h-5 w-5"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" strokeWidth="2"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" strokeWidth="2"/></svg>
+      <div className="surface-card flex w-full max-w-sm flex-col overflow-hidden rounded-2xl shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[var(--app-border)] px-5 py-4">
+          <p className="text-base font-bold text-[var(--app-text)]">
+            {targetType === 'post' ? 'Báo cáo bài viết' : 'Báo cáo bình luận'}
+          </p>
+          <button
+            onClick={onClose}
+            className="interactive-icon inline-flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-[var(--app-bg-soft)] text-[var(--app-muted)] hover:text-[var(--app-text)]"
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.9">
+              <line x1="6" y1="6" x2="18" y2="18" />
+              <line x1="18" y1="6" x2="6" y2="18" />
+            </svg>
           </button>
         </div>
         <div className="p-4" style={{ maxHeight: '60vh', overflowY: 'auto' }}>

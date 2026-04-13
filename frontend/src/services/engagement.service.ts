@@ -2,8 +2,8 @@ import { apiClient } from './api';
 import { Comment } from '../types';
 
 export const engagementService = {
-  toggleLike: async (postId: string): Promise<{ liked: boolean }> => {
-    const response = await apiClient.post<{ liked: boolean }>(`/posts/${postId}/like`);
+  toggleLike: async (postId: string): Promise<{ liked: boolean; likesCount: number }> => {
+    const response = await apiClient.post<{ liked: boolean; likesCount: number }>(`/posts/${postId}/like`);
     return response.data;
   },
 

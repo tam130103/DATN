@@ -60,7 +60,6 @@ interface FollowListModalProps {
   userId: string;
   mode: 'followers' | 'following';
   currentUserId?: string;
-  isOwnProfile: boolean;
 }
 
 const FollowListModal: React.FC<FollowListModalProps> = ({
@@ -70,7 +69,6 @@ const FollowListModal: React.FC<FollowListModalProps> = ({
   userId,
   mode,
   currentUserId,
-  isOwnProfile,
 }) => {
   const navigate = useNavigate();
   const [users, setUsers] = useState<(User & { isFollowing?: boolean })[]>([]);
@@ -153,21 +151,7 @@ const FollowListModal: React.FC<FollowListModalProps> = ({
     }
   };
 
-  const handleRemoveFollower = async (targetUser: User) => {
-    setTogglingIds((prev) => new Set(prev).add(targetUser.id));
-    try {
-      // Remove follower = the current user (as profile owner) makes that user unfollow
-      // Since there may not be a dedicated API, we keep UI-only for now
-      setUsers((prev) => prev.filter((u) => u.id !== targetUser.id));
-      toast.success(`Đã xóa ${targetUser.username || targetUser.name}`);
-    } finally {
-      setTogglingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(targetUser.id);
-        return next;
-      });
-    }
-  };
+
 
   if (!isOpen) return null;
 
@@ -274,16 +258,6 @@ const FollowListModal: React.FC<FollowListModalProps> = ({
 
                     {/* Action button */}
                     {!isSelf ? (
-                      mode === 'followers' && isOwnProfile ? (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFollower(u)}
-                          disabled={togglingIds.has(u.id)}
-                          className="inline-flex min-h-[32px] items-center justify-center rounded-lg bg-[var(--app-bg-soft)] px-4 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-border)] disabled:opacity-50"
-                        >
-                          Xóa
-                        </button>
-                      ) : (
                         <button
                           type="button"
                           onClick={() => handleToggleFollow(u)}
@@ -296,7 +270,6 @@ const FollowListModal: React.FC<FollowListModalProps> = ({
                         >
                           {u.isFollowing ? 'Đang theo dõi' : 'Theo dõi'}
                         </button>
-                      )
                     ) : null}
                   </div>
                 );
@@ -859,7 +832,6 @@ const ProfilePage: React.FC = () => {
           userId={profile.id}
           mode={followModal.mode}
           currentUserId={currentUser?.id}
-          isOwnProfile={isOwnProfile}
         />
       ) : null}
     </AppShell>

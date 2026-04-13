@@ -1,8 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { postService } from '../services/post.service';
 import { userService } from '../services/user.service';
 import { useAuth } from '../contexts/AuthContext';
+import { getApiMessage } from '../utils/api-error';
 import { Avatar } from './common/Avatar';
 import { User } from '../types';
 
@@ -33,23 +34,7 @@ const SparkIcon = () => (
   </svg>
 );
 
-const getApiMessage = (error: unknown, fallback: string) => {
-  if (typeof error === 'object' && error && 'response' in error) {
-    const response = (error as any).response?.data;
-    if (typeof response?.message === 'string') {
-      return response.message;
-    }
-    if (Array.isArray(response?.message) && response.message.length > 0) {
-      return response.message[0];
-    }
-  }
 
-  if (typeof error === 'object' && error && 'message' in error && typeof (error as any).message === 'string') {
-    return (error as any).message;
-  }
-
-  return fallback;
-};
 
 const appendUniqueHashtags = (caption: string, suggestedTags: string[]) => {
   const existingTags = new Set(
@@ -72,6 +57,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [aiAction, setAiAction] = useState<AIAction>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mentionDebounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<User[]>([]);
@@ -96,7 +82,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
     setMediaFiles((prev) => [...prev, ...newMedia]);
   };
 
-  const handleTextChange = async (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
     setCaption(text);
 
@@ -110,21 +96,26 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
       const query = match[1];
       setShowSuggestions(true);
 
-      try {
-        const following = await userService.getFollowing(user.id, 1, 50);
-        const filtered = following.filter(
-          (u) =>
-            (u.username || '').toLowerCase().includes(query.toLowerCase()) ||
-            (u.name || '').toLowerCase().includes(query.toLowerCase()),
-        );
-        setSuggestions(filtered);
-      } catch (error) {
-        console.error('Failed to load mention suggestions', error);
-      }
+      // Debounce API call to avoid spamming on every keystroke
+      clearTimeout(mentionDebounceRef.current);
+      mentionDebounceRef.current = setTimeout(async () => {
+        try {
+          const following = await userService.getFollowing(user.id, 1, 50);
+          const filtered = following.filter(
+            (u) =>
+              (u.username || '').toLowerCase().includes(query.toLowerCase()) ||
+              (u.name || '').toLowerCase().includes(query.toLowerCase()),
+          );
+          setSuggestions(filtered);
+        } catch (error) {
+          console.error('Failed to load mention suggestions', error);
+        }
+      }, 300);
     } else {
       setShowSuggestions(false);
+      clearTimeout(mentionDebounceRef.current);
     }
-  };
+  }, [user]);
 
   const insertMention = (username: string) => {
     const textBeforeCursor = caption.slice(0, cursorPosition);
@@ -207,7 +198,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
       const result = await postService.generateCaption(normalizedPrompt);
       setCaption(result.text);
       if (result.meta?.degraded) {
-        toast.success('AI dang ban, da tao ban nhap tam dua tren chu de.');
+        toast.success('AI đang bận, đã tạo bản nháp tạm dựa trên chủ đề.');
         return;
       }
       toast.success('AI đã viết xong bản nháp. Bạn có thể sửa trực tiếp ở trên.');
@@ -230,7 +221,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
       const tags = result.hashtags;
       if (!tags.length) {
         if (result.meta?.degraded) {
-          toast.error('AI dang ban va chua tao duoc hashtag tam phu hop.');
+          toast.error('AI đang bận và chưa tạo được hashtag tạm phù hợp.');
           return;
         }
         toast.error('Không thể tạo hashtag phù hợp lúc này. Vui lòng thử lại sau.');
@@ -241,14 +232,14 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
 
       if (updatedCaption === caption) {
         if (result.meta?.degraded) {
-          toast.error('AI dang ban, chua co hashtag moi phu hop de them vao.');
+          toast.error('AI đang bận, chưa có hashtag mới phù hợp để thêm vào.');
           return;
         }
         toast.success('Không có hashtag nào mới được thêm vào.');
       } else {
         setCaption(updatedCaption);
         if (result.meta?.degraded) {
-          toast.success('AI dang ban, da them hashtag goi y tam.');
+          toast.success('AI đang bận, đã thêm hashtag gợi ý tạm.');
           return;
         }
         toast.success('Đã thêm hashtag đề xuất.');

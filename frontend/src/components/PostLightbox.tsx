@@ -4,10 +4,12 @@ import { Comment, Post } from '../types';
 import { Avatar } from './common/Avatar';
 import { engagementService } from '../services/engagement.service';
 import { postService } from '../services/post.service';
+import { userService } from '../services/user.service';
 import { useAuth } from '../contexts/AuthContext';
 import { PostCaption } from './PostCaption';
 import { ReportModal } from './ReportModal';
 import { CommentItem } from './CommentItem';
+import { getApiMessage } from '../utils/api-error';
 
 const CloseIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -47,19 +49,7 @@ interface PostLightboxProps {
   onDeleted?: (postId: string) => void;
 }
 
-const getApiMessage = (error: unknown, fallback: string) => {
-  if (typeof error === 'object' && error && 'response' in error) {
-    const response = (error as any).response?.data;
-    if (typeof response?.message === 'string') {
-      return response.message;
-    }
-    if (Array.isArray(response?.message) && response.message.length > 0) {
-      return response.message[0];
-    }
-  }
 
-  return fallback;
-};
 
 export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDeleted }) => {
   const { user } = useAuth();
@@ -336,20 +326,16 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                       </button>
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); toast.success('Đã ẩn bài viết'); }}
-                        className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
-                      >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-800">
-                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                        </div>
-                        <div>
-                          <div className="font-semibold text-[var(--app-text)]">Ẩn bài viết</div>
-                          <div className="text-xs text-[var(--app-muted)]">Ẩn bớt các bài viết tương tự.</div>
-                        </div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(false); toast.success(`Đã bỏ theo dõi ${authorLabel}`); }}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          setShowOptionsDropdown(false);
+                          try {
+                            await userService.unfollowUser(post.userId);
+                            toast.success(`Đã bỏ theo dõi ${authorLabel}`);
+                          } catch {
+                            toast.error('Không thể bỏ theo dõi lúc này.');
+                          }
+                        }}
                         className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
                       >
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-800">

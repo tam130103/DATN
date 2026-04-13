@@ -107,8 +107,8 @@ export class PostController {
   }
 
   @Get(':id')
-  getById(@Param('id') id: string) {
-    return this.postService.findById(id);
+  getById(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.postService.findById(id, user.id);
   }
 
   @Patch(':id/pin')

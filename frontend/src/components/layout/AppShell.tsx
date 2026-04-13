@@ -174,7 +174,7 @@ export const AppShell: React.FC<AppShellProps> = ({
 
   return (
     <div className="app-shell">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden border-r border-[var(--app-border)] bg-[var(--app-surface)] lg:flex lg:w-[72px] xl:w-[244px]">
+      <aside className="glass-panel fixed inset-y-0 left-0 z-30 hidden border-r lg:flex lg:w-[72px] xl:w-[244px]">
         <div className="flex h-full w-full flex-col px-2 py-4 xl:px-3">
           <Link to="/feed" className="flex h-[92px] items-center px-2 xl:px-3">
             <BrandLogo
@@ -307,7 +307,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         </div>
       </aside>
 
-      <header className="app-header sticky top-0 z-20 border-b border-[var(--app-border)] bg-[var(--app-surface)]/95 backdrop-blur lg:hidden">
+      <header className="glass-panel app-header sticky top-0 z-20 border-b lg:hidden">
         <div className="mx-auto flex max-w-[935px] items-center justify-between px-4 py-3">
           <div className="min-w-0">
             <Link to="/feed" className="inline-flex items-center">
@@ -381,7 +381,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         </main>
       </div>
 
-      <nav className="app-bottom-nav fixed inset-x-0 bottom-0 z-30 border-t border-[var(--app-border)] bg-[var(--app-surface)] lg:hidden">
+      <nav className="glass-panel app-bottom-nav fixed inset-x-0 bottom-0 z-30 border-t lg:hidden">
         <div className="mx-auto flex h-full max-w-md items-center justify-around px-2">
           {navItems.map((item) => {
             const isActive = location.pathname.startsWith(item.to);
@@ -399,7 +399,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                 to={item.to}
                 className="relative flex h-14 w-14 items-center justify-center"
               >
-                <span className={`relative transition ${isActive ? 'scale-110' : ''}`}>
+                <span className={`interactive-icon relative transition ${isActive ? 'scale-110' : ''}`}>
                   <Icon filled={isActive} />
                   {notificationBadge(badge)}
                 </span>
