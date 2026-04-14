@@ -6,9 +6,15 @@ import { existsSync, mkdirSync } from 'fs';
 import * as express from 'express';
 import { AppModule } from './app.module';
 import { createCorsOriginValidator } from './common/cors.util';
+import helmet from 'helmet';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
+
+  // Security headers
+  app.use(helmet());
+  app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" })); // Allow serving static images to frontend
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
@@ -39,6 +45,16 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+
+  // Swagger API Documentation setup
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('DATN Social API')
+    .setDescription('The API description for DATN Social project')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, document);
 
   await app.listen(port);
   console.log(`Backend running on: http://localhost:${port}`);
