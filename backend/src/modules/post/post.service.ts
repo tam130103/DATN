@@ -681,6 +681,7 @@ export class PostService {
       await manager.delete(PostMention, { postId: id });
       await manager.delete(Like, { postId: id });
       await manager.delete(Comment, { postId: id });
+      await manager.delete(SavedPost, { postId: id });
       await manager.delete(Media, { postId: id });
       await manager.delete(Post, { id });
     });

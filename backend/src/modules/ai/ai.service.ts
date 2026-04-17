@@ -75,17 +75,17 @@ export class AIService implements OnModuleInit {
   constructor(private readonly configService: ConfigService) {}
 
   onModuleInit() {
-    const captionKey = this.configService.get<string>('DIFY_CAPTION_WORKFLOW_KEY');
+    const generalKey = this.configService.get<string>('DIFY_GENERAL_API_KEY');
     const chatbotKey = this.getAssistantApiKey();
 
-    if (!captionKey) {
-      this.logger.warn('DIFY_CAPTION_WORKFLOW_KEY is not configured.');
+    if (!generalKey) {
+      this.logger.warn('DIFY_GENERAL_API_KEY not configured. AI Caption + Moderation + Sentiment disabled.');
     } else {
-      this.logger.log(`Dify Caption Workflow ready (${captionKey.slice(0, 8)}...)`);
+      this.logger.log(`Dify General AI ready (${generalKey.slice(0, 8)}...) — Caption uses Chatbot API`);
     }
 
     if (!chatbotKey) {
-      this.logger.warn('DIFY_CHATBOT_API_KEY / DIFY_GENERAL_API_KEY not configured. AI Assistant disabled.');
+      this.logger.warn('DIFY_CHATBOT_API_KEY not configured. AI Assistant disabled.');
     } else {
       this.logger.log(`Dify AI Assistant ready (${chatbotKey.slice(0, 8)}...)`);
     }
@@ -301,20 +301,10 @@ export class AIService implements OnModuleInit {
 
   async generateCaptionResult(
     prompt: string,
-    tone = 't\u1EF1 nhi\u00EAn',
+    tone = 'tự nhiên',
   ): Promise<CaptionGenerationResult> {
-    const apiKey = this.configService.get<string>('DIFY_CAPTION_WORKFLOW_KEY');
-    const apiUrl = this.normalizeDifyApiUrl(
-      this.configService.get<string>('DIFY_API_URL'),
-    );
     const normalizedPrompt = this.normalizeCaptionTopic(prompt);
     const normalizedTone = this.normalizeToneValue(tone);
-
-    if (!apiKey) {
-      throw new ServiceUnavailableException(
-        'Tinh nang AI Caption chua duoc cau hinh Dify API Key.',
-      );
-    }
 
     if (!normalizedPrompt) {
       throw new ServiceUnavailableException(
@@ -322,26 +312,61 @@ export class AIService implements OnModuleInit {
       );
     }
 
+    if (!this.configService.get<string>('DIFY_GENERAL_API_KEY')) {
+      return {
+        text: this.buildLocalCaptionFallback(normalizedPrompt, normalizedTone),
+        meta: { source: 'fallback', degraded: true },
+      };
+    }
+
+    // Build the full prompt as raw text — bypasses Dify Workflow variable bugs
+    const chatPrompt = this.buildCaptionChatPrompt(normalizedPrompt, normalizedTone);
+
     try {
-      return await this.runCaptionWorkflowDetailedWithRetry(
-        apiUrl,
-        apiKey,
-        normalizedPrompt,
-        normalizedTone,
-      );
+      const raw = await this.generateGenericChat(chatPrompt, 25_000);
+      const cleaned = this.cleanPlainTextResponse(raw);
+
+      if (!cleaned || cleaned.length < 20) {
+        this.logger.warn('Caption from Chatbot API was too short, using fallback.');
+        return {
+          text: this.buildLocalCaptionFallback(normalizedPrompt, normalizedTone),
+          meta: { source: 'fallback', degraded: true },
+        };
+      }
+
+      return {
+        text: cleaned,
+        meta: { source: 'dify', degraded: false },
+      };
     } catch (error) {
-      const snapshot = this.extractDifyErrorSnapshot(error);
       this.logger.error(
-        `context=caption kind=fallback_used upstream_kind=${snapshot.kind} status=${snapshot.status ?? 'unknown'} req_id=${snapshot.reqId ?? 'n/a'} degraded=true source=fallback detail=${snapshot.detail}`,
+        `Caption via Chatbot API failed: ${(error as Error).message ?? error}`,
       );
       return {
         text: this.buildLocalCaptionFallback(normalizedPrompt, normalizedTone),
-        meta: {
-          source: 'fallback',
-          degraded: true,
-        },
+        meta: { source: 'fallback', degraded: true },
       };
     }
+  }
+
+  /**
+   * Build a self-contained caption prompt with topic + tone baked in.
+   * This is sent as a single raw string to the Chatbot API,
+   * completely avoiding Dify Workflow variable injection bugs.
+   */
+  private buildCaptionChatPrompt(topic: string, tone: string): string {
+    return [
+      'Ban la nguoi tre Viet Nam dang viet status dang Facebook.',
+      'Viet tieng Viet, 100-200 tu. Dung 2-4 emoji. Ket bang 1 cau hoi tuong tac.',
+      'KHONG nhac den: do an, luan van, bai tap, truong hoc, deadline, sinh vien (tru khi chu de yeu cau).',
+      'KHONG viet tieu de. KHONG ghi "Caption:". KHONG dung markdown. KHONG them hashtag.',
+      'Xuat ra DUY NHAT noi dung status.',
+      '',
+      `Chu de can viet: "${topic}"`,
+      `Giong dieu: ${tone}`,
+      '',
+      'Viet ngay status, khong giai thich.',
+    ].join('\n');
   }
 
   async moderateContent(text: string): Promise<ModerationResult> {
