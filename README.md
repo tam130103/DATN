@@ -25,7 +25,7 @@ Mạng xã hội hiện đại lấy cảm hứng từ Instagram, được xây 
 ### 🤖 Tích hợp Trí tuệ nhân tạo (AI)
 - **Kiểm duyệt nội dung (Content Moderation)**: Lọc từ ngữ cấm nhanh + gọi Gemini AI để phân tích nội dung phức tạp, tự động chặn bài viết & bình luận vi phạm.
 - **Phân tích cảm xúc (Sentiment Analysis)**: Ghi nhận sentiment mỗi bài viết (positive / negative / neutral).
-- **Gợi ý Caption**: Tạo mô tả bài viết từ prompt & tone (thông qua Dify Workflow).
+- **Gợi ý Caption**: Tạo mô tả bài viết từ prompt & tone (thông qua Dify Chatbot App).
 - **Gợi ý Hashtag**: Đề xuất các hashtag phù hợp dựa trên nội dung bài viết (Gemini API).
 - **AI Chat Assistant**: Bot trợ lý ảo (Dify Agent) có context về hệ thống, hỗ trợ người dùng.
 
@@ -160,7 +160,7 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret
 # AI Services
 GEMINI_API_KEY=your_gemini_api_key
 DIFY_API_URL=https://api.dify.ai/v1
-DIFY_CAPTION_WORKFLOW_KEY=your_caption_workflow_key
+DIFY_CAPTION_CHATBOT_KEY=your_caption_chatbot_key
 DIFY_GENERAL_API_KEY=your_general_dify_key
 DIFY_CHATBOT_API_KEY=your_chatbot_dify_key
 

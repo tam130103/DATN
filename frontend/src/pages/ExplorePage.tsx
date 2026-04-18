@@ -155,7 +155,7 @@ const ExplorePage: React.FC = () => {
       }
       aside={aside}
     >
-      <div className="space-y-4">
+      <div className="space-y-4" data-testid="explore-page">
         <section className="surface-card rounded-xl p-4 sm:p-5">
           <div className="flex items-center gap-3 rounded-lg border border-[var(--app-border)] bg-[var(--app-bg-soft)] px-4 py-3">
             <SearchIcon className="h-5 w-5 text-[var(--app-muted)]" />

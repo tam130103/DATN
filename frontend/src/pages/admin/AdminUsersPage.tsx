@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { AdminStateView } from '../../components/admin/AdminStateView';
 import { adminService, AdminUser } from '../../services/admin.service';
 import { useAuth } from '../../contexts/AuthContext';
+import { getApiMessage } from '../../utils/api-error';
 
 // ─── Confirmation Modal ───────────────────────────────────────────────────────
 
@@ -84,6 +86,7 @@ const AdminUsersPage: React.FC = () => {
   const [status, setStatus] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
@@ -104,6 +107,7 @@ const AdminUsersPage: React.FC = () => {
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await adminService.getUsers({
         search: search || undefined,
@@ -115,6 +119,11 @@ const AdminUsersPage: React.FC = () => {
       setUsers(data.users);
       setTotal(data.total);
       setTotalPages(data.totalPages);
+    } catch (nextError) {
+      setUsers([]);
+      setTotal(0);
+      setTotalPages(1);
+      setError(getApiMessage(nextError, 'Khong the tai danh sach nguoi dung.'));
     } finally {
       setLoading(false);
     }
@@ -272,6 +281,12 @@ const AdminUsersPage: React.FC = () => {
         {/* ── Table ── */}
         {loading ? (
           <div className="admin-loading">Đang tải...</div>
+        ) : error ? (
+          <AdminStateView
+            title="Khong the tai nguoi dung"
+            description={error}
+            onRetry={() => void fetchUsers()}
+          />
         ) : users.length === 0 ? (
           <div className="admin-empty">Không tìm thấy người dùng nào</div>
         ) : (

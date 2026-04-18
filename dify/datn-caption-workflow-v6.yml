@@ -1,0 +1,157 @@
+app:
+  description: Workflow sinh caption MXH tự động. Sử dụng Gemini 3 Flash Preview với prompt tối ưu để AI luôn viết đúng chủ đề.
+  icon: ✍️
+  icon_background: '#E4FBCC'
+  icon_type: emoji
+  mode: workflow
+  name: DATN Caption Generator V6
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/gemini:0.7.20@de0063a630a6d1b2c025fb84f3462ba5151fb60618309cd595c3f4711b1df847
+    version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: llm
+      id: edge-start-to-llm
+      selected: false
+      source: start-node
+      sourceHandle: source
+      target: caption-llm
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: edge-llm-to-end
+      selected: false
+      source: caption-llm
+      sourceHandle: source
+      target: end-node
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: Người dùng nhập chủ đề và chọn giọng điệu.
+        selected: false
+        title: Bắt đầu
+        type: start
+        variables:
+        - label: Chủ đề / Từ khóa
+          max_length: 1000
+          options: []
+          required: true
+          type: paragraph
+          variable: topic
+        - default: tự nhiên
+          label: Giọng điệu
+          max_length: 100
+          options:
+          - tự nhiên
+          - hài hước
+          - truyền cảm hứng
+          - chuyên nghiệp
+          - Gen Z
+          - lãng mạn
+          - học thuật
+          required: false
+          type: select
+          variable: tone
+      height: 178
+      id: start-node
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: AI sinh caption bám sát chủ đề.
+        model:
+          completion_params:
+            max_output_tokens: 1024
+            temperature: 0.7
+            top_p: 0.9
+          mode: chat
+          name: gemini-3.0-flash-preview
+          provider: langgenius/gemini/google
+        prompt_template:
+        - id: sys-prompt-01
+          role: system
+          text: "Bạn là một người trẻ Việt Nam đang viết status đăng Facebook/Instagram.\n\nQUY TẮC BẮT BUỘC:\n1. Viết tiếng Việt, 100-200 từ.\n2. NỘI DUNG PHẢI XOAY QUANH ĐÚNG CHỦ ĐỀ mà người dùng cung cấp bên dưới. Đây là quy tắc quan trọng nhất.\n3. Câu đầu tiên phải nhắc đến hoặc diễn đạt lại chủ đề.\n4. Triển khai 2-3 ý liên quan trực tiếp đến chủ đề.\n5. Kết bài bằng 1 câu hỏi mở để tương tác.\n6. Dùng 2-4 emoji tự nhiên.\n\nCẤM:\n- Không viết về trường học, đồ án, luận văn, deadline, bài tập (trừ khi chủ đề yêu cầu).\n- Không viết tiêu đề hay nhãn \"Caption:\", \"Bài đăng:\".\n- Không thêm hashtag.\n- Không giải thích từ \"topic\" hay \"tone\".\n- Không dùng markdown.\n\nGIỌNG ĐIỆU:\n- tự nhiên = nói chuyện như với bạn bè\n- hài hước = dí dỏm, vui nhộn\n- truyền cảm hứng = tích cực, động lực\n- chuyên nghiệp = lịch sự, chỉn chu\n- Gen Z = trẻ trung, bắt trend, xen tiếng Anh\n- lãng mạn = mềm mại, tinh tế\n- học thuật = sâu sắc, phân tích\n\nXuất ra DUY NHẤT nội dung caption, không có gì khác."
+        - id: usr-prompt-01
+          role: user
+          text: "CHỦ ĐỀ: {{#start-node.topic#}}\nGIỌNG ĐIỆU: {{#start-node.tone#}}\n\nHãy viết status về chủ đề trên ngay bây giờ."
+        selected: true
+        title: Sinh Caption
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 131
+      id: caption-llm
+      position:
+        x: 400
+        y: 282
+      positionAbsolute:
+        x: 400
+        y: 282
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        desc: Trả ra caption cuối cùng.
+        outputs:
+        - value_selector:
+          - caption-llm
+          - text
+          variable: caption
+        selected: false
+        title: Kết thúc
+        type: end
+      height: 115
+      id: end-node
+      position:
+        x: 720
+        y: 282
+      positionAbsolute:
+        x: 720
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    viewport:
+      x: -100
+      y: 100
+      zoom: 0.8
+  rag_pipeline_variables: []

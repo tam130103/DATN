@@ -562,7 +562,7 @@ const ProfilePage: React.FC = () => {
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="space-y-6" data-testid="profile-page">
         <section className="surface-card rounded-xl p-5 sm:p-8">
           <div className="grid gap-8 md:grid-cols-[180px_minmax(0,1fr)] md:items-start">
             <div className="flex justify-center md:justify-start">

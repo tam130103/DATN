@@ -9,7 +9,7 @@ import {
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 
-export type NotificationType = 'LIKE' | 'COMMENT' | 'FOLLOW';
+export type NotificationType = 'LIKE' | 'COMMENT' | 'FOLLOW' | 'POST_TAG';
 
 @Entity('notifications')
 @Index(['recipientId', 'isRead'])
@@ -27,7 +27,7 @@ export class Notification {
 
   @Column({
     type: 'enum',
-    enum: ['LIKE', 'COMMENT', 'FOLLOW'],
+    enum: ['LIKE', 'COMMENT', 'FOLLOW', 'POST_TAG'],
   })
   type: NotificationType;
 

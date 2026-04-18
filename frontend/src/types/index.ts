@@ -61,7 +61,7 @@ export interface Comment {
   user: User;
 }
 
-export type NotificationType = 'LIKE' | 'COMMENT' | 'FOLLOW';
+export type NotificationType = 'LIKE' | 'COMMENT' | 'FOLLOW' | 'POST_TAG';
 
 export interface Notification {
   id: string;

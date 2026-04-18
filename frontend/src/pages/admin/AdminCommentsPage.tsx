@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { AdminStateView } from '../../components/admin/AdminStateView';
 import { adminService, AdminComment } from '../../services/admin.service';
+import { getApiMessage } from '../../utils/api-error';
 
 const AdminCommentsPage: React.FC = () => {
   const [comments, setComments] = useState<AdminComment[]>([]);
@@ -8,14 +10,21 @@ const AdminCommentsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchComments = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await adminService.getComments({ status: status || undefined, page, limit: 20 });
       setComments(data.comments);
       setTotal(data.total);
       setTotalPages(data.totalPages);
+    } catch (nextError) {
+      setComments([]);
+      setTotal(0);
+      setTotalPages(1);
+      setError(getApiMessage(nextError, 'Khong the tai danh sach binh luan.'));
     } finally {
       setLoading(false);
     }
@@ -55,6 +64,12 @@ const AdminCommentsPage: React.FC = () => {
 
         {loading ? (
           <div className="admin-loading">Đang tải...</div>
+        ) : error ? (
+          <AdminStateView
+            title="Khong the tai binh luan"
+            description={error}
+            onRetry={() => void fetchComments()}
+          />
         ) : comments.length === 0 ? (
           <div className="admin-empty">Không có bình luận nào</div>
         ) : (

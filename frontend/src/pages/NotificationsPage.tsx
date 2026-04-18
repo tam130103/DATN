@@ -39,9 +39,17 @@ const FollowIcon = () => (
   </svg>
 );
 
+const TagIcon = () => (
+  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.9">
+    <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+    <line x1="7" y1="7" x2="7.01" y2="7" />
+  </svg>
+);
+
 const iconForType = (type: string) => {
   if (type === 'LIKE') return <HeartIcon />;
   if (type === 'COMMENT') return <CommentIcon />;
+  if (type === 'POST_TAG') return <TagIcon />;
   return <FollowIcon />;
 };
 
@@ -97,6 +105,8 @@ const NotificationsPage: React.FC = () => {
         targetUrl = `/posts/${notification.data.postId}?commentId=${notification.data?.commentId || ''}`;
       } else if (notification.type === 'FOLLOW') {
         targetUrl = `/${notification.sender.username || notification.sender.id}`;
+      } else if (notification.type === 'POST_TAG' && notification.data?.postId) {
+        targetUrl = `/posts/${notification.data.postId}`;
       }
     }
 
@@ -121,6 +131,7 @@ const NotificationsPage: React.FC = () => {
       return `đã bình luận về bài viết của bạn${commentText}.`;
     }
     if (notification.type === 'FOLLOW') return 'đã bắt đầu theo dõi bạn.';
+    if (notification.type === 'POST_TAG') return 'đã gắn thẻ bạn trong một bài viết.';
     return 'đã tương tác với bài viết của bạn.';
   };
 
@@ -211,7 +222,7 @@ const NotificationsPage: React.FC = () => {
       }
       aside={aside}
     >
-      <div className="space-y-4">
+      <div className="space-y-4" data-testid="notifications-page">
         {isLoading ? (
           <StatePanel title="Đang tải" description="Đang tải thông báo của bạn..." />
         ) : notifications.length === 0 ? (

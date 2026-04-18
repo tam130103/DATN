@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { AdminStateView } from '../../components/admin/AdminStateView';
 import { adminService, AdminPost } from '../../services/admin.service';
+import { getApiMessage } from '../../utils/api-error';
 
 const AdminPostsPage: React.FC = () => {
   const [posts, setPosts] = useState<AdminPost[]>([]);
@@ -8,14 +10,21 @@ const AdminPostsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchPosts = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await adminService.getPosts({ status: status || undefined, page, limit: 20 });
       setPosts(data.posts);
       setTotal(data.total);
       setTotalPages(data.totalPages);
+    } catch (nextError) {
+      setPosts([]);
+      setTotal(0);
+      setTotalPages(1);
+      setError(getApiMessage(nextError, 'Khong the tai danh sach bai viet.'));
     } finally {
       setLoading(false);
     }
@@ -55,6 +64,12 @@ const AdminPostsPage: React.FC = () => {
 
         {loading ? (
           <div className="admin-loading">Đang tải...</div>
+        ) : error ? (
+          <AdminStateView
+            title="Khong the tai bai viet"
+            description={error}
+            onRetry={() => void fetchPosts()}
+          />
         ) : posts.length === 0 ? (
           <div className="admin-empty">Không có bài viết nào</div>
         ) : (

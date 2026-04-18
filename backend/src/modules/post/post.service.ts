@@ -15,6 +15,10 @@ import { Like } from '../engagement/entities/like.entity';
 import { Comment, CommentStatus } from '../engagement/entities/comment.entity';
 import { SavedPost } from '../engagement/entities/saved-post.entity';
 import { AIService } from '../ai/ai.service';
+import { NotificationService } from '../notification/notification.service';
+import { NotificationGateway } from '../notification/notification.gateway';
+
+const FOLLOWER_MENTION_COMMAND_ALIASES = ['followers', 'tatca', 'moinguoi'] as const;
 
 @Injectable()
 export class PostService {
@@ -46,6 +50,8 @@ export class PostService {
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
     private readonly aiService: AIService,
+    private readonly notificationService: NotificationService,
+    private readonly notificationGateway: NotificationGateway,
   ) {}
 
   private extractHashtags(caption: string): string[] {
@@ -61,15 +67,27 @@ export class PostService {
   }
 
   private extractMentions(caption: string): string[] {
-    const regex = /@([a-zA-Z0-9_.]+)/g;
+    const regex = /(^|[^@\w])@([a-zA-Z0-9_.]+)/g;
     const mentions = new Set<string>();
     let match: RegExpExecArray | null;
 
     while ((match = regex.exec(caption)) !== null) {
-      mentions.add(match[1].toLowerCase());
+      mentions.add(match[2].toLowerCase());
     }
 
     return Array.from(mentions);
+  }
+
+  private extractMentionCommands(caption: string): string[] {
+    const regex = /(^|[^@\w])@@([a-zA-Z0-9_]+)/g;
+    const commands = new Set<string>();
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(caption)) !== null) {
+      commands.add(match[2].toLowerCase());
+    }
+
+    return Array.from(commands);
   }
 
   private async processMedia(
@@ -116,18 +134,95 @@ export class PostService {
     await manager.save(postHashtags);
   }
 
-  private async processMentions(manager: EntityManager, postId: string, caption: string) {
+  private async processMentions(
+    manager: EntityManager,
+    postId: string,
+    caption: string,
+    authorId?: string,
+  ): Promise<User[]> {
     const mentionUsernames = this.extractMentions(caption || '');
-    if (mentionUsernames.length === 0) return;
+    const mentionCommands = this.extractMentionCommands(caption || '');
+    const mentionedUsers = new Map<string, User>();
 
-    const mentionedUsers = await manager.find(User, {
-      where: mentionUsernames.map((username) => ({ username })),
-    });
+    // Lọc ra các user thường (không phải lệnh tag đặc biệt)
+    if (mentionUsernames.length > 0) {
+      const directMentions = await manager.find(User, {
+        where: mentionUsernames.map((username) => ({ username })),
+      });
 
-    if (mentionedUsers.length > 0) {
-      const mentions = mentionedUsers.map((user) => manager.create(PostMention, { postId, userId: user.id }));
+      for (const user of directMentions) {
+        mentionedUsers.set(user.id, user);
+      }
+    }
+
+    // Nếu có lệnh tag tất cả followers
+    if (
+      authorId &&
+      mentionCommands.some((command) =>
+        FOLLOWER_MENTION_COMMAND_ALIASES.includes(
+          command as (typeof FOLLOWER_MENTION_COMMAND_ALIASES)[number],
+        ),
+      )
+    ) {
+      const follows = await manager.find(Follow, { where: { followingId: authorId } });
+      const followerIds = follows.map((follow) => follow.followerId);
+
+      if (followerIds.length > 0) {
+        const followers = await manager.find(User, { where: { id: In(followerIds) } });
+        for (const user of followers) {
+          mentionedUsers.set(user.id, user);
+        }
+      }
+    }
+
+    const resolvedUsers = Array.from(mentionedUsers.values());
+
+    if (resolvedUsers.length > 0) {
+      const mentions = resolvedUsers.map((user) =>
+        manager.create(PostMention, { postId, userId: user.id }),
+      );
       await manager.save(mentions);
     }
+
+    return resolvedUsers;
+  }
+
+  private dispatchPostTagNotifications(authorId: string, postId: string, mentionedUsers: User[]) {
+    const recipients = Array.from(
+      new Map(
+        mentionedUsers
+          .filter((user): user is User => Boolean(user?.id) && user.id !== authorId)
+          .map((user) => [user.id, user]),
+      ).values(),
+    );
+
+    if (recipients.length === 0) {
+      return;
+    }
+
+    void Promise.allSettled(
+      recipients.map(async (taggedUser) => {
+        const notification = await this.notificationService.createPostTagNotification(
+          authorId,
+          taggedUser.id,
+          postId,
+        );
+
+        if (notification) {
+          this.notificationGateway.emitToUser(taggedUser.id, 'notification', notification);
+        }
+      }),
+    ).then((results) => {
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          const reason =
+            result.reason instanceof Error ? result.reason.message : String(result.reason);
+          this.logger.warn(
+            `Failed to send tag notification to ${recipients[index].id}: ${reason}`,
+          );
+        }
+      });
+    });
   }
 
   private normalizeFacebookMedia(post: any): Array<{ url: string; type: MediaType }> {
@@ -473,16 +568,20 @@ export class PostService {
       );
     }
 
+    let mentionedUsers: User[] = [];
+
     const savedPost = await this.dataSource.transaction(async (manager) => {
       const post = manager.create(Post, { userId, caption: normalizedCaption });
       const createdPost = await manager.save(post);
 
       await this.processMedia(manager, createdPost.id, mediaDto);
       await this.processHashtags(manager, createdPost.id, normalizedCaption);
-      await this.processMentions(manager, createdPost.id, normalizedCaption);
+      mentionedUsers = await this.processMentions(manager, createdPost.id, normalizedCaption, userId);
 
       return createdPost;
     });
+
+    this.dispatchPostTagNotifications(userId, savedPost.id, mentionedUsers);
 
     const [post] = await this.enrichPosts([savedPost], userId);
     return post;
@@ -630,6 +729,9 @@ export class PostService {
         }
       }
 
+      let oldMentionUserIds = new Set<string>();
+      let mentionedUsers: User[] = [];
+
       await this.dataSource.transaction(async (manager) => {
         await manager.update(Post, post.id, {
           caption: normalizedCaption,
@@ -648,11 +750,21 @@ export class PostService {
           await manager.delete(PostHashtag, { postId: post.id });
         }
 
+        const oldMentions = await manager.find(PostMention, {
+          where: { postId: post.id },
+        });
+        oldMentionUserIds = new Set(oldMentions.map((mention) => mention.userId));
+
         await manager.delete(PostMention, { postId: post.id });
 
         await this.processHashtags(manager, post.id, normalizedCaption);
-        await this.processMentions(manager, post.id, normalizedCaption);
+        mentionedUsers = await this.processMentions(manager, post.id, normalizedCaption, userId);
       });
+
+      const newMentionedUsers = mentionedUsers.filter(
+        (mentionedUser) => !oldMentionUserIds.has(mentionedUser.id),
+      );
+      this.dispatchPostTagNotifications(userId, post.id, newMentionedUsers);
     }
 
     return this.findById(post.id, userId);

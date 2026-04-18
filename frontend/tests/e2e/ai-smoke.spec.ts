@@ -8,6 +8,7 @@ const expectAIMeta = (meta: any) => {
 
 test.describe('DATN Social AI smoke flows', () => {
   test('caption endpoint returns text and meta through composer', async ({ page }) => {
+    test.setTimeout(60000);
     const consoleErrors: string[] = [];
     const pageErrors: string[] = [];
 
@@ -44,6 +45,7 @@ test.describe('DATN Social AI smoke flows', () => {
   });
 
   test('hashtag endpoint returns hashtags and meta through composer', async ({ page }) => {
+    test.setTimeout(60000);
     await page.goto('/feed');
     await page
       .getByTestId('create-post-caption')

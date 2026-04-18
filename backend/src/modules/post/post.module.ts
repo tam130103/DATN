@@ -17,6 +17,7 @@ import { UserModule } from '../user/user.module';
 import { FacebookSyncService } from './facebook-sync.service';
 import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 import { AIModule } from '../ai/ai.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { AIModule } from '../ai/ai.module';
     forwardRef(() => UserModule),
     CloudinaryModule,
     AIModule,
+    NotificationModule,
   ],
   controllers: [PostController, FacebookWebhookController],
   providers: [PostService, FacebookSyncService],

@@ -75,13 +75,20 @@ export class AIService implements OnModuleInit {
   constructor(private readonly configService: ConfigService) {}
 
   onModuleInit() {
+    const captionKey = this.getCaptionApiKey();
     const generalKey = this.configService.get<string>('DIFY_GENERAL_API_KEY');
     const chatbotKey = this.getAssistantApiKey();
 
-    if (!generalKey) {
-      this.logger.warn('DIFY_GENERAL_API_KEY not configured. AI Caption + Moderation + Sentiment disabled.');
+    if (captionKey) {
+      this.logger.log(`Dify Caption AI ready (${captionKey.slice(0, 8)}...) — Dedicated Chatbot App`);
+    } else if (generalKey) {
+      this.logger.warn('DIFY_CAPTION_CHATBOT_KEY not set, Caption will use DIFY_GENERAL_API_KEY as fallback.');
     } else {
-      this.logger.log(`Dify General AI ready (${generalKey.slice(0, 8)}...) — Caption uses Chatbot API`);
+      this.logger.warn('No Caption AI key configured. Caption will use local fallback.');
+    }
+
+    if (generalKey) {
+      this.logger.log(`Dify General AI ready (${generalKey.slice(0, 8)}...)`);
     }
 
     if (!chatbotKey) {
@@ -267,7 +274,7 @@ export class AIService implements OnModuleInit {
   }
 
   async generateCaption(prompt: string, tone = 'tự nhiên'): Promise<string> {
-    const apiKey = this.configService.get<string>('DIFY_CAPTION_WORKFLOW_KEY');
+    const apiKey = this.getCaptionApiKey();
     const apiUrl = this.normalizeDifyApiUrl(
       this.configService.get<string>('DIFY_API_URL'),
     );
@@ -312,7 +319,8 @@ export class AIService implements OnModuleInit {
       );
     }
 
-    if (!this.configService.get<string>('DIFY_GENERAL_API_KEY')) {
+    const captionKey = this.getCaptionApiKey();
+    if (!captionKey) {
       return {
         text: this.buildLocalCaptionFallback(normalizedPrompt, normalizedTone),
         meta: { source: 'fallback', degraded: true },
@@ -323,7 +331,7 @@ export class AIService implements OnModuleInit {
     const chatPrompt = this.buildCaptionChatPrompt(normalizedPrompt, normalizedTone);
 
     try {
-      const raw = await this.generateGenericChat(chatPrompt, 25_000);
+      const raw = await this.generateCaptionChat(captionKey, chatPrompt, 25_000);
       const cleaned = this.cleanPlainTextResponse(raw);
 
       if (!cleaned || cleaned.length < 20) {
@@ -509,6 +517,50 @@ Tra ve JSON duy nhat: {"label":"positive|neutral|negative|mixed","score":0.8,"su
         },
       };
     }
+  }
+
+  /**
+   * Resolve the API key for caption generation.
+   * Prefers the dedicated DIFY_CAPTION_CHATBOT_KEY, falls back to DIFY_GENERAL_API_KEY.
+   */
+  private getCaptionApiKey(): string | undefined {
+    return (
+      this.configService.get<string>('DIFY_CAPTION_CHATBOT_KEY') ||
+      this.configService.get<string>('DIFY_GENERAL_API_KEY')
+    );
+  }
+
+  /**
+   * Send a caption prompt to the dedicated Caption Chatbot App on Dify.
+   * Uses its own API key so conversation history stays isolated from other AI features.
+   */
+  private async generateCaptionChat(
+    apiKey: string,
+    query: string,
+    timeoutMs = 25_000,
+  ): Promise<string> {
+    const apiUrl = this.normalizeDifyApiUrl(
+      this.configService.get<string>('DIFY_API_URL'),
+    );
+
+    const response = await axios.post(
+      `${apiUrl}/chat-messages`,
+      {
+        inputs: {},
+        query: query.trim(),
+        response_mode: 'blocking',
+        user: `datn-caption-${Date.now()}`,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: timeoutMs,
+      },
+    );
+
+    return response.data?.answer || '';
   }
 
   private async generateGenericChat(query: string, timeoutMs = 30_000): Promise<string> {

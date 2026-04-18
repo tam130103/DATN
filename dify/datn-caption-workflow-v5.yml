@@ -1,0 +1,156 @@
+app:
+  description: Workflow tạo caption cho mạng xã hội. Tối ưu prompt ngắn gọn + model mạnh để AI luôn viết đúng chủ đề.
+  icon: ✍️
+  icon_background: '#E4FBCC'
+  icon_type: emoji
+  mode: workflow
+  name: DATN Caption Generator V5
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/gemini:0.7.20@de0063a630a6d1b2c025fb84f3462ba5151fb60618309cd595c3f4711b1df847
+    version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: llm
+      id: start-source-llm-target
+      selected: false
+      source: start-node
+      sourceHandle: source
+      target: caption-llm
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: llm-source-end-target
+      selected: false
+      source: caption-llm
+      sourceHandle: source
+      target: end-node
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: Nhập chủ đề và giọng điệu.
+        selected: false
+        title: Bắt đầu
+        type: start
+        variables:
+        - label: Chủ đề / Từ khóa
+          max_length: 1000
+          options: []
+          required: true
+          type: paragraph
+          variable: topic
+        - default: tự nhiên
+          label: Giọng điệu
+          max_length: 100
+          options:
+          - tự nhiên
+          - hài hước
+          - truyền cảm hứng
+          - chuyên nghiệp
+          - Gen Z
+          - lãng mạn
+          - học thuật
+          required: false
+          type: select
+          variable: tone
+      height: 178
+      id: start-node
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: Sinh caption bám sát chủ đề.
+        model:
+          completion_params:
+            temperature: 0.7
+            top_p: 0.9
+          mode: chat
+          name: gemini-2.0-flash
+          provider: langgenius/gemini/google
+        prompt_template:
+        - id: sys01
+          role: system
+          text: "Bạn là người viết status mạng xã hội. Viết tiếng Việt, 100-200 từ.\n\nLUẬT TUYỆT ĐỐI:\n- Bài viết PHẢI xoay quanh ĐÚNG chủ đề người dùng đưa ra. Không được viết về chủ đề khác.\n- Không nhắc đến: đồ án, luận văn, bài tập, trường học, deadline, sinh viên (trừ khi chủ đề yêu cầu).\n- Không viết tiêu đề, không ghi \"Caption:\", không dùng markdown.\n- Dùng 2-3 emoji phù hợp. Kết bằng 1 câu hỏi tương tác."
+        - id: usr01
+          role: user
+          text: "Viết một status mạng xã hội với:\n- Chủ đề: {{#start-node.topic#}}\n- Giọng điệu: {{#start-node.tone#}}\n\nViết ngay status, không giải thích gì thêm."
+        selected: true
+        title: Sinh Caption
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 131
+      id: caption-llm
+      position:
+        x: 400
+        y: 282
+      positionAbsolute:
+        x: 400
+        y: 282
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        desc: Trả ra caption.
+        outputs:
+        - value_selector:
+          - caption-llm
+          - text
+          variable: caption
+        selected: false
+        title: Kết thúc
+        type: end
+      height: 115
+      id: end-node
+      position:
+        x: 720
+        y: 282
+      positionAbsolute:
+        x: 720
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    viewport:
+      x: -100
+      y: 100
+      zoom: 0.8
+  rag_pipeline_variables: []

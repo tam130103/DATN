@@ -49,6 +49,20 @@ export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, on
   const [editCaptionText, setEditCaptionText] = useState(post.caption);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
+  const ensureCommentsLoaded = useCallback(async () => {
+    if (showComments) {
+      setShowComments(false);
+      return;
+    }
+    try {
+      const data = await engagementService.getPostComments(post.id);
+      setComments(data);
+      setShowComments(true);
+    } catch {
+      toast.error('Không thể tải bình luận.');
+    }
+  }, [post.id, showComments]);
+
   useEffect(() => {
     setLocalCaption(post.caption);
     setLocalIsEdited(post.isEdited || false);
@@ -60,9 +74,9 @@ export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, on
 
   useEffect(() => {
     if (targetCommentId && !showComments) {
-      loadComments();
+      void ensureCommentsLoaded();
     }
-  }, [targetCommentId, post.id]);
+  }, [targetCommentId, showComments, ensureCommentsLoaded]);
 
   useEffect(() => {
     if (!targetCommentId || !showComments || comments.length === 0) return;
@@ -120,7 +134,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, on
     }
   };
 
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     if (showComments) {
       setShowComments(false);
       return;
@@ -132,7 +146,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, on
     } catch {
       toast.error('Không thể tải bình luận.');
     }
-  };
+  }, [post.id, showComments]);
 
   const handleShare = useCallback(() => {
     setShowShareModal(true);

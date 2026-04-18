@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AdminStateView } from '../../components/admin/AdminStateView';
 import { adminService, AdminReport } from '../../services/admin.service';
+import { getApiMessage } from '../../utils/api-error';
 
 const AdminReportsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -10,14 +12,21 @@ const AdminReportsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState('open');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchReports = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await adminService.getReports({ status: status || undefined, page, limit: 20 });
       setReports(data.reports);
       setTotal(data.total);
       setTotalPages(data.totalPages);
+    } catch (nextError) {
+      setReports([]);
+      setTotal(0);
+      setTotalPages(1);
+      setError(getApiMessage(nextError, 'Khong the tai danh sach bao cao.'));
     } finally {
       setLoading(false);
     }
@@ -71,6 +80,12 @@ const AdminReportsPage: React.FC = () => {
 
         {loading ? (
           <div className="admin-loading">Đang tải...</div>
+        ) : error ? (
+          <AdminStateView
+            title="Khong the tai bao cao"
+            description={error}
+            onRetry={() => void fetchReports()}
+          />
         ) : reports.length === 0 ? (
           <div className="admin-empty">Không có báo cáo nào</div>
         ) : (

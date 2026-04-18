@@ -98,4 +98,13 @@ export class NotificationService {
   async createFollowNotification(followerId: string, followingId: string): Promise<Notification | null> {
     return this.create(followingId, followerId, 'FOLLOW');
   }
+
+  async createPostTagNotification(
+    taggerId: string,
+    taggedUserId: string,
+    postId: string,
+  ): Promise<Notification | null> {
+    return this.create(taggedUserId, taggerId, 'POST_TAG', { postId });
+  }
 }
+

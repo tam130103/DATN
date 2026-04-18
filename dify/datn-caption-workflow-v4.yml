@@ -1,0 +1,156 @@
+app:
+  description: Tự động viết caption cực mượt cho mạng xã hội dựa trên chủ đề người dùng đưa ra. Được tối ưu đặc biệt để AI không bao giờ hiểu sai thành bài tập hay luận văn.
+  icon: ✍️
+  icon_background: '#E4FBCC'
+  icon_type: emoji
+  mode: workflow
+  name: DATN Caption Generator V4 (Ultra Smart)
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/gemini:0.7.20@de0063a630a6d1b2c025fb84f3462ba5151fb60618309cd595c3f4711b1df847
+    version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: llm
+      id: start-node-source-caption-llm-target
+      selected: false
+      source: start-node
+      sourceHandle: source
+      target: caption-llm
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: caption-llm-source-end-node-target
+      selected: false
+      source: caption-llm
+      sourceHandle: source
+      target: end-node
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: Nhập chủ đề và chọn giọng điệu cho caption.
+        selected: false
+        title: Màn hình Bắt Đầu
+        type: start
+        variables:
+        - label: Chủ đề / Từ khóa (bắt buộc)
+          max_length: 1000
+          options: []
+          required: true
+          type: paragraph
+          variable: topic
+        - default: tự nhiên
+          label: Giọng điệu (tuỳ chọn)
+          max_length: 100
+          options:
+          - tự nhiên
+          - hài hước
+          - truyền cảm hứng
+          - chuyên nghiệp
+          - Gen Z
+          - lãng mạn
+          - học thuật
+          required: false
+          type: select
+          variable: tone
+      height: 178
+      id: start-node
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: Lõi AI sinh Caption chống lỗi
+        model:
+          completion_params:
+            temperature: 0.65
+            top_p: 0.85
+          mode: chat
+          name: gemini-2.5-flash-lite
+          provider: langgenius/gemini/google
+        prompt_template:
+        - id: system_prompt
+          role: system
+          text: "Bạn là một CHUYÊN GIA SÁNG TẠO NỘI DUNG MẠNG XÃ HỘI (Social Media Content Creator) chuyên nghiệp.\nBạn chuyên viết những dòng trạng thái (caption/status) dành cho nền tảng giải trí, chia sẻ cảm xúc đời sống hàng ngày của giới trẻ.\n\nNHIỆM VỤ CỦA BẠN:\nDựa vào \"Chủ đề\" và \"Giọng điệu\" người dùng đưa cho, hãy hóa thân vào người dùng để viết ra MỘT bài đăng MXH hoàn chỉnh.\n\n[CÁC QUY TẮC CỐT LÕI - PHẠM LỖI LÀ BỊ PHẠT]\n1. Viết cực kỳ mượt mà, chân thật, giống hệt một bài post Facebook/Instagram (từ 80 đến 250 từ). Triển khai 2-3 ý có chiều sâu về chủ đề.\n2. TUYỆT ĐỐI KHÔNG giải thích định nghĩa của từ khóa. TUYỆT ĐỐI KHÔNG giải thích \"topic\" hay \"tone\" là gì.\n3. TUYỆT ĐỐI KHÔNG nhắc đến trường học, lớp học, luận văn, bài tập, hay đồ án tốt nghiệp (vì đây không phải MXH học tập).\n4. KHÔNG sử dụng các tiêu đề rập khuôn như \"Caption: \", \"Bài đăng: \". Hãy xuất trực tiếp thẳng vào câu nói đầu tiên của bài post.\n5. Có thể kết hợp emoji nhỏ gọn nhưng không làm dụng rườm rà. Kết bài bằng 1 câu hỏi mở gợi tương tác."
+        - id: user_prompt
+          role: user
+          text: "Đây là thông tin bài viết bạn cần sáng tác. Hãy nhập vai người dùng để viết ra ngay dòng trạng thái của họ:\n\n[THÔNG TIN ĐẦU VÀO]\n- Chủ đề/Câu chuyện cần viết: {{#start-node.topic#}}\n- Giọng điệu mong muốn: {{#start-node.tone#}}\n\nViết ngay bài post mạng xã hội duy nhất (không giải thích thêm gì cả):"
+        selected: true
+        title: AI Viết Post
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 131
+      id: caption-llm
+      position:
+        x: 400
+        y: 282
+      positionAbsolute:
+        x: 400
+        y: 282
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        desc: Trả ra caption cuối cùng.
+        outputs:
+        - value_selector:
+          - caption-llm
+          - text
+          variable: caption
+        selected: false
+        title: Kết thúc
+        type: end
+      height: 115
+      id: end-node
+      position:
+        x: 720
+        y: 282
+      positionAbsolute:
+        x: 720
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    viewport:
+      x: -304.9798870759948
+      y: 33.70711283485994
+      zoom: 0.757858283255199
+  rag_pipeline_variables: []

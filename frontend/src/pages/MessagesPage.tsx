@@ -110,20 +110,32 @@ const MessagesPage: React.FC = () => {
   }, [loadConversations, selectedConversation, token]);
 
   useEffect(() => {
-    if (!selectedConversation) return;
+    if (!selectedConversation) {
+      setMessages([]);
+      setMessagesError(null);
+      setIsLoadingMessages(false);
+      setTypingUsers(new Set());
+      return;
+    }
+    const currentConversationId = selectedConversation;
+    let cancelled = false;
     setIsLoadingMessages(true);
+    setMessages([]);
     setMessagesError(null);
-    chatService.getMessages(selectedConversation)
+    setTypingUsers(new Set());
+    chatService.getMessages(currentConversationId)
       .then((data) => {
+        if (cancelled) return;
         setMessages(data.reverse());
-        chatSocketService.joinConversation(selectedConversation);
-        chatSocketService.markAsRead(selectedConversation);
+        chatSocketService.joinConversation(currentConversationId);
+        chatSocketService.markAsRead(currentConversationId);
         setConversations((prev) => prev.map((conv) => {
-          if (conv.id !== selectedConversation || !conv.lastMessage || conv.lastMessage.senderId === user?.id) return conv;
+          if (conv.id !== currentConversationId || !conv.lastMessage || conv.lastMessage.senderId === user?.id) return conv;
           return { ...conv, lastMessage: { ...conv.lastMessage, isRead: true } };
         }));
       })
       .catch((err: any) => {
+        if (cancelled) return;
         const status: number | null = err?.response?.status ?? err?.status ?? null;
         if (status === 403) {
           setMessagesError({ code: 403, message: 'Bạn không có quyền xem cuộc trò chuyện này.' });
@@ -134,8 +146,15 @@ const MessagesPage: React.FC = () => {
           toast.error('Không thể tải tin nhắn.');
         }
       })
-      .finally(() => setIsLoadingMessages(false));
-    return () => { chatSocketService.leaveConversation(selectedConversation); };
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingMessages(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+      chatSocketService.leaveConversation(currentConversationId);
+    };
   }, [selectedConversation, user?.id]);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, typingUsers]);
@@ -264,8 +283,8 @@ const MessagesPage: React.FC = () => {
               <div className="border-b border-[var(--app-border)] px-4 py-4">
                 <div className="space-y-3 rounded-xl bg-[var(--app-bg-soft)] p-4">
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => setComposeMode('direct')} className={`flex-1 rounded-md px-3 py-2 text-sm font-semibold transition ${composeMode === 'direct' ? 'bg-[var(--app-text)] text-white' : 'border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]'}`}>Trực tiếp</button>
-                    <button type="button" onClick={() => setComposeMode('group')} className={`flex-1 rounded-md px-3 py-2 text-sm font-semibold transition ${composeMode === 'group' ? 'bg-[var(--app-text)] text-white' : 'border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]'}`}>Nhóm</button>
+                    <button type="button" onClick={() => setComposeMode('direct')} className={`flex-1 rounded-md px-3 py-2 text-sm font-semibold transition ${composeMode === 'direct' ? 'bg-[var(--app-text)] text-[var(--app-surface)]' : 'border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]'}`}>Trực tiếp</button>
+                    <button type="button" onClick={() => setComposeMode('group')} className={`flex-1 rounded-md px-3 py-2 text-sm font-semibold transition ${composeMode === 'group' ? 'bg-[var(--app-text)] text-[var(--app-surface)]' : 'border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]'}`}>Nhóm</button>
                   </div>
                   {composeMode === 'group' ? <input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Tên nhóm" className="min-h-[42px] w-full rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] px-3 text-sm text-[var(--app-text)]" /> : null}
                   {composeMode === 'group' && selectedParticipants.length > 0 ? <div className="flex flex-wrap gap-2">{selectedParticipants.map((p) => <button key={p.id} type="button" onClick={() => toggleParticipant(p)} className="rounded-full bg-[var(--app-surface)] px-3 py-1.5 text-xs font-semibold text-[var(--app-text)]">{p.username || p.name} x</button>)}</div> : null}

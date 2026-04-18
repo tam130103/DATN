@@ -1,7 +1,8 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { postService } from '../services/post.service';
 import { userService } from '../services/user.service';
+import { searchService } from '../services/search.service';
 import { useAuth } from '../contexts/AuthContext';
 import { getApiMessage } from '../utils/api-error';
 import { Avatar } from './common/Avatar';
@@ -19,6 +20,32 @@ type MediaDraft = {
 
 type AIAction = 'caption' | 'hashtags' | null;
 
+type MentionSuggestion =
+  | {
+      kind: 'user';
+      id: string;
+      username: string;
+      name: string | null;
+      avatarUrl: string | null;
+    }
+  | {
+      kind: 'command';
+      id: 'broadcast-followers';
+      token: '@@followers';
+      label: string;
+      description: string;
+    };
+
+const FOLLOWER_BROADCAST_MATCHERS = ['followers', 'tatca', 'moinguoi'] as const;
+
+const FOLLOWER_BROADCAST_SUGGESTION: MentionSuggestion = {
+  kind: 'command',
+  id: 'broadcast-followers',
+  token: '@@followers',
+  label: '@@followers',
+  description: 'Gắn thẻ tất cả người theo dõi của bạn',
+};
+
 const PhotoIcon = () => (
   <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.9">
     <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -33,8 +60,6 @@ const SparkIcon = () => (
     <path d="M5 17l.9 2.1L8 20l-2.1.9L5 23l-.9-2.1L2 20l2.1-.9L5 17z" />
   </svg>
 );
-
-
 
 const appendUniqueHashtags = (caption: string, suggestedTags: string[]) => {
   const existingTags = new Set(
@@ -60,12 +85,18 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
   const mentionDebounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [suggestions, setSuggestions] = useState<User[]>([]);
+  const [suggestions, setSuggestions] = useState<MentionSuggestion[]>([]);
   const [cursorPosition, setCursorPosition] = useState(0);
 
   const isCaptionLoading = aiAction === 'caption';
   const isHashtagLoading = aiAction === 'hashtags';
   const isAnyAILoading = aiAction !== null;
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(mentionDebounceRef.current);
+    };
+  }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -82,52 +113,119 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
     setMediaFiles((prev) => [...prev, ...newMedia]);
   };
 
-  const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const text = e.target.value;
-    setCaption(text);
+  const handleTextChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const text = e.target.value;
+      setCaption(text);
 
-    const cursor = e.target.selectionStart;
-    setCursorPosition(cursor);
+      const cursor = e.target.selectionStart;
+      setCursorPosition(cursor);
 
-    const textBeforeCursor = text.slice(0, cursor);
-    const match = textBeforeCursor.match(/@([a-zA-Z0-9_.]*)$/);
+      const textBeforeCursor = text.slice(0, cursor);
+      const broadcastMatch = textBeforeCursor.match(/(?:^|[^@\w])@@([a-zA-Z0-9_]*)$/);
 
-    if (match && user) {
-      const query = match[1];
-      setShowSuggestions(true);
-
-      // Debounce API call to avoid spamming on every keystroke
       clearTimeout(mentionDebounceRef.current);
-      mentionDebounceRef.current = setTimeout(async () => {
-        try {
-          const following = await userService.getFollowing(user.id, 1, 50);
-          const filtered = following.filter(
-            (u) =>
-              (u.username || '').toLowerCase().includes(query.toLowerCase()) ||
-              (u.name || '').toLowerCase().includes(query.toLowerCase()),
-          );
-          setSuggestions(filtered);
-        } catch (error) {
-          console.error('Failed to load mention suggestions', error);
-        }
-      }, 300);
-    } else {
+
+      if (broadcastMatch) {
+        const query = broadcastMatch[1].toLowerCase();
+        const shouldSuggest =
+          !query ||
+          FOLLOWER_BROADCAST_MATCHERS.some((token) => token.includes(query));
+
+        setSuggestions(shouldSuggest ? [FOLLOWER_BROADCAST_SUGGESTION] : []);
+        setShowSuggestions(shouldSuggest);
+        return;
+      }
+
+      const mentionMatch = textBeforeCursor.match(/(?:^|[^@\w])@([a-zA-Z0-9_.]*)$/);
+
+      if (mentionMatch && user) {
+        const query = mentionMatch[1];
+        setShowSuggestions(true);
+
+        mentionDebounceRef.current = setTimeout(async () => {
+          try {
+            const [followers, globalResults] = await Promise.all([
+              userService.getFollowers(user.id, 1, 50),
+              query.length >= 1 ? searchService.searchUsers(query, 1, 10) : Promise.resolve([]),
+            ]);
+
+            const seen = new Set<string>();
+            const merged: MentionSuggestion[] = [];
+            const normalizedQuery = query.toLowerCase();
+
+            const filterAndPush = (list: User[]) => {
+              for (const nextUser of list) {
+                if (!nextUser.username || nextUser.id === user.id || seen.has(nextUser.id)) {
+                  continue;
+                }
+
+                if (
+                  normalizedQuery &&
+                  !nextUser.username.toLowerCase().includes(normalizedQuery) &&
+                  !(nextUser.name || '').toLowerCase().includes(normalizedQuery)
+                ) {
+                  continue;
+                }
+
+                seen.add(nextUser.id);
+                merged.push({
+                  kind: 'user',
+                  id: nextUser.id,
+                  username: nextUser.username,
+                  name: nextUser.name,
+                  avatarUrl: nextUser.avatarUrl,
+                });
+              }
+            };
+
+            filterAndPush(followers);
+            filterAndPush(globalResults);
+
+            const nextSuggestions = merged.slice(0, 15);
+            setSuggestions(nextSuggestions);
+            setShowSuggestions(nextSuggestions.length > 0);
+          } catch (error) {
+            console.error('Failed to load mention suggestions', error);
+            setSuggestions([]);
+            setShowSuggestions(false);
+          }
+        }, 300);
+        return;
+      }
+
+      setSuggestions([]);
       setShowSuggestions(false);
-      clearTimeout(mentionDebounceRef.current);
-    }
-  }, [user]);
+    },
+    [user],
+  );
 
-  const insertMention = (username: string) => {
+  const insertMention = (suggestion: MentionSuggestion) => {
     const textBeforeCursor = caption.slice(0, cursorPosition);
     const textAfterCursor = caption.slice(cursorPosition);
-    const matchIndex = textBeforeCursor.lastIndexOf('@');
 
-    if (matchIndex !== -1) {
-      const newText = textBeforeCursor.slice(0, matchIndex) + `@${username} ` + textAfterCursor;
-      setCaption(newText);
+    if (suggestion.kind === 'command') {
+      const commandStartIndex = textBeforeCursor.lastIndexOf('@@');
+
+      if (commandStartIndex !== -1) {
+        const newText =
+          textBeforeCursor.slice(0, commandStartIndex) + `${suggestion.token} ` + textAfterCursor;
+        setCaption(newText);
+      }
+    } else {
+      const mentionStartIndex = textBeforeCursor.lastIndexOf('@');
+
+      if (mentionStartIndex !== -1) {
+        const newText =
+          textBeforeCursor.slice(0, mentionStartIndex) +
+          `@${suggestion.username} ` +
+          textAfterCursor;
+        setCaption(newText);
+      }
     }
 
     setShowSuggestions(false);
+    setSuggestions([]);
   };
 
   const removeMedia = (index: number) => {
@@ -180,7 +278,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
 
   const handleAISuggest = async () => {
     let normalizedPrompt = caption.trim();
-    
+
     if (!normalizedPrompt) {
       const userInput = window.prompt(
         'AI nên viết về điều gì? Ví dụ: chuyến đi cuối tuần, review đồ ăn... (Hoặc nhập trực tiếp vào hộp trước!)',
@@ -291,9 +389,12 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
 
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--app-border)] pt-3">
                   <p className="text-xs text-[var(--app-muted)]">
-                    Nhắc đến ai đó bằng <span className="font-semibold">@username</span> hoặc thêm hashtags.
+                    Nhắc đến ai đó bằng <span className="font-semibold">@username</span> hoặc dùng{' '}
+                    <span className="font-semibold">@@followers</span> để tag người theo dõi.
                   </p>
-                  <span className="text-xs text-[var(--app-muted)]">{caption.trim().length} ký tự</span>
+                  <span className="text-xs text-[var(--app-muted)]">
+                    {caption.trim().length} ký tự
+                  </span>
                 </div>
               </div>
 
@@ -303,20 +404,31 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
                     <button
                       key={suggestion.id}
                       type="button"
-                      onClick={() => insertMention(suggestion.username || suggestion.name || '')}
+                      onClick={() => insertMention(suggestion)}
                       className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
                     >
-                      <Avatar
-                        src={suggestion.avatarUrl}
-                        name={suggestion.name}
-                        username={suggestion.username}
-                        size="sm"
-                      />
+                      {suggestion.kind === 'user' ? (
+                        <Avatar
+                          src={suggestion.avatarUrl}
+                          name={suggestion.name}
+                          username={suggestion.username}
+                          size="sm"
+                        />
+                      ) : (
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--app-primary-soft)] text-xs font-semibold text-[var(--app-primary)]">
+                          @@
+                        </div>
+                      )}
+
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-[var(--app-text)]">
-                          {suggestion.username || suggestion.name}
+                          {suggestion.kind === 'user' ? suggestion.username : suggestion.label}
                         </p>
-                        <p className="truncate text-sm text-[var(--app-muted)]">{suggestion.name}</p>
+                        <p className="truncate text-sm text-[var(--app-muted)]">
+                          {suggestion.kind === 'user'
+                            ? suggestion.name || 'Tài khoản người dùng'
+                            : suggestion.description}
+                        </p>
                       </div>
                     </button>
                   ))}
