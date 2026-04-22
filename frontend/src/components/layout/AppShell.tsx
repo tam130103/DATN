@@ -178,10 +178,10 @@ export const AppShell: React.FC<AppShellProps> = ({
       setUnreadMessages(0);
     }
 
+    // Badge-only: zero the local counter for snappy UI.
+    // Actual mark-read side-effects are owned by NotificationsPage.
     if (location.pathname.startsWith('/notifications')) {
       setUnreadNotifications(0);
-      notificationService.markAllAsRead();
-      notificationService.markAllAsReadHttp().catch(() => {});
     }
   }, [location.pathname, user]);
 

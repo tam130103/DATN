@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AppShell } from '../components/layout/AppShell';
@@ -65,14 +65,18 @@ const NotificationsPage: React.FC = () => {
   const unreadNotifications = notifications.filter((notification) => !notification.isRead);
   const readNotifications = notifications.filter((notification) => notification.isRead);
 
+  const hasMarkedRef = useRef(false);
+
   useEffect(() => {
     if (!user) return;
+    hasMarkedRef.current = false;
     setIsLoading(true);
     notificationService
       .getNotifications()
       .then((data) => {
         setNotifications(data);
-        if (data.some((notification) => !notification.isRead)) {
+        if (!hasMarkedRef.current && data.some((notification) => !notification.isRead)) {
+          hasMarkedRef.current = true;
           notificationService.markAllAsRead();
           notificationService
             .markAllAsReadHttp()

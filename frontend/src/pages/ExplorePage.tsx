@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AppShell } from '../components/layout/AppShell';
@@ -37,6 +37,8 @@ const searchTips = [
   'Các xu hướng sẽ cho bạn biết cộng đồng đang quan tâm đến điều gì ngay bây giờ.',
 ];
 
+const DEBOUNCE_MS = 300;
+
 const ExplorePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [users, setUsers] = useState<User[]>([]);
@@ -44,26 +46,77 @@ const ExplorePage: React.FC = () => {
   const [trendingHashtags, setTrendingHashtags] = useState<Hashtag[]>([]);
   const [activeTab, setActiveTab] = useState<'users' | 'hashtags'>('users');
   const [isLoading, setIsLoading] = useState(false);
-  const query = searchParams.get('q') || '';
 
+  // Committed query from URL (source of truth for requests).
+  const committedQuery = searchParams.get('q') || '';
+
+  // Local draft for the text input — decoupled from URL to avoid per-keystroke history entries.
+  const [draftQuery, setDraftQuery] = useState(committedQuery);
+
+  // Monotonically increasing request ID to guard stale responses.
+  const requestIdRef = useRef(0);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync draft ← URL when navigating back/forward.
+  useEffect(() => {
+    setDraftQuery(committedQuery);
+  }, [committedQuery]);
+
+  // Commit the draft to the URL with replace:true so Back doesn't step through every character.
+  const commitQuery = useCallback(
+    (value: string) => {
+      const nextParams = new URLSearchParams(searchParams);
+      if (value) nextParams.set('q', value);
+      else nextParams.delete('q');
+      setSearchParams(nextParams, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  // Handle input changes: update draft immediately, debounce the URL commit.
+  const handleSearch = useCallback(
+    (value: string) => {
+      setDraftQuery(value);
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => commitQuery(value), DEBOUNCE_MS);
+    },
+    [commitQuery],
+  );
+
+  // Cleanup debounce timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, []);
+
+  // Fetch trending hashtags once on mount.
   useEffect(() => {
     searchService.getTrendingHashtags(8).then(setTrendingHashtags).catch(() => undefined);
   }, []);
 
+  // Search effect: runs only when the committed query changes.
+  // Uses requestIdRef to discard stale responses.
   useEffect(() => {
-    if (!query) {
+    if (!committedQuery) {
       setUsers([]);
       setHashtags([]);
       return;
     }
 
+    const currentRequestId = ++requestIdRef.current;
+
     const run = async () => {
       setIsLoading(true);
       try {
         const [userResults, hashtagResults] = await Promise.all([
-          searchService.searchUsers(query),
-          searchService.searchHashtags(query),
+          searchService.searchUsers(committedQuery),
+          searchService.searchHashtags(committedQuery),
         ]);
+
+        // Only apply results from the latest request.
+        if (currentRequestId !== requestIdRef.current) return;
+
         setUsers(userResults);
         setHashtags(hashtagResults);
         if (userResults.length === 0 && hashtagResults.length > 0) {
@@ -72,28 +125,24 @@ const ExplorePage: React.FC = () => {
           setActiveTab('users');
         }
       } catch {
+        if (currentRequestId !== requestIdRef.current) return;
         toast.error('Lỗi tìm kiếm.');
       } finally {
-        setIsLoading(false);
+        if (currentRequestId === requestIdRef.current) {
+          setIsLoading(false);
+        }
       }
     };
 
     run();
-  }, [query]);
-
-  const handleSearch = (value: string) => {
-    const nextParams = new URLSearchParams(searchParams);
-    if (value) nextParams.set('q', value);
-    else nextParams.delete('q');
-    setSearchParams(nextParams);
-  };
+  }, [committedQuery]);
 
   const totalResults = users.length + hashtags.length;
   const resultLabel = useMemo(() => {
-    if (!query) return 'Tìm kiếm mọi người hoặc hashtag';
+    if (!committedQuery) return 'Tìm kiếm mọi người hoặc hashtag';
     if (isLoading) return 'Đang tìm kiếm...';
-    return `${totalResults} kết quả cho "${query}"`;
-  }, [isLoading, query, totalResults]);
+    return `${totalResults} kết quả cho "${committedQuery}"`;
+  }, [isLoading, committedQuery, totalResults]);
 
   const aside = (
     <div className="sticky top-6 space-y-4">
@@ -136,10 +185,13 @@ const ExplorePage: React.FC = () => {
       title="Khám phá"
       description="Khám phá bạn bè, hashtag, và những câu chuyện thú vị."
       action={
-        query ? (
+        committedQuery ? (
           <button
             type="button"
-            onClick={() => handleSearch('')}
+            onClick={() => {
+              setDraftQuery('');
+              commitQuery('');
+            }}
             className="inline-flex min-h-[38px] items-center justify-center rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm font-semibold text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"
           >
             Xóa
@@ -161,7 +213,7 @@ const ExplorePage: React.FC = () => {
             <SearchIcon className="h-5 w-5 text-[var(--app-muted)]" />
             <input
               type="search"
-              value={query}
+              value={draftQuery}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Tìm kiếm người dùng, hashtag, hoặc chủ đề"
               className="flex-1 bg-transparent text-sm text-[var(--app-text)]"
@@ -178,7 +230,7 @@ const ExplorePage: React.FC = () => {
           </div>
         </section>
 
-        {!query ? (
+        {!committedQuery ? (
           <section className="grid gap-4 sm:grid-cols-2">
             {trendingHashtags.length === 0 ? (
               <div className="surface-card rounded-xl px-6 py-12 text-center sm:col-span-2">

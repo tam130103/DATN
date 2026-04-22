@@ -19,88 +19,117 @@ const FeedPage: React.FC = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const observerTarget = useRef<HTMLDivElement | null>(null);
 
-  const loadPosts = useCallback(async (cursor?: string, options?: { silent?: boolean; merge?: boolean }) => {
-    try {
-      if (cursor) {
-        setIsLoadingMore(true);
-      } else if (!options?.silent) {
-        setIsLoading(true);
-      }
+  // ---------- Refresh dedup guards ----------
+  // In-flight guard: prevents overlapping silent refreshes.
+  const isRefreshingRef = useRef(false);
+  // Monotonically increasing generation counter.
+  // Only the latest refresh generation may apply its results.
+  const refreshGenerationRef = useRef(0);
+  // Track whether the initial load has resolved.
+  const initialLoadResolvedRef = useRef(false);
 
+  const loadInitial = useCallback(async () => {
+    setIsLoading(true);
+    initialLoadResolvedRef.current = false;
+    try {
+      const response = await postService.getFeed();
+      setPosts(response.posts);
+      setNextCursor(response.nextCursor);
+      initialLoadResolvedRef.current = true;
+    } catch {
+      toast.error('Không thể tải bảng tin.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const loadMore = useCallback(async (cursor: string) => {
+    // Don't paginate until the initial load is done.
+    if (!initialLoadResolvedRef.current) return;
+    setIsLoadingMore(true);
+    try {
       const response = await postService.getFeed(cursor);
       setPosts((prev) => {
-        if (cursor) {
-          const existingIds = new Set(prev.map((post) => post.id));
-          return [...prev, ...response.posts.filter((post) => !existingIds.has(post.id))];
-        }
-
-        if (options?.merge) {
-          const incomingIds = new Set(response.posts.map((post) => post.id));
-          return [...response.posts, ...prev.filter((post) => !incomingIds.has(post.id))];
-        }
-
-        return response.posts;
+        const existingIds = new Set(prev.map((post) => post.id));
+        return [...prev, ...response.posts.filter((post) => !existingIds.has(post.id))];
       });
-
-      setNextCursor((previousCursor) => {
-        if (options?.merge) {
-          return previousCursor ?? response.nextCursor;
-        }
-
-        return response.nextCursor;
-      });
+      setNextCursor(response.nextCursor);
     } catch {
-      if (!options?.silent) {
-        toast.error('Không thể tải bảng tin.');
-      }
+      toast.error('Không thể tải thêm bài viết.');
     } finally {
-      if (cursor) {
-        setIsLoadingMore(false);
-      } else if (!options?.silent) {
-        setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, []);
+
+  const refreshLatest = useCallback(async () => {
+    // Skip if already refreshing (dedup).
+    if (isRefreshingRef.current) return;
+    // Skip if the document is hidden.
+    if (document.hidden) return;
+
+    isRefreshingRef.current = true;
+    const generation = ++refreshGenerationRef.current;
+
+    try {
+      const response = await postService.getFeed();
+
+      // Discard if a newer refresh superseded this one.
+      if (generation !== refreshGenerationRef.current) return;
+
+      setPosts((prev) => {
+        const incomingIds = new Set(response.posts.map((post) => post.id));
+        return [...response.posts, ...prev.filter((post) => !incomingIds.has(post.id))];
+      });
+
+      // Preserve the existing nextCursor so infinite scroll continues where the user left off.
+      setNextCursor((previousCursor) => previousCursor ?? response.nextCursor);
+    } catch {
+      // Silent refresh failures are swallowed intentionally.
+    } finally {
+      if (generation === refreshGenerationRef.current) {
+        isRefreshingRef.current = false;
       }
     }
   }, []);
 
+  // ---------- Initial load ----------
   useEffect(() => {
-    loadPosts();
+    loadInitial();
     searchService.getTrendingHashtags(6).then(setTrending).catch(() => undefined);
-  }, [loadPosts]);
+  }, [loadInitial]);
 
+  // ---------- Infinite scroll ----------
   useEffect(() => {
     if (!observerTarget.current || !nextCursor || isLoadingMore) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && nextCursor && !isLoadingMore) loadPosts(nextCursor);
+        if (entries[0].isIntersecting && nextCursor && !isLoadingMore) loadMore(nextCursor);
       },
       { threshold: 0.9 },
     );
     observer.observe(observerTarget.current);
     return () => observer.disconnect();
-  }, [isLoadingMore, loadPosts, nextCursor]);
+  }, [isLoadingMore, loadMore, nextCursor]);
 
+  // ---------- Background refresh (interval + focus + visibility) ----------
   useEffect(() => {
-    const refreshFeed = () => {
-      if (document.hidden || isLoadingMore) return;
-      void loadPosts(undefined, { silent: true, merge: true });
-    };
+    const intervalId = window.setInterval(refreshLatest, FEED_REFRESH_INTERVAL_MS);
 
-    const intervalId = window.setInterval(refreshFeed, FEED_REFRESH_INTERVAL_MS);
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        refreshFeed();
+        void refreshLatest();
       }
     };
 
-    window.addEventListener('focus', refreshFeed);
+    window.addEventListener('focus', refreshLatest);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.clearInterval(intervalId);
-      window.removeEventListener('focus', refreshFeed);
+      window.removeEventListener('focus', refreshLatest);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isLoadingMore, loadPosts]);
+  }, [refreshLatest]);
 
   const aside = (
     <div className="sticky top-6 space-y-4">
@@ -165,7 +194,7 @@ const FeedPage: React.FC = () => {
   return (
     <AppShell aside={aside}>
       <div className="space-y-4">
-        <CreatePost onPostCreated={() => loadPosts()} />
+        <CreatePost onPostCreated={() => loadInitial()} />
 
         {isLoading && posts.length === 0 ? (
           <StatePanel title="Bảng tin" description="Đang tải bài viết..." />
