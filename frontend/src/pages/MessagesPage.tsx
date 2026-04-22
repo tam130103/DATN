@@ -363,10 +363,67 @@ const MessagesPage: React.FC = () => {
                     {messages.map((msg, idx) => {
                       const isMine = msg.senderId === user?.id;
                       const showAvatar = !isMine && (idx === 0 || messages[idx - 1]?.senderId !== msg.senderId);
-                      const isAiMessage = !isMine && msg.sender?.username === 'datn_fb';
-                      return <div key={msg.id} className={`flex items-end gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>{!isMine ? <div className="mb-1 h-7 w-7 flex-shrink-0">{showAvatar ? <Avatar src={msg.sender?.avatarUrl} name={msg.sender?.name} username={msg.sender?.username} size="xs" /> : null}</div> : null}<div className="group max-w-[82%] sm:max-w-[70%]"><div className={`rounded-[22px] px-4 py-3 text-sm leading-6 ${isMine ? 'rounded-br-[8px] bg-[var(--app-primary)] text-white' : 'rounded-bl-[8px] border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)]'}`}>{isAiMessage ? <ReactMarkdown components={{ p: ({children}) => <p className="mb-2 last:mb-0">{children}</p>, strong: ({children}) => <strong className="font-semibold">{children}</strong>, em: ({children}) => <em className="italic">{children}</em>, ul: ({children}) => <ul className="my-1 ml-4 list-disc space-y-1">{children}</ul>, ol: ({children}) => <ol className="my-1 ml-4 list-decimal space-y-1">{children}</ol>, li: ({children}) => <li className="leading-6">{children}</li>, h1: ({children}) => <h1 className="mb-1 text-base font-bold">{children}</h1>, h2: ({children}) => <h2 className="mb-1 text-sm font-bold">{children}</h2>, h3: ({children}) => <h3 className="mb-1 text-sm font-semibold">{children}</h3>, a: ({href, children}) => <a href={href} className="underline text-blue-600" target="_blank" rel="noreferrer">{children}</a>, code: ({children}) => <code className="rounded bg-gray-100 px-1 font-mono text-xs text-gray-800">{children}</code>, blockquote: ({children}) => <blockquote className="border-l-4 border-gray-300 pl-3 italic text-gray-600">{children}</blockquote>, }}>{msg.content}</ReactMarkdown> : msg.content}</div>{msg.mediaUrl ? <img src={msg.mediaUrl} alt="" className="mt-2 max-h-60 rounded-lg object-cover" /> : null}<p className="mt-1 px-1 text-[11px] text-[var(--app-muted)] opacity-0 transition group-hover:opacity-100">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p></div></div>;
+                      return (
+                        <div key={msg.id} className={`flex items-end gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                          {!isMine ? (
+                            <div className="mb-1 h-7 w-7 flex-shrink-0">
+                              {showAvatar ? <Avatar src={msg.sender?.avatarUrl} name={msg.sender?.name} username={msg.sender?.username} size="xs" /> : null}
+                            </div>
+                          ) : null}
+                          <div className="group max-w-[82%] sm:max-w-[70%]">
+                            <div className={`rounded-[22px] px-4 py-3 text-sm leading-6 ${isMine ? 'rounded-br-[8px] bg-[var(--app-primary)] text-white' : 'rounded-bl-[8px] border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)]'}`}>
+                                <div className={`chat-markdown-body ${isMine ? 'chat-markdown-mine text-white' : ''}`}>
+                                  <ReactMarkdown
+                                    components={{
+                                      p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                                      strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+                                      em: ({ children }) => <em className="italic">{children}</em>,
+                                      ul: ({ children }) => <ul className="my-2 ml-4 list-disc space-y-1">{children}</ul>,
+                                      ol: ({ children }) => <ol className="my-2 ml-4 list-decimal space-y-1">{children}</ol>,
+                                      li: ({ children }) => <li className="leading-6">{children}</li>,
+                                      h1: ({ children }) => <h1 className="mb-2 mt-3 text-base font-bold first:mt-0">{children}</h1>,
+                                      h2: ({ children }) => <h2 className="mb-2 mt-3 text-sm font-bold first:mt-0">{children}</h2>,
+                                      h3: ({ children }) => <h3 className="mb-1 mt-2 text-sm font-semibold first:mt-0">{children}</h3>,
+                                      a: ({ href, children }) => (
+                                        <a href={href} className={isMine ? 'underline font-semibold hover:opacity-80' : 'underline text-[var(--app-primary)] hover:text-[var(--app-primary-strong)]'} target="_blank" rel="noreferrer">{children}</a>
+                                      ),
+                                      code: ({ children }) => (
+                                        <code className={`rounded px-1.5 py-0.5 font-mono text-xs ${isMine ? 'bg-white/20 text-white' : 'bg-[var(--app-bg-soft)] text-[var(--app-text)]'}`}>{children}</code>
+                                      ),
+                                      pre: ({ children }) => (
+                                        <pre className={`my-2 overflow-x-auto rounded-lg p-3 text-xs ${isMine ? 'bg-black/20 text-white' : 'bg-[var(--app-bg-soft)] text-[var(--app-text)]'}`}>{children}</pre>
+                                      ),
+                                      blockquote: ({ children }) => (
+                                        <blockquote className={`my-2 border-l-4 pl-3 italic ${isMine ? 'border-white/30 text-white/80' : 'border-[var(--app-border)] text-[var(--app-muted)]'}`}>{children}</blockquote>
+                                      ),
+                                      hr: () => <hr className={`my-3 ${isMine ? 'border-white/20' : 'border-[var(--app-border)]'}`} />,
+                                    }}
+                                  >
+                                    {msg.content}
+                                  </ReactMarkdown>
+                                </div>
+                            </div>
+                            {msg.mediaUrl ? <img src={msg.mediaUrl} alt="" className="mt-2 max-h-60 rounded-lg object-cover" /> : null}
+                            <p className="mt-1 px-1 text-[11px] text-[var(--app-muted)] opacity-0 transition group-hover:opacity-100">
+                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        </div>
+                      );
                     })}
-                    {typingSummary ? <div className="flex items-end gap-2"><div className="h-7 w-7" /><div className="rounded-[22px] rounded-bl-[8px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3"><div className="flex gap-1"><span className="h-2 w-2 animate-bounce rounded-full bg-[var(--app-muted)]" style={{ animationDelay: '0ms' }} /><span className="h-2 w-2 animate-bounce rounded-full bg-[var(--app-muted)]" style={{ animationDelay: '150ms' }} /><span className="h-2 w-2 animate-bounce rounded-full bg-[var(--app-muted)]" style={{ animationDelay: '300ms' }} /></div><p className="mt-2 text-xs text-[var(--app-muted)]">{typingSummary} đang nhắn...</p></div></div> : null}
+                    {typingSummary ? (
+                      <div className="flex items-end gap-2">
+                        <div className="h-7 w-7" />
+                        <div className="rounded-[22px] rounded-bl-[8px] border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3">
+                          <div className="flex gap-1">
+                            <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--app-muted)]" style={{ animationDelay: '0ms' }} />
+                            <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--app-muted)]" style={{ animationDelay: '150ms' }} />
+                            <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--app-muted)]" style={{ animationDelay: '300ms' }} />
+                          </div>
+                          <p className="mt-2 text-xs text-[var(--app-muted)]">{typingSummary} đang nhắn...</p>
+                        </div>
+                      </div>
+                    ) : null}
                     <div ref={messagesEndRef} />
                   </div>
                 )}

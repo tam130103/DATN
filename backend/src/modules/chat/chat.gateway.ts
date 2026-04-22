@@ -164,13 +164,16 @@ export class ChatGateway
         data.mediaUrl,
       );
 
-      // Broadcast to conversation room (members who joined)
-      this.server.to(data.conversationId).emit('newMessage', message);
-
-      // Ensure sender sees their message even if not yet joined to the room
-      if (!client.rooms.has(data.conversationId)) {
-        client.emit('newMessage', message);
+      // Broadcast to all conversation members' personal rooms so they get the event globally (for badges)
+      const conversation = await this.chatService.findById(data.conversationId);
+      for (const member of conversation.members) {
+        if (!member.hasLeft) {
+          this.server.to(`user:${member.userId}`).emit('newMessage', message);
+        }
       }
+
+      // We still emit to the conversation room just in case
+      this.server.to(data.conversationId).emit('newMessage', message);
 
       // Phase 2: Trigger AI assistant reply (non-blocking)
       void this.triggerAssistantReply(data.conversationId, userId, data.content);
@@ -254,6 +257,14 @@ export class ChatGateway
       });
 
       if (reply) {
+        // Broadcast to personal rooms so we get badge update globally
+        const conversationInfo = await this.chatService.findById(conversationId);
+        for (const member of conversationInfo.members) {
+          if (!member.hasLeft) {
+            this.server.to(`user:${member.userId}`).emit('newMessage', reply);
+          }
+        }
+        // Emit to conversation room too
         this.server.to(conversationId).emit('newMessage', reply);
       }
     } catch (err) {

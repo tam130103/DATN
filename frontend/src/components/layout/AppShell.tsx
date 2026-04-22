@@ -151,10 +151,23 @@ export const AppShell: React.FC<AppShellProps> = ({
 
     const unsubscribeMessages = chatSocketService.on('unreadCount', setUnreadMessages);
     const unsubscribeNotifications = notificationService.on('unreadCount', setUnreadNotifications);
+    
+    const unsubscribeNewNotification = notificationService.on('notification', () => {
+      setUnreadNotifications((prev) => prev + 1);
+    });
+
+    const unsubscribeNewMessage = chatSocketService.on('newMessage', (message: any) => {
+      if (user && message.senderId !== user.id) {
+        // Fetch real unread count to be 100% accurate, as we might already be in the chat reading it
+        chatService.getUnreadCount?.().then(setUnreadMessages).catch(() => {});
+      }
+    });
 
     return () => {
       unsubscribeMessages();
       unsubscribeNotifications();
+      unsubscribeNewNotification();
+      unsubscribeNewMessage();
     };
   }, [user, token]);
 

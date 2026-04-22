@@ -31,7 +31,6 @@ export const NotificationBell: React.FC = () => {
     return () => {
       unsubscribeCount();
       unsubscribeNotification();
-      notificationService.disconnect();
     };
   }, [token]);
 

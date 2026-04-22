@@ -84,6 +84,12 @@ const NotificationsPage: React.FC = () => {
       })
       .catch(() => toast.error('Không thể tải thông báo.'))
       .finally(() => setIsLoading(false));
+
+    const unsubscribe = notificationService.on('notification', (newNotification: Notification) => {
+      setNotifications((prev) => [newNotification, ...prev]);
+    });
+
+    return () => unsubscribe();
   }, [user]);
 
   const handleMarkAllAsRead = async () => {
