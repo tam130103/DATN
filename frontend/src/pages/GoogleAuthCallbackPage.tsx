@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { StatePanel } from '../components/common/StatePanel';
@@ -8,17 +8,29 @@ const GoogleAuthCallbackPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { completeRedirectLogin, logout } = useAuth();
+  const hasProcessedRef = useRef(false);
 
   useEffect(() => {
+    if (hasProcessedRef.current) {
+      return;
+    }
+
+    hasProcessedRef.current = true;
+
     let isActive = true;
 
     const completeLogin = async () => {
       const params = new URLSearchParams(location.hash.replace(/^#/, ''));
       const accessToken = params.get('accessToken');
       const refreshToken = params.get('refreshToken');
+      const cleanPath = `${location.pathname}${location.search}`;
+
+      if (window.location.hash) {
+        window.history.replaceState(window.history.state, document.title, cleanPath);
+      }
 
       if (!accessToken || !refreshToken) {
-        toast.error('Khong nhan duoc phien dang nhap Google.');
+        toast.error('Khong nhan duoc phien dang nhap Google.', { id: 'google-auth-error' });
         navigate('/login', { replace: true });
         return;
       }
@@ -30,7 +42,7 @@ const GoogleAuthCallbackPage: React.FC = () => {
         }
       } catch {
         logout();
-        toast.error('Dang nhap Google that bai.');
+        toast.error('Dang nhap Google that bai.', { id: 'google-auth-error' });
         if (isActive) {
           navigate('/login', { replace: true });
         }
