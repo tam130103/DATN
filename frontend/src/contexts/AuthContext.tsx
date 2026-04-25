@@ -11,7 +11,6 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  completeRedirectLogin: (accessToken: string, refreshToken: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name?: string) => Promise<void>;
@@ -27,17 +26,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [isLoading, setIsLoading] = useState(true);
 
-  const clearStoredSession = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-  };
-
-  const persistTokens = (accessToken: string, refreshToken: string) => {
-    localStorage.setItem('token', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-    setToken(accessToken);
-  };
-
   const refreshUser = async () => {
     const userData = await authService.getCurrentUser();
     setUser(userData);
@@ -51,7 +39,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           await refreshUser();
           setToken(storedToken);
         } catch {
-          clearStoredSession();
+          localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
           setToken(null);
           setUser(null);
         }
@@ -62,41 +51,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     initAuth();
   }, []);
 
-  const completeRedirectLogin = async (accessToken: string, refreshToken: string) => {
-    persistTokens(accessToken, refreshToken);
-
-    try {
-      await refreshUser();
-    } catch (error) {
-      clearStoredSession();
-      setToken(null);
-      setUser(null);
-      throw error;
-    }
-  };
-
   const loginWithGoogle = async (idToken: string) => {
     const response = await authService.googleLogin(idToken);
-    persistTokens(response.accessToken, response.refreshToken);
+    localStorage.setItem('token', response.accessToken);
+    localStorage.setItem('refreshToken', response.refreshToken);
+    setToken(response.accessToken);
     setUser(response.user);
   };
 
   const login = async (email: string, password: string) => {
     const response = await authService.login({ email, password });
-    persistTokens(response.accessToken, response.refreshToken);
+    localStorage.setItem('token', response.accessToken);
+    localStorage.setItem('refreshToken', response.refreshToken);
+    setToken(response.accessToken);
     setUser(response.user);
   };
 
   const register = async (email: string, password: string, name?: string) => {
     const response = await authService.register({ email, password, name });
-    persistTokens(response.accessToken, response.refreshToken);
+    localStorage.setItem('token', response.accessToken);
+    localStorage.setItem('refreshToken', response.refreshToken);
+    setToken(response.accessToken);
     setUser(response.user);
   };
 
   const logout = () => {
     chatSocketService.disconnect();
     notificationService.disconnect();
-    clearStoredSession();
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     setToken(null);
     setUser(null);
   };
@@ -113,7 +96,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isLoading,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
-    completeRedirectLogin,
     loginWithGoogle,
     login,
     register,

@@ -5,7 +5,6 @@ import { StatePanel } from './components/common/StatePanel';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
-const GoogleAuthCallbackPage = React.lazy(() => import('./pages/GoogleAuthCallbackPage'));
 const RegisterPage = React.lazy(() => import('./pages/RegisterPage'));
 const FeedPage = React.lazy(() => import('./pages/FeedPage'));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
@@ -46,7 +45,6 @@ function App() {
       <Suspense fallback={<RouteLoader />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/auth/google/callback" element={<GoogleAuthCallbackPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route
             path="/feed"

@@ -8,15 +8,6 @@ import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
-interface GoogleTokenInfo {
-  aud?: string;
-  email: string;
-  email_verified?: boolean | string;
-  name: string;
-  picture?: string;
-  sub: string;
-}
-
 @Injectable()
 export class AuthService {
   constructor(
@@ -139,25 +130,10 @@ export class AuthService {
     return this.userService.findById(userId);
   }
 
-  private async verifyGoogleToken(idToken: string): Promise<GoogleTokenInfo | null> {
+  private async verifyGoogleToken(idToken: string) {
     try {
-      const response = await axios.get<GoogleTokenInfo>(
-        `https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`,
-      );
-      const tokenInfo = response.data;
-      const configuredClientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
-      const isEmailVerified =
-        tokenInfo.email_verified === true || tokenInfo.email_verified === 'true';
-
-      if (!tokenInfo.sub || !tokenInfo.email || !isEmailVerified) {
-        return null;
-      }
-
-      if (configuredClientId && tokenInfo.aud !== configuredClientId) {
-        return null;
-      }
-
-      return tokenInfo;
+      const response = await axios.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+      return response.data;
     } catch {
       return null;
     }
