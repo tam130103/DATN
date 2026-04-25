@@ -21,6 +21,20 @@ export class UserService {
   static readonly DEFAULT_AVATAR_URL =
     'https://res.cloudinary.com/dctovnwlk/image/upload/v1775806448/datn-social/defaults/default-avatar.jpg';
 
+  private shouldUseDefaultAvatar(avatarUrl?: string | null): boolean {
+    return !avatarUrl || avatarUrl.includes('googleusercontent.com');
+  }
+
+  private async findByEmailFlexible(email: string): Promise<User | null> {
+    const trimmedEmail = email.trim();
+    const normalizedEmail = trimmedEmail.toLowerCase();
+
+    return (
+      (await this.findByEmail(trimmedEmail)) ??
+      (normalizedEmail !== trimmedEmail ? await this.findByEmail(normalizedEmail) : null)
+    );
+  }
+
   async create(data: Partial<User>, options?: { skipAutoFollow?: boolean }): Promise<User> {
     // Set default avatar if not provided
     if (!data.avatarUrl) {
@@ -60,23 +74,44 @@ export class UserService {
     name: string,
     _avatarUrl?: string,
   ): Promise<User> {
+    const normalizedEmail = email.trim().toLowerCase();
     let user = await this.findByGoogleId(googleId);
+
     if (!user) {
-      // Always use our default avatar, ignore Google's profile picture
-      user = await this.create({
-        googleId,
-        email,
-        name,
-        provider: UserProvider.GOOGLE,
-      });
-    } else if (
-      !user.avatarUrl ||
-      user.avatarUrl.includes('googleusercontent.com')
-    ) {
+      const existingUser = await this.findByEmailFlexible(normalizedEmail);
+
+      if (existingUser) {
+        if (existingUser.googleId && existingUser.googleId !== googleId) {
+          throw new ConflictException('Email is already linked to another Google account');
+        }
+
+        existingUser.googleId = googleId;
+        if (!existingUser.name && name) {
+          existingUser.name = name;
+        }
+        if (!existingUser.password) {
+          existingUser.provider = UserProvider.GOOGLE;
+        }
+        if (this.shouldUseDefaultAvatar(existingUser.avatarUrl)) {
+          existingUser.avatarUrl = UserService.DEFAULT_AVATAR_URL;
+        }
+
+        user = await this.userRepository.save(existingUser);
+      } else {
+        // Always use our default avatar, ignore Google's profile picture
+        user = await this.create({
+          googleId,
+          email: normalizedEmail,
+          name,
+          provider: UserProvider.GOOGLE,
+        });
+      }
+    } else if (this.shouldUseDefaultAvatar(user.avatarUrl)) {
       // Migrate existing Google users to default avatar
       user.avatarUrl = UserService.DEFAULT_AVATAR_URL;
       user = await this.userRepository.save(user);
     }
+
     return user;
   }
 

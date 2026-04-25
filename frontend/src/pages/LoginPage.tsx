@@ -28,8 +28,8 @@ const LoginPage: React.FC = () => {
           try {
             await loginWithGoogle(response.credential);
             navigate('/feed');
-          } catch {
-            toast.error('Đăng nhập Google thất bại.');
+          } catch (error: any) {
+            toast.error(error?.response?.data?.message || 'Đăng nhập Google thất bại.');
           } finally {
             setIsGoogleLoading(false);
           }
