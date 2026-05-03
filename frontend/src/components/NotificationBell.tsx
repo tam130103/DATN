@@ -76,12 +76,33 @@ export const NotificationBell: React.FC = () => {
       case 'LIKE':
         return `${sender} đã thích bài viết của bạn`;
       case 'COMMENT':
+        if (notification.data?.kind === 'reply') {
+          return `${sender} đã trả lời bình luận của bạn`;
+        }
         return `${sender} đã bình luận về bài viết của bạn`;
+      case 'COMMENT_LIKE':
+        return `${sender} đã thích bình luận của bạn`;
       case 'FOLLOW':
         return `${sender} đã bắt đầu theo dõi bạn`;
+      case 'POST_TAG':
+        return `${sender} đã nhắc đến bạn trong một bài viết`;
       default:
         return 'Hoạt động mới';
     }
+  };
+
+  const getNotificationLink = (notification: Notification): string | null => {
+    if (notification.data?.postId) {
+      const base = `/post/${notification.data.postId}`;
+      if (notification.data?.commentId) {
+        return `${base}?commentId=${notification.data.commentId}`;
+      }
+      return base;
+    }
+    if (notification.type === 'FOLLOW') {
+      return `/${notification.sender.username || notification.sender.id}`;
+    }
+    return null;
   };
 
   return (
@@ -132,17 +153,18 @@ export const NotificationBell: React.FC = () => {
                 <div className="rounded-lg bg-neutral-50 p-4 text-center text-xs text-neutral-500">Chưa có thông báo nào.</div>
               ) : (
                 <div className="space-y-2">
-                  {notifications.map((notification) => (
-                    <button
-                      key={notification.id}
-                      type="button"
-                      onClick={() => handleMarkAsRead(notification.id, notification.isRead)}
-                      className={`w-full rounded-lg px-3 py-2 text-left transition ${
-                        notification.isRead
-                          ? 'bg-transparent hover:bg-neutral-50'
-                          : 'bg-blue-50/60 hover:bg-blue-50'
-                      }`}
-                    >
+                  {notifications.map((notification) => {
+                    const link = getNotificationLink(notification);
+                    const handleClick = () => {
+                      handleMarkAsRead(notification.id, notification.isRead);
+                      setIsOpen(false);
+                    };
+                    const itemClassName = `w-full rounded-lg px-3 py-2 text-left transition ${
+                      notification.isRead
+                        ? 'bg-transparent hover:bg-neutral-50'
+                        : 'bg-blue-50/60 hover:bg-blue-50'
+                    }`;
+                    const content = (
                       <div className="flex items-start gap-3">
                         <Avatar
                           src={notification.sender.avatarUrl}
@@ -160,8 +182,17 @@ export const NotificationBell: React.FC = () => {
                         </div>
                         {!notification.isRead ? <span className="mt-2 h-2 w-2 rounded-full bg-blue-500" /> : null}
                       </div>
-                    </button>
-                  ))}
+                    );
+                    return link ? (
+                      <Link key={notification.id} to={link} onClick={handleClick} className={`block ${itemClassName}`}>
+                        {content}
+                      </Link>
+                    ) : (
+                      <button key={notification.id} type="button" onClick={handleClick} className={itemClassName}>
+                        {content}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Comment, Post } from '../types';
 import { Avatar } from './common/Avatar';
@@ -63,6 +64,8 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
   const [isDeleting, setIsDeleting] = useState(false);
   const [showOptionsDropdown, setShowOptionsDropdown] = useState(false);
   const [reportTarget, setReportTarget] = useState<{ id: string; type: 'post' | 'comment' } | null>(null);
+  const [replyTarget, setReplyTarget] = useState<Comment | null>(null);
+  const commentInputRef = useRef<HTMLInputElement>(null);
 
   const [localCaption, setLocalCaption] = useState(post.caption);
   const [localIsEdited, setLocalIsEdited] = useState(post.isEdited || false);
@@ -182,15 +185,50 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
     }
   };
 
+  const handleReplyClick = (comment: Comment) => {
+    setReplyTarget(comment);
+    const mentionName = comment.user?.username || (comment.user?.name ? comment.user.name.replace(/\s+/g, '') : '');
+    setCommentText(mentionName ? `@${mentionName} ` : '');
+    setTimeout(() => commentInputRef.current?.focus(), 0);
+  };
+
+  const handleCancelReply = () => {
+    setReplyTarget(null);
+    setCommentText('');
+  };
+
   const handleSubmitComment = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!commentText.trim() || isSubmitting) return;
+    if (replyTarget?.id.startsWith('temp-')) {
+      toast.error('Vui lòng đợi bình luận được lưu trước khi trả lời.');
+      return;
+    }
 
+    const parentId = replyTarget?.id;
+    // Backend flattens replies to root, so resolve the root comment ID
+    const rootCommentId = replyTarget?.parentId || replyTarget?.id;
     setIsSubmitting(true);
     try {
-      const newComment = await engagementService.createComment(post.id, commentText.trim());
-      setComments((prev) => [newComment, ...prev]);
+      const newComment = await engagementService.createComment(post.id, commentText.trim(), parentId);
+      if (rootCommentId) {
+        // Add reply to the root comment
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === rootCommentId
+              ? {
+                  ...c,
+                  repliesCount: (c.repliesCount || 0) + 1,
+                  replies: [...(c.replies || []), newComment],
+                }
+              : c,
+          ),
+        );
+      } else {
+        setComments((prev) => [newComment, ...prev]);
+      }
       setCommentText('');
+      setReplyTarget(null);
     } catch {
       toast.error('Không thể thêm bình luận.');
     } finally {
@@ -397,9 +435,11 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
 
         <div className="flex w-full flex-col bg-[var(--app-surface)] text-[var(--app-text)] md:w-[420px] md:border-l md:border-[var(--app-border)]">
           <div className="flex items-center gap-3 border-b border-[var(--app-border)] px-5 py-4">
-              <Avatar src={post.user?.avatarUrl} name={post.user?.name} username={post.user?.username} size="sm" ring />
+              <Link to={`/${post.user?.username || post.user?.id}`} onClick={onClose}>
+                <Avatar src={post.user?.avatarUrl} name={post.user?.name} username={post.user?.username} size="sm" ring />
+              </Link>
               <div>
-                <div className="text-sm font-semibold text-[var(--app-text)]">{post.user?.username || post.user?.name || 'Thành viên'}</div>
+                <Link to={`/${post.user?.username || post.user?.id}`} onClick={onClose} className="text-sm font-semibold text-[var(--app-text)] hover:underline">{post.user?.username || post.user?.name || 'Thành viên'}</Link>
                 <div className="text-xs text-[var(--app-muted)]">
                   {createdAt}
                   {localIsEdited ? ' · Đã chỉnh sửa' : ''}
@@ -463,6 +503,9 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                   currentUserId={user?.id}
                   onDeleted={handleDeletedComment}
                   onReport={(id) => setReportTarget({ id, type: 'comment' })}
+                  onReplyClick={handleReplyClick}
+                  onNavigate={onClose}
+                  postId={post.id}
                 />
               ))
             )}
@@ -484,13 +527,31 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
           </div>
 
           <form onSubmit={handleSubmitComment} className="border-t border-[var(--app-border)] px-5 py-4">
+            {replyTarget && (
+              <div className="mb-2 flex items-center gap-2 text-xs text-[var(--app-muted)]">
+                <span>Trả lời <strong>@{replyTarget.user?.username || replyTarget.user?.name}</strong></span>
+                <button
+                  type="button"
+                  onClick={handleCancelReply}
+                  className="text-[var(--app-muted)] hover:text-[var(--app-text)] transition"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
             <div className="flex items-center gap-3 rounded-full border border-[var(--app-border)] bg-[var(--app-bg-soft)] px-4 py-2">
             <input
+              ref={commentInputRef}
               type="text"
               value={commentText}
               onChange={(event) => setCommentText(event.target.value)}
-              placeholder="Thêm bình luận..."
+              placeholder={replyTarget ? `Trả lời @${replyTarget.user?.username || replyTarget.user?.name}...` : 'Thêm bình luận...'}
               className="min-h-[44px] flex-1 bg-transparent text-sm text-[var(--app-text)] outline-none placeholder:text-[var(--app-muted)]"
+              onKeyDown={(e) => {
+                if (e.key === 'Escape' && replyTarget) {
+                  handleCancelReply();
+                }
+              }}
             />
             <button type="submit" disabled={!commentText.trim() || isSubmitting} className="inline-flex min-h-[40px] items-center justify-center rounded-full bg-[var(--app-primary)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--app-primary-strong)] disabled:opacity-50">
               Đăng

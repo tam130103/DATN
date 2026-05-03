@@ -4,6 +4,7 @@ import { EngagementService } from './engagement.service';
 import { EngagementController } from './engagement.controller';
 import { Like } from './entities/like.entity';
 import { Comment } from './entities/comment.entity';
+import { CommentLike } from './entities/comment-like.entity';
 import { SavedPost } from './entities/saved-post.entity';
 import { Post } from '../post/entities/post.entity';
 import { NotificationModule } from '../notification/notification.module';
@@ -11,7 +12,7 @@ import { NotificationModule } from '../notification/notification.module';
 import { Follow } from '../user/entities/follow.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Like, Comment, SavedPost, Post, Follow]), NotificationModule],
+  imports: [TypeOrmModule.forFeature([Like, Comment, CommentLike, SavedPost, Post, Follow]), NotificationModule],
   controllers: [EngagementController],
   providers: [EngagementService],
   exports: [EngagementService],

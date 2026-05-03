@@ -106,5 +106,28 @@ export class NotificationService {
   ): Promise<Notification | null> {
     return this.create(taggedUserId, taggerId, 'POST_TAG', { postId });
   }
-}
 
+  async createCommentLikeNotification(
+    likerId: string,
+    commentAuthorId: string,
+    postId: string,
+    commentId: string,
+  ): Promise<Notification | null> {
+    return this.create(commentAuthorId, likerId, 'COMMENT_LIKE', { postId, commentId });
+  }
+
+  async createReplyNotification(
+    replierId: string,
+    parentCommentAuthorId: string,
+    postId: string,
+    commentId: string,
+    parentId: string,
+  ): Promise<Notification | null> {
+    return this.create(parentCommentAuthorId, replierId, 'COMMENT', {
+      postId,
+      commentId,
+      parentId,
+      kind: 'reply',
+    });
+  }
+}

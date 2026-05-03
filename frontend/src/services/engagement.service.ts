@@ -35,5 +35,21 @@ export const engagementService = {
   deleteComment: async (commentId: string): Promise<void> => {
     await apiClient.delete(`/posts/comments/${commentId}`);
   },
-};
 
+  getCommentReplies: async (commentId: string, page = 1, limit = 20): Promise<Comment[]> => {
+    const response = await apiClient.get<Comment[]>(`/posts/comments/${commentId}/replies`, {
+      params: { page, limit },
+    });
+    return response.data;
+  },
+
+  likeComment: async (commentId: string): Promise<{ liked: boolean; likesCount: number }> => {
+    const response = await apiClient.post<{ liked: boolean; likesCount: number }>(`/posts/comments/${commentId}/like`);
+    return response.data;
+  },
+
+  unlikeComment: async (commentId: string): Promise<{ liked: boolean; likesCount: number }> => {
+    const response = await apiClient.delete<{ liked: boolean; likesCount: number }>(`/posts/comments/${commentId}/like`);
+    return response.data;
+  },
+};

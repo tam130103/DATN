@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { Comment } from '../../types';
 import { engagementService } from '../../services/engagement.service';
@@ -22,13 +22,34 @@ export const PostComments: React.FC<PostCommentsProps> = ({
 }) => {
   const { user } = useAuth();
   const [commentText, setCommentText] = useState('');
+  const [replyTarget, setReplyTarget] = useState<Comment | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   if (!showComments) return null;
+
+  const handleReplyClick = (comment: Comment) => {
+    setReplyTarget(comment);
+    const mentionName = comment.user?.username || (comment.user?.name ? comment.user.name.replace(/\s+/g, '') : '');
+    setCommentText(mentionName ? `@${mentionName} ` : '');
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const handleCancelReply = () => {
+    setReplyTarget(null);
+    setCommentText('');
+  };
 
   const handleSubmitComment = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!commentText.trim()) return;
+    if (replyTarget?.id.startsWith('temp-')) {
+      toast.error('Vui lòng đợi bình luận được lưu trước khi trả lời.');
+      return;
+    }
     const content = commentText.trim();
+    const parentId = replyTarget?.id;
+    // Backend flattens replies to root, so resolve the root comment ID
+    const rootCommentId = replyTarget?.parentId || replyTarget?.id;
     setCommentText('');
 
     const optimisticComment: Comment = {
@@ -37,22 +58,67 @@ export const PostComments: React.FC<PostCommentsProps> = ({
       postId,
       userId: user?.id || '',
       user: user ?? undefined,
+      parentId: rootCommentId || null,
       createdAt: new Date().toISOString(),
     } as any;
 
-    setComments((prev) => [optimisticComment, ...prev]);
-
-    try {
-      const newComment = await engagementService.createComment(postId, content);
+    if (rootCommentId) {
       setComments((prev) =>
-        prev.map((comment) =>
-          comment.id === optimisticComment.id
-            ? { ...newComment, user: newComment.user ?? optimisticComment.user }
-            : comment,
+        prev.map((c) =>
+          c.id === rootCommentId
+            ? {
+                ...c,
+                repliesCount: (c.repliesCount || 0) + 1,
+                replies: [...(c.replies || []), optimisticComment],
+              }
+            : c,
         ),
       );
+    } else {
+      setComments((prev) => [optimisticComment, ...prev]);
+    }
+
+    try {
+      const newComment = await engagementService.createComment(postId, content, parentId);
+      if (rootCommentId) {
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === rootCommentId
+              ? {
+                  ...c,
+                  replies: (c.replies || []).map((r) =>
+                    r.id === optimisticComment.id ? { ...newComment, user: newComment.user ?? optimisticComment.user } : r
+                  ),
+                }
+              : c,
+          ),
+        );
+      } else {
+        setComments((prev) =>
+          prev.map((comment) =>
+            comment.id === optimisticComment.id
+              ? { ...newComment, user: newComment.user ?? optimisticComment.user }
+              : comment,
+          ),
+        );
+      }
+      setReplyTarget(null);
     } catch {
-      setComments((prev) => prev.filter((comment) => comment.id !== optimisticComment.id));
+      if (rootCommentId) {
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === rootCommentId
+              ? {
+                  ...c,
+                  repliesCount: Math.max(0, (c.repliesCount || 1) - 1),
+                  replies: (c.replies || []).filter((r) => r.id !== optimisticComment.id),
+                }
+              : c,
+          ),
+        );
+      } else {
+        setComments((prev) => prev.filter((comment) => comment.id !== optimisticComment.id));
+      }
       toast.error('Không thể thêm bình luận.');
     }
   };
@@ -70,6 +136,8 @@ export const PostComments: React.FC<PostCommentsProps> = ({
               currentUserId={user?.id}
               onDeleted={(id) => setComments((prev) => prev.filter((c) => c.id !== id))}
               onReport={onReport}
+              onReplyClick={handleReplyClick}
+              postId={postId}
             />
           ))
         )}
@@ -77,14 +145,33 @@ export const PostComments: React.FC<PostCommentsProps> = ({
 
       <form
         onSubmit={handleSubmitComment}
-        className="mt-3 flex items-center gap-3 border-t border-[var(--app-border)]/60 pt-3"
+        className="relative mt-3 flex flex-wrap items-center gap-3 border-t border-[var(--app-border)]/60 pt-3"
       >
+        {replyTarget && (
+          <div className="absolute -top-5 left-0 flex items-center gap-1 text-xs text-[var(--app-muted)]">
+            <span>Trả lời <strong>@{replyTarget.user?.username || replyTarget.user?.name}</strong></span>
+            <button
+              type="button"
+              onClick={handleCancelReply}
+              className="ml-1 text-[var(--app-muted)] hover:text-[var(--app-text)]"
+            >
+              ✕
+            </button>
+          </div>
+        )}
         <input
+          ref={inputRef}
           type="text"
           value={commentText}
           onChange={(e) => setCommentText(e.target.value)}
-          placeholder="Thêm bình luận..."
+          placeholder={replyTarget ? `Trả lời @${replyTarget.user?.username || replyTarget.user?.name}...` : 'Thêm bình luận...'}
+          autoComplete="off"
           className="min-h-[34px] flex-1 bg-transparent text-sm text-[var(--app-text)] outline-none"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && replyTarget) {
+              handleCancelReply();
+            }
+          }}
         />
         {commentText.trim() ? (
           <button

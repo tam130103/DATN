@@ -62,10 +62,14 @@ export class UserService {
   ): Promise<User> {
     let user = await this.findByGoogleId(googleId);
     if (!user) {
+      const baseUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+      const username = `${baseUsername}_${Math.floor(Math.random() * 10000)}`;
+
       // Always use our default avatar, ignore Google's profile picture
       user = await this.create({
         googleId,
         email,
+        username,
         name,
         provider: UserProvider.GOOGLE,
       });

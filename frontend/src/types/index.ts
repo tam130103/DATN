@@ -59,9 +59,14 @@ export interface Comment {
   parentId: string | null;
   createdAt: string;
   user: User;
+  liked?: boolean;
+  likesCount?: number;
+  repliesCount?: number;
+  optimisticReplies?: Comment[];
+  replies?: Comment[];
 }
 
-export type NotificationType = 'LIKE' | 'COMMENT' | 'FOLLOW' | 'POST_TAG';
+export type NotificationType = 'LIKE' | 'COMMENT' | 'FOLLOW' | 'POST_TAG' | 'COMMENT_LIKE';
 
 export interface Notification {
   id: string;

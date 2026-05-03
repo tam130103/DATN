@@ -60,6 +60,26 @@ export class EngagementController {
     return this.engagementService.getPostComments(postId, user?.id, page, limit);
   }
 
+  @Get('comments/:commentId/replies')
+  getCommentReplies(
+    @CurrentUser() user: any,
+    @Param('commentId') commentId: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    return this.engagementService.getCommentReplies(commentId, user?.id, page, limit);
+  }
+
+  @Post('comments/:commentId/like')
+  likeComment(@CurrentUser() user: any, @Param('commentId') commentId: string) {
+    return this.engagementService.toggleCommentLike(user.id, commentId);
+  }
+
+  @Delete('comments/:commentId/like')
+  unlikeComment(@CurrentUser() user: any, @Param('commentId') commentId: string) {
+    return this.engagementService.toggleCommentLike(user.id, commentId);
+  }
+
   @Patch('comments/:commentId')
   updateComment(
     @CurrentUser() user: any,
