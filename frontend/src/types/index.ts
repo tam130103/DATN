@@ -64,6 +64,8 @@ export interface Comment {
   repliesCount?: number;
   optimisticReplies?: Comment[];
   replies?: Comment[];
+  replyToUserId?: string;
+  replyToUser?: User;
 }
 
 export type NotificationType = 'LIKE' | 'COMMENT' | 'FOLLOW' | 'POST_TAG' | 'COMMENT_LIKE';

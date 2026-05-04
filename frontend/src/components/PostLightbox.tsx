@@ -521,7 +521,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
               </div>
               <div className="ml-auto text-right">
                 <p className="text-sm font-semibold text-[var(--app-text)]">{likesCount} lượt thích</p>
-                <p className="text-xs text-[var(--app-muted)]">{comments.length} bình luận</p>
+                <p className="text-xs text-[var(--app-muted)]">{comments.reduce((acc, c) => acc + 1 + (c.repliesCount || 0), 0)} bình luận</p>
               </div>
             </div>
           </div>

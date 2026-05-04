@@ -111,13 +111,14 @@ export class EngagementService {
       postId,
       content: createCommentDto.content,
       parentId: resolvedParentId,
+      replyToUserId: createCommentDto.replyToUserId,
     });
     const savedComment = await this.commentRepository.save(comment);
 
     // Reload with user relation so the response includes full user info
     const fullComment = await this.commentRepository.findOne({
       where: { id: savedComment.id },
-      relations: ['user'],
+      relations: ['user', 'replyToUser'],
     });
 
     if (resolvedParentId) {
@@ -158,7 +159,7 @@ export class EngagementService {
   async getPostComments(postId: string, userId: string, page = 1, limit = 20): Promise<any[]> {
     const comments = await this.commentRepository.find({
       where: { postId, parentId: IsNull(), status: CommentStatus.VISIBLE },
-      relations: ['user'],
+      relations: ['user', 'replyToUser'],
       order: { createdAt: 'DESC' },
       take: limit,
       skip: (page - 1) * limit,
@@ -235,7 +236,7 @@ export class EngagementService {
   ): Promise<any[]> {
     const replies = await this.commentRepository.find({
       where: { parentId: commentId, status: CommentStatus.VISIBLE },
-      relations: ['user'],
+      relations: ['user', 'replyToUser'],
       order: { createdAt: 'ASC' },
       take: limit,
       skip: (page - 1) * limit,
@@ -308,6 +309,7 @@ export class EngagementService {
         comment.userId,
         comment.postId,
         commentId,
+        comment.parentId,
       );
       if (notification) {
         this.notificationGateway.emitToUser(comment.userId, 'notification', notification);

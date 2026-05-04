@@ -112,8 +112,9 @@ export class NotificationService {
     commentAuthorId: string,
     postId: string,
     commentId: string,
+    parentId?: string,
   ): Promise<Notification | null> {
-    return this.create(commentAuthorId, likerId, 'COMMENT_LIKE', { postId, commentId });
+    return this.create(commentAuthorId, likerId, 'COMMENT_LIKE', { postId, commentId, parentId });
   }
 
   async createReplyNotification(

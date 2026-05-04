@@ -109,14 +109,15 @@ const NotificationsPage: React.FC = () => {
     let targetUrl = '';
     const notification = notifications.find((n) => n.id === id);
     if (notification) {
-      if (notification.type === 'LIKE' && notification.data?.postId) {
-        targetUrl = `/posts/${notification.data.postId}`;
-      } else if (notification.type === 'COMMENT' && notification.data?.postId) {
-        targetUrl = `/posts/${notification.data.postId}?commentId=${notification.data?.commentId || ''}`;
+      if ((notification.type === 'LIKE' || notification.type === 'COMMENT' || notification.type === 'COMMENT_LIKE' || notification.type === 'POST_TAG') && notification.data?.postId) {
+        const base = `/posts/${notification.data.postId}`;
+        const params = new URLSearchParams();
+        if (notification.data?.commentId) params.set('commentId', notification.data.commentId);
+        if (notification.data?.parentId) params.set('parentId', notification.data.parentId);
+        const qs = params.toString();
+        targetUrl = qs ? `${base}?${qs}` : base;
       } else if (notification.type === 'FOLLOW') {
         targetUrl = `/${notification.sender.username || notification.sender.id}`;
-      } else if (notification.type === 'POST_TAG' && notification.data?.postId) {
-        targetUrl = `/posts/${notification.data.postId}`;
       }
     }
 
@@ -134,15 +135,24 @@ const NotificationsPage: React.FC = () => {
   };
 
   const notificationText = (notification: Notification) => {
-    if (notification.type === 'LIKE') return 'đã thích bài viết của bạn.';
-    if (notification.type === 'COMMENT') {
-      const commentText =
-        typeof notification.data?.content === 'string' ? ` "${notification.data.content}"` : '';
-      return `đã bình luận về bài viết của bạn${commentText}.`;
+    const sender = notification.sender.username || notification.sender.name || 'Người dùng';
+    switch (notification.type) {
+      case 'LIKE':
+        return `${sender} đã thích bài viết của bạn.`;
+      case 'COMMENT':
+        if (notification.data?.kind === 'reply') {
+          return `${sender} đã trả lời một bình luận của bạn.`;
+        }
+        return `${sender} đã bình luận về bài viết của bạn.`;
+      case 'COMMENT_LIKE':
+        return `${sender} đã thích một bình luận của bạn.`;
+      case 'FOLLOW':
+        return `${sender} đã bắt đầu theo dõi bạn.`;
+      case 'POST_TAG':
+        return `${sender} đã gắn thẻ bạn trong một bài viết.`;
+      default:
+        return `${sender} đã tương tác với bài viết của bạn.`;
     }
-    if (notification.type === 'FOLLOW') return 'đã bắt đầu theo dõi bạn.';
-    if (notification.type === 'POST_TAG') return 'đã gắn thẻ bạn trong một bài viết.';
-    return 'đã tương tác với bài viết của bạn.';
   };
 
   const renderNotificationRow = (notification: Notification) => (
@@ -154,13 +164,15 @@ const NotificationsPage: React.FC = () => {
         !notification.isRead ? 'notification-unread' : ''
       }`}
     >
-      <Avatar
-        src={notification.sender.avatarUrl}
-        name={notification.sender.name}
-        username={notification.sender.username}
-        size="md"
-        ring={!notification.isRead}
-      />
+      <div onClick={(e) => { e.stopPropagation(); navigate(`/${notification.sender.username || notification.sender.id}`); }} className="cursor-pointer">
+        <Avatar
+          src={notification.sender.avatarUrl}
+          name={notification.sender.name}
+          username={notification.sender.username}
+          size="md"
+          ring={!notification.isRead}
+        />
+      </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-[var(--app-text)]">

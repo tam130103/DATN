@@ -19,10 +19,11 @@ export const engagementService = {
     return response.data;
   },
 
-  createComment: async (postId: string, content: string, parentId?: string): Promise<Comment> => {
+  createComment: async (postId: string, content: string, parentId?: string, replyToUserId?: string): Promise<Comment> => {
     const response = await apiClient.post<Comment>(`/posts/${postId}/comments`, {
       content,
       parentId,
+      replyToUserId,
     });
     return response.data;
   },

@@ -29,7 +29,12 @@ interface PostCardProps {
 export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, onDeleted }) => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
-  const targetCommentId = highlightCommentId || searchParams.get('commentId') || searchParams.get('highlightComment');
+  const isTargetPost = location.pathname.includes(`/posts/${post.id}`);
+  const urlCommentId = searchParams.get('commentId') || searchParams.get('highlightComment');
+  const urlParentId = searchParams.get('parentId');
+  
+  const targetCommentId = highlightCommentId || (isTargetPost ? urlCommentId : null);
+  const targetParentId = isTargetPost ? urlParentId : null;
 
   const { user } = useAuth();
   const [liked, setLiked] = useState(post.liked || false);
@@ -78,31 +83,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, on
     }
   }, [targetCommentId, showComments, ensureCommentsLoaded]);
 
-  useEffect(() => {
-    if (!targetCommentId || !showComments || comments.length === 0) return;
 
-    let cancelled = false;
-    let removeTimer: ReturnType<typeof setTimeout>;
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (cancelled) return;
-        const el = document.getElementById(`comment-${targetCommentId}`);
-        if (!el) return;
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        removeTimer = setTimeout(() => {
-          if (cancelled) return;
-          el.classList.add('comment-highlight');
-          setTimeout(() => { el.classList.remove('comment-highlight'); }, 5500);
-        }, 700);
-      });
-    });
-
-    return () => {
-      cancelled = true;
-      clearTimeout(removeTimer);
-    };
-  }, [targetCommentId, showComments, comments]);
 
   const handleLikeToggle = async () => {
     const originalLiked = liked;
@@ -200,10 +181,10 @@ export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, on
   };
 
   const isOwner = user?.id === post.userId;
-  const commentsCount = showComments ? comments.length : (post.commentsCount ?? 0);
+  const commentsCount = showComments ? comments.reduce((acc, c) => acc + 1 + (c.repliesCount || 0), 0) : (post.commentsCount ?? 0);
 
   return (
-    <article className="surface-card overflow-hidden rounded-xl">
+    <article className="surface-card rounded-xl">
       <PostHeader
         user={post.user}
         createdAt={post.createdAt}
@@ -284,6 +265,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, on
           setComments={setComments}
           showComments={showComments}
           onReport={(id) => setReportTarget({ id, type: 'comment' })}
+          highlightCommentId={targetCommentId || undefined}
+          expandParentId={targetParentId || undefined}
         />
       </div>
 

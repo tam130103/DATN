@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { notificationService } from '../services/notification.service';
 import { Notification } from '../types';
@@ -7,6 +7,7 @@ import { Avatar } from './common/Avatar';
 
 export const NotificationBell: React.FC = () => {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -77,11 +78,11 @@ export const NotificationBell: React.FC = () => {
         return `${sender} đã thích bài viết của bạn`;
       case 'COMMENT':
         if (notification.data?.kind === 'reply') {
-          return `${sender} đã trả lời bình luận của bạn`;
+          return `${sender} đã trả lời một bình luận của bạn`;
         }
         return `${sender} đã bình luận về bài viết của bạn`;
       case 'COMMENT_LIKE':
-        return `${sender} đã thích bình luận của bạn`;
+        return `${sender} đã thích một bình luận của bạn`;
       case 'FOLLOW':
         return `${sender} đã bắt đầu theo dõi bạn`;
       case 'POST_TAG':
@@ -93,11 +94,12 @@ export const NotificationBell: React.FC = () => {
 
   const getNotificationLink = (notification: Notification): string | null => {
     if (notification.data?.postId) {
-      const base = `/post/${notification.data.postId}`;
-      if (notification.data?.commentId) {
-        return `${base}?commentId=${notification.data.commentId}`;
-      }
-      return base;
+      const base = `/posts/${notification.data.postId}`;
+      const params = new URLSearchParams();
+      if (notification.data?.commentId) params.set('commentId', notification.data.commentId);
+      if (notification.data?.parentId) params.set('parentId', notification.data.parentId);
+      const qs = params.toString();
+      return qs ? `${base}?${qs}` : base;
     }
     if (notification.type === 'FOLLOW') {
       return `/${notification.sender.username || notification.sender.id}`;
@@ -166,12 +168,14 @@ export const NotificationBell: React.FC = () => {
                     }`;
                     const content = (
                       <div className="flex items-start gap-3">
-                        <Avatar
-                          src={notification.sender.avatarUrl}
-                          name={notification.sender.name}
-                          username={notification.sender.username}
-                          size="sm"
-                        />
+                        <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/${notification.sender.username || notification.sender.id}`); setIsOpen(false); }}>
+                          <Avatar
+                            src={notification.sender.avatarUrl}
+                            name={notification.sender.name}
+                            username={notification.sender.username}
+                            size="sm"
+                          />
+                        </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-neutral-900">
                             {renderNotificationText(notification)}

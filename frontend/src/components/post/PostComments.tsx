@@ -11,6 +11,8 @@ interface PostCommentsProps {
   setComments: React.Dispatch<React.SetStateAction<Comment[]>>;
   showComments: boolean;
   onReport: (id: string) => void;
+  highlightCommentId?: string;
+  expandParentId?: string;
 }
 
 export const PostComments: React.FC<PostCommentsProps> = ({
@@ -18,7 +20,9 @@ export const PostComments: React.FC<PostCommentsProps> = ({
   comments,
   setComments,
   showComments,
-  onReport
+  onReport,
+  highlightCommentId,
+  expandParentId,
 }) => {
   const { user } = useAuth();
   const [commentText, setCommentText] = useState('');
@@ -29,8 +33,6 @@ export const PostComments: React.FC<PostCommentsProps> = ({
 
   const handleReplyClick = (comment: Comment) => {
     setReplyTarget(comment);
-    const mentionName = comment.user?.username || (comment.user?.name ? comment.user.name.replace(/\s+/g, '') : '');
-    setCommentText(mentionName ? `@${mentionName} ` : '');
     setTimeout(() => inputRef.current?.focus(), 0);
   };
 
@@ -59,6 +61,8 @@ export const PostComments: React.FC<PostCommentsProps> = ({
       userId: user?.id || '',
       user: user ?? undefined,
       parentId: rootCommentId || null,
+      replyToUserId: replyTarget?.userId,
+      replyToUser: replyTarget?.user,
       createdAt: new Date().toISOString(),
     } as any;
 
@@ -79,7 +83,7 @@ export const PostComments: React.FC<PostCommentsProps> = ({
     }
 
     try {
-      const newComment = await engagementService.createComment(postId, content, parentId);
+      const newComment = await engagementService.createComment(postId, content, parentId, replyTarget?.userId);
       if (rootCommentId) {
         setComments((prev) =>
           prev.map((c) =>
@@ -138,6 +142,8 @@ export const PostComments: React.FC<PostCommentsProps> = ({
               onReport={onReport}
               onReplyClick={handleReplyClick}
               postId={postId}
+              highlightCommentId={highlightCommentId}
+              expandParentId={expandParentId}
             />
           ))
         )}

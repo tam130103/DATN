@@ -34,6 +34,9 @@ export class Comment {
   @Column({ type: 'uuid', name: 'parent_id', nullable: true })
   parentId: string;
 
+  @Column({ type: 'uuid', name: 'reply_to_user_id', nullable: true })
+  replyToUserId: string | null;
+
   @Column({
     type: 'enum',
     enum: CommentStatus,
@@ -65,4 +68,8 @@ export class Comment {
   @ManyToOne(() => Comment, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'parent_id' })
   parent: Comment;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'reply_to_user_id' })
+  replyToUser: User;
 }

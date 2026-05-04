@@ -17,6 +17,8 @@ interface CommentItemProps {
   onReplyClick?: (comment: Comment) => void;
   onNavigate?: () => void;
   postId?: string;
+  highlightCommentId?: string;
+  expandParentId?: string;
 }
 
 const DotsIcon = ({ className }: { className?: string }) => (
@@ -42,6 +44,8 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   onReplyClick,
   onNavigate,
   postId,
+  highlightCommentId,
+  expandParentId,
 }) => {
   const [showOptionsDropdown, setShowOptionsDropdown] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -60,6 +64,40 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   const [replies, setReplies] = useState<Comment[]>([]);
   const [isLoadingReplies, setIsLoadingReplies] = useState(false);
   const [localRepliesCount, setLocalRepliesCount] = useState(comment.repliesCount || 0);
+
+  // Auto-expand replies if this is the target parent
+  React.useEffect(() => {
+    if (expandParentId === comment.id && localRepliesCount > 0 && !showReplies && !isLoadingReplies) {
+      handleLoadReplies();
+    }
+  }, [expandParentId, comment.id, localRepliesCount, showReplies]);
+
+  // Auto-highlight if this is the target comment
+  React.useEffect(() => {
+    if (highlightCommentId === comment.id) {
+      let cancelled = false;
+      let removeTimer: ReturnType<typeof setTimeout>;
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (cancelled) return;
+          const el = document.getElementById(`comment-${comment.id}`);
+          if (!el) return;
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          removeTimer = setTimeout(() => {
+            if (cancelled) return;
+            el.classList.add('comment-highlight');
+            setTimeout(() => { el.classList.remove('comment-highlight'); }, 5500);
+          }, 700);
+        });
+      });
+
+      return () => {
+        cancelled = true;
+        clearTimeout(removeTimer);
+      };
+    }
+  }, [highlightCommentId, comment.id]);
 
   React.useEffect(() => {
     if (comment.replies && comment.replies.length > 0) {
@@ -233,7 +271,18 @@ export const CommentItem: React.FC<CommentItemProps> = ({
             </div>
           ) : (
             <>
-              <CommentContent content={localContent} onNavigate={handleNavigateClick} />
+              <span className="whitespace-pre-wrap">
+                {comment.replyToUser && (
+                  <Link
+                    to={`/${encodeURIComponent(comment.replyToUser.username || comment.replyToUser.id)}`}
+                    onClick={handleNavigateClick}
+                    className="font-semibold text-[var(--app-primary)] hover:underline mr-1"
+                  >
+                    @{comment.replyToUser.username || comment.replyToUser.name}
+                  </Link>
+                )}
+                <CommentContent content={localContent} onNavigate={handleNavigateClick} />
+              </span>
               {/* Action buttons row */}
               <div className="mt-1 flex items-center gap-3 text-xs font-semibold text-[var(--app-muted)]">
                 <span>{formatTimeAgo(comment.createdAt)}</span>
@@ -375,10 +424,12 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                   currentUserId={currentUserId}
                   onDeleted={handleReplyDeleted}
                   onReport={onReport}
-                  depth={1}
+                  depth={depth + 1}
                   onReplyClick={onReplyClick}
                   onNavigate={onNavigate}
                   postId={postId}
+                  highlightCommentId={highlightCommentId}
+                  expandParentId={expandParentId}
                 />
               ))}
             </div>

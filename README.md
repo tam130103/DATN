@@ -13,9 +13,11 @@ Mạng xã hội hiện đại lấy cảm hứng từ Instagram, được xây 
 - **Feed thông minh**: Hiển thị bài viết từ những người đang theo dõi, bài ghim ưu tiên lên đầu, auto-refresh 30 giây.
 - **Khám phá (Explore)**: Tìm kiếm người dùng, hashtag, xem xu hướng thịnh hành.
 - **Tagging & Mentions**: Tự động gợi ý `@username`, hiển thị tab "Bài viết được gắn thẻ" trên profile.
+- **Bình luận lồng nhau (Nested Comments)**: Hệ thống bình luận đa tầng (Reply), hỗ trợ nhắc tên, tự động cuộn và làm nổi bật (highlight) bình luận từ thông báo.
 - **Ghim bài viết**: Ghim 1 bài viết yêu thích lên đầu trang cá nhân & cả trên feed.
 - **Lưu bài viết**: Bookmark bài viết để xem lại sau, hiển thị trong tab riêng trên profile.
 - **Chỉnh sửa bài viết**: Sửa caption sau khi đăng, tự động cập nhật hashtag & mention.
+- **Truy cập nhanh**: Nhấn vào bất kỳ ảnh đại diện (avatar) nào trong hệ thống để truy cập nhanh vào trang cá nhân người dùng đó.
 
 ### 💬 Giao tiếp & Thông báo
 - **Realtime Chat**: Nhắn tin tức thời 1-1 với trạng thái online/offline, đánh dấu đã đọc.
