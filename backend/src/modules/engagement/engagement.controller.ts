@@ -28,7 +28,7 @@ export class EngagementController {
 
   @Delete(':id/like')
   unlike(@CurrentUser() user: any, @Param('id') postId: string) {
-    return this.engagementService.toggleLike(user.id, postId);
+    return this.engagementService.unlike(user.id, postId);
   }
 
   @Post(':id/save')
@@ -38,7 +38,7 @@ export class EngagementController {
 
   @Delete(':id/save')
   unsave(@CurrentUser() user: any, @Param('id') postId: string) {
-    return this.engagementService.toggleSave(user.id, postId);
+    return this.engagementService.unsave(user.id, postId);
   }
 
   @Post(':id/comments')
@@ -77,7 +77,7 @@ export class EngagementController {
 
   @Delete('comments/:commentId/like')
   unlikeComment(@CurrentUser() user: any, @Param('commentId') commentId: string) {
-    return this.engagementService.toggleCommentLike(user.id, commentId);
+    return this.engagementService.unlikeComment(user.id, commentId);
   }
 
   @Patch('comments/:commentId')

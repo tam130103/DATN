@@ -6,8 +6,8 @@ info:
     Use these endpoints for statistics, posts, users, hashtags, and moderation summaries.
   version: 2.0.0
 servers:
-  - url: "https://datn-f8w6.onrender.com"
-    description: Render production server for DATN backend
+  - url: "https://datn-social-backend.fly.dev"
+    description: Fly.io production server for DATN backend
 
 paths:
   /api/v1/ai-tools/dashboard/overview:

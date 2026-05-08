@@ -2,10 +2,17 @@ type AllowedOrigin = string | RegExp;
 
 const STATIC_ALLOWED_ORIGINS: AllowedOrigin[] = [
   'https://datn-mu-six.vercel.app',
-  /^https:\/\/.*\.vercel\.app$/,
   /^http:\/\/localhost:\d+$/,
   /^http:\/\/127\.0\.0\.1:\d+$/,
 ];
+
+const parseConfiguredOrigins = (origins?: string | null): string[] =>
+  origins
+    ? origins
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean)
+    : [];
 
 const normalizeOrigins = (frontendUrl?: string | null): AllowedOrigin[] => {
   const origins = [...STATIC_ALLOWED_ORIGINS];
@@ -13,6 +20,8 @@ const normalizeOrigins = (frontendUrl?: string | null): AllowedOrigin[] => {
   if (frontendUrl) {
     origins.unshift(frontendUrl);
   }
+
+  origins.unshift(...parseConfiguredOrigins(process.env.CORS_ORIGINS));
 
   return origins;
 };

@@ -23,8 +23,8 @@ export class NotificationController {
   }
 
   @Post(':id/read')
-  markAsRead(@Param('id') id: string) {
-    return this.notificationService.markAsRead(id);
+  markAsRead(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.notificationService.markAsRead(id, user.id);
   }
 
   @Post('read-all')

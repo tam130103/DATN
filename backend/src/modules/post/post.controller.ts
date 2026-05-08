@@ -13,6 +13,7 @@ import {
   UploadedFile,
   Req,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
@@ -103,6 +104,10 @@ export class PostController {
     @Query('cursor') cursor?: string,
     @Query('limit', new ParseIntPipe({ optional: true })) limit = 24,
   ) {
+    if (id !== user.id) {
+      throw new ForbiddenException('Cannot access another user saved posts');
+    }
+
     return this.postService.getSavedPosts(id, user.id, cursor, limit);
   }
 

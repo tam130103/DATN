@@ -2,7 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import { apiClient } from './api';
 import { Notification } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3000');
 
 async function silentRefresh(): Promise<string | null> {
   const refreshToken = localStorage.getItem('refreshToken');
@@ -74,7 +74,8 @@ class NotificationService {
       }
     });
 
-    this.socket.on('notification', (notification: Notification) => {
+    this.socket.on('notification', (notification: Notification | null) => {
+      if (!notification) return;
       this.emit('notification', notification);
     });
 

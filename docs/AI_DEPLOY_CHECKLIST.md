@@ -6,15 +6,12 @@ Tai lieu nay chot quy trinh van hanh cho luong AI caption va hashtag khi he thon
 
 ## Source of truth
 
-- Dify Cloud app dang publish la runtime source of truth.
-- File mirror trong repo chi dung de version control va diff:
-  - `dify/datn-caption-workflow-v2.yml`
-- Neu production drift voi repo, uu tien sua workflow tren Dify Cloud truoc, sau do export/sync nguoc ve repo.
+- Dify Cloud chatbot app dang publish la runtime source of truth.
+- Backend runtime goi `/chat-messages`, nen app key phai tro toi chatbot app, khong phai workflow app.
+- File workflow mirror trong repo chi dung de tham khao lich su, khong phai runtime source.
 
-## Caption workflow defaults
+## Caption chatbot defaults
 
-- Flow giu nguyen `start -> llm -> end`.
-- Khong them node moi trong pass hotfix.
 - Target completion params:
   - `max_tokens`: `220-280`
   - `temperature`: `0.4-0.6`
@@ -23,24 +20,22 @@ Tai lieu nay chot quy trinh van hanh cho luong AI caption va hashtag khi he thon
 
 ## Kiem tra runtime truoc deploy
 
-1. Xac nhan backend dang dung dung `DIFY_CAPTION_WORKFLOW_KEY` va `DIFY_GENERAL_API_KEY`.
+1. Xac nhan backend dang dung dung `DIFY_CAPTION_CHATBOT_KEY` va `DIFY_GENERAL_API_KEY`.
 2. Goi Dify app `GET /info` de xac nhan app name/description.
 3. Goi Dify app `GET /parameters` de xac nhan input vars va app mode.
-4. Diff workflow cloud vua publish voi file mirror trong repo.
-5. Publish workflow cloud truoc khi deploy backend.
+4. Xac nhan app mode la chatbot/chat app va endpoint `/chat-messages` hoat dong.
+5. Publish chatbot cloud truoc khi deploy backend.
 
 Tai lieu tham khao:
 
-- Dify workflow run API: [https://docs.dify.ai/api-reference/workflows/run-workflow](https://docs.dify.ai/api-reference/workflows/run-workflow)
-- Dify workflow app info: [https://docs.dify.ai/api-reference/workflow-app-information/get-workflow-app-information](https://docs.dify.ai/api-reference/workflow-app-information/get-workflow-app-information)
-- Dify workflow app parameters: [https://docs.dify.ai/api-reference/workflow-app-parameters/get-workflow-app-parameters](https://docs.dify.ai/api-reference/workflow-app-parameters/get-workflow-app-parameters)
+- Dify chat messages API: [https://docs.dify.ai/api-reference/chat-messages/send-chat-message](https://docs.dify.ai/api-reference/chat-messages/send-chat-message)
 
 ## Deploy checklist
 
-1. Sua workflow tren Dify Cloud.
-2. Publish workflow.
+1. Sua chatbot app tren Dify Cloud.
+2. Publish chatbot app.
 3. Xac nhan app key van tro dung app.
-4. Export/sync lai file YAML mirror trong repo.
+4. Cap nhat tai lieu neu app config thay doi.
 5. Deploy backend.
 6. Smoke test `POST /api/v1/posts/ai/generate-caption`.
 7. Smoke test `POST /api/v1/posts/ai/suggest-hashtags`.

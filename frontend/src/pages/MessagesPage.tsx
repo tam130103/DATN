@@ -106,7 +106,10 @@ const MessagesPage: React.FC = () => {
       if (data.conversationId !== selectedConversation) return;
       setOnlineUsers((prev) => new Set([...prev, ...data.userIds]));
     });
-    return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); };
+    const unsub6 = chatSocketService.on('error', (data: { message?: string }) => {
+      toast.error(data?.message || 'KhÃ´ng thá»ƒ thá»±c hiá»‡n thao tÃ¡c chat.');
+    });
+    return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); };
   }, [loadConversations, selectedConversation, token]);
 
   useEffect(() => {
@@ -199,19 +202,25 @@ const MessagesPage: React.FC = () => {
   const sendCurrentMessage = async () => {
     const content = messageInput.trim();
     if (!content || !selectedConversation) return;
-    setMessageInput('');
     chatSocketService.sendTyping(selectedConversation, false);
     if (chatSocketService.isConnected()) {
-      chatSocketService.sendMessage(selectedConversation, content);
-      return;
+      try {
+        await chatSocketService.sendMessage(selectedConversation, content);
+        setMessageInput('');
+        await loadConversations();
+        return;
+      } catch {
+        toast.error('Lá»—i gá»­i tin nháº¯n');
+      }
     }
     try {
       const result = await chatService.sendMessage(selectedConversation, content);
       setMessages((prev) => {
-        return prev.some((m) => m.id === result.message.id)
-          ? prev
-          : [...prev, result.message];
+        const nextMessages = [result.message, result.assistantReply].filter(Boolean) as Message[];
+        const deduped = nextMessages.filter((message) => !prev.some((m) => m.id === message.id));
+        return [...prev, ...deduped];
       });
+      setMessageInput('');
       await loadConversations();
     } catch {
       toast.error('Lỗi gửi tin nhắn');

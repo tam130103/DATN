@@ -855,6 +855,7 @@ export class PostService {
       .createQueryBuilder('saved')
       .where('saved.userId = :userId', { userId })
       .leftJoinAndSelect('saved.post', 'post')
+      .andWhere('post.status = :status', { status: PostStatus.VISIBLE })
       .orderBy('saved.createdAt', 'DESC')
       .limit(limit + 1);
 

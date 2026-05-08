@@ -143,7 +143,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
     try {
       const result = await engagementService.toggleLike(post.id);
       setLiked(result.liked);
-      setLikesCount(result.liked ? originalCount + 1 : Math.max(0, originalCount - 1));
+      setLikesCount(result.likesCount);
     } catch {
       setLiked(originalLiked);
       setLikesCount(originalCount);
@@ -210,7 +210,12 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
     const rootCommentId = replyTarget?.parentId || replyTarget?.id;
     setIsSubmitting(true);
     try {
-      const newComment = await engagementService.createComment(post.id, commentText.trim(), parentId);
+      const newComment = await engagementService.createComment(
+        post.id,
+        commentText.trim(),
+        parentId,
+        replyTarget?.userId,
+      );
       if (rootCommentId) {
         // Add reply to the root comment
         setComments((prev) =>

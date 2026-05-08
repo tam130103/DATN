@@ -95,6 +95,10 @@ export class NotificationGateway
   }
 
   emitToUser(userId: string, event: string, data: any) {
+    if (event === 'notification' && !data) {
+      return;
+    }
+
     this.server.to(`user:${userId}`).emit(event, data);
   }
 
@@ -104,7 +108,12 @@ export class NotificationGateway
     @MessageBody() data: { notificationId: string },
   ) {
     const userId = client.data.userId;
-    await this.notificationService.markAsRead(data.notificationId);
+    try {
+      await this.notificationService.markAsRead(data.notificationId, userId);
+    } catch (error: any) {
+      client.emit('error', { message: error?.message || 'Unable to mark notification as read' });
+      return;
+    }
 
     // Update unread count
     const unreadCount = await this.notificationService.getUnreadCount(userId);

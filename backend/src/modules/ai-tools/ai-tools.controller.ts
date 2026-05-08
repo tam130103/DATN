@@ -19,10 +19,9 @@ export class AiToolsController {
   ) {}
 
   private verifyKey(key?: string) {
-    const toolKey =
-      this.configService.get<string>('AI_TOOL_KEY') || 'datn-tool-secret-key-123';
+    const toolKey = this.configService.get<string>('AI_TOOL_KEY');
 
-    if (key !== toolKey) {
+    if (!toolKey || key !== toolKey) {
       throw new UnauthorizedException('Invalid or missing X-Datn-Tool-Key header');
     }
   }

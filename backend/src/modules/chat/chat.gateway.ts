@@ -12,6 +12,7 @@ import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { ChatService } from './chat.service';
+import { Message } from './entities/message.entity';
 import { createSocketCorsOptions } from '../../common/cors.util';
 
 // Online users map: userId -> Set of socket ids
@@ -151,7 +152,7 @@ export class ChatGateway
   @SubscribeMessage('sendMessage')
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { conversationId: string; content: string; mediaUrl?: string },
+    @MessageBody() data: { conversationId: string; content: string; mediaUrl?: string; clientRequestId?: string },
   ) {
     const userId = client.data.userId;
 
@@ -177,9 +178,12 @@ export class ChatGateway
 
       // Phase 2: Trigger AI assistant reply (non-blocking)
       void this.triggerAssistantReply(data.conversationId, userId, data.content);
+      client.emit('messageSent', { ok: true, clientRequestId: data.clientRequestId, message });
 
     } catch (error) {
-      client.emit('error', { message: error.message });
+      const message = error instanceof Error ? error.message : 'Unable to send message';
+      client.emit('error', { message });
+      client.emit('messageSent', { ok: false, clientRequestId: data.clientRequestId, error: message });
     }
   }
 
@@ -189,7 +193,12 @@ export class ChatGateway
     @MessageBody() data: { conversationId: string },
   ) {
     const userId = client.data.userId;
-    await this.chatService.markAsRead(data.conversationId, userId);
+    try {
+      await this.chatService.markAsRead(data.conversationId, userId);
+    } catch (error: any) {
+      client.emit('error', { message: error?.message || 'Unable to mark conversation as read' });
+      return;
+    }
 
     // Notify others in conversation
     client.to(data.conversationId).emit('conversationRead', {
@@ -199,11 +208,17 @@ export class ChatGateway
   }
 
   @SubscribeMessage('typing')
-  handleTyping(
+  async handleTyping(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { conversationId: string; isTyping: boolean },
   ) {
     const userId = client.data.userId;
+    const isMember = await this.chatService.isMember(data.conversationId, userId);
+    if (!isMember) {
+      client.emit('error', { message: 'Not a member of this conversation' });
+      return;
+    }
+
     client.to(data.conversationId).emit('userTyping', {
       conversationId: data.conversationId,
       userId,

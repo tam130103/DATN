@@ -250,6 +250,11 @@ export class ChatService {
   }
 
   async markAsRead(conversationId: string, userId: string): Promise<void> {
+    const isMember = await this.isMember(conversationId, userId);
+    if (!isMember) {
+      throw new ForbiddenException('You are not a member of this conversation');
+    }
+
     await this.messageRepository
       .createQueryBuilder()
       .update(Message)

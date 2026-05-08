@@ -8,6 +8,7 @@ import {
   UseGuards,
   ParseIntPipe,
   ParseUUIDPipe,
+  BadRequestException,
 } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
@@ -26,8 +27,16 @@ export class ChatController {
   @UseGuards(JwtAuthGuard)
   create(@CurrentUser() user: any, @Body() dto: CreateConversationDto) {
     if (dto.isGroup) {
+      if (dto.participantIds.length < 2) {
+        throw new BadRequestException('Group conversations require at least two participants');
+      }
       return this.chatService.createGroupConversation(user.id, dto);
     }
+
+    if (dto.participantIds.length !== 1) {
+      throw new BadRequestException('Direct conversations require exactly one participant');
+    }
+
     return this.chatService.findOrCreateConversation(user.id, dto.participantIds[0]);
   }
 
@@ -81,11 +90,19 @@ export class ChatController {
       dto.content,
       dto.mediaUrl,
     );
+    const assistantReply = await this.chatService.sendAssistantReplyIfNeeded(
+      conversationId,
+      user.id,
+      dto.content,
+    );
 
     if (this.chatGateway && this.chatGateway.server) {
       this.chatGateway.server.to(conversationId).emit('newMessage', message);
+      if (assistantReply) {
+        this.chatGateway.server.to(conversationId).emit('newMessage', assistantReply);
+      }
     }
 
-    return { message };
+    return { message, assistantReply };
   }
 }

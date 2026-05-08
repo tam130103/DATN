@@ -5,7 +5,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: ${DB_USERNAME:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-tam130103}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       POSTGRES_DB: ${DB_DATABASE:-datn_social}
     ports:
       - "5432:5432"
@@ -22,11 +22,18 @@ services:
       - db
     env_file:
       - ./backend/.env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      DB_DATABASE: ${DB_DATABASE:-datn_social}
+      UPLOAD_DIR: uploads
 
     ports:
       - "3000:3000"
     volumes:
-      - ./backend/uploads:/usr/src/app/uploads
+      - ./backend/uploads:/app/uploads
 
   frontend:
     build:

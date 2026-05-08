@@ -12,8 +12,6 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "tunnel:start": "powershell -ExecutionPolicy Bypass -File scripts/start-ngrok.ps1",
-    "tunnel:url": "powershell -ExecutionPolicy Bypass -File scripts/get-ngrok-url.ps1",
     "migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d src/config/data-source.ts",
     "migration:revert": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:revert -d src/config/data-source.ts"
   },

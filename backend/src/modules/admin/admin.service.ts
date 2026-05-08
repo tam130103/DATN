@@ -5,7 +5,7 @@ import { User, UserStatus } from '../user/entities/user.entity';
 import { Post, PostStatus } from '../post/entities/post.entity';
 import { Comment, CommentStatus } from '../engagement/entities/comment.entity';
 import { Like } from '../engagement/entities/like.entity';
-import { Report, ReportStatus } from './entities/report.entity';
+import { Report, ReportStatus, ReportTargetType } from './entities/report.entity';
 import { AdminUserQueryDto } from './dto/admin-user-query.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { ModeratePostDto } from './dto/moderate-post.dto';
@@ -283,6 +283,26 @@ export class AdminService {
   // ─── Reports ─────────────────────────────────────────────────────────────────
 
   async createReport(reporterId: string, dto: CreateReportDto) {
+    if (dto.targetType === ReportTargetType.POST) {
+      const post = await this.postRepository.findOne({
+        where: { id: dto.targetId, status: PostStatus.VISIBLE },
+        select: ['id'],
+      });
+      if (!post) {
+        throw new NotFoundException('Reported post not found or unavailable');
+      }
+    } else if (dto.targetType === ReportTargetType.COMMENT) {
+      const comment = await this.commentRepository.findOne({
+        where: { id: dto.targetId, status: CommentStatus.VISIBLE },
+        select: ['id'],
+      });
+      if (!comment) {
+        throw new NotFoundException('Reported comment not found or unavailable');
+      }
+    } else {
+      throw new BadRequestException('Invalid report target type');
+    }
+
     const report = this.reportRepository.create({
       reporterId,
       targetType: dto.targetType,

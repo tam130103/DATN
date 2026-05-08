@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { Message } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3000');
 
 /** Attempt a silent token refresh. Returns the new access token or null on failure. */
 async function silentRefresh(): Promise<string | null> {
@@ -134,6 +134,10 @@ class ChatSocketService {
     this.socket.on('unreadCount', (count: number) => {
       this.emit('unreadCount', count);
     });
+
+    this.socket.on('error', (data: { message?: string }) => {
+      this.emit('error', data);
+    });
   }
 
   /** Refresh the JWT and update socket auth. Redirects to /login if refresh fails. */
@@ -210,8 +214,38 @@ class ChatSocketService {
     this.socket?.emit('leaveConversation', { conversationId });
   }
 
-  sendMessage(conversationId: string, content: string) {
-    this.socket?.emit('sendMessage', { conversationId, content });
+  sendMessage(conversationId: string, content: string): Promise<Message> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket?.connected) {
+        reject(new Error('Socket is not connected'));
+        return;
+      }
+
+      const clientRequestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const timeout = window.setTimeout(() => {
+        this.socket?.off('messageSent', handleMessageSent);
+        reject(new Error('Timed out while sending message'));
+      }, 15000);
+
+      const handleMessageSent = (response?: {
+        ok: boolean;
+        clientRequestId?: string;
+        message?: Message;
+        error?: string;
+      }) => {
+        if (response?.clientRequestId !== clientRequestId) return;
+        window.clearTimeout(timeout);
+        this.socket?.off('messageSent', handleMessageSent);
+        if (!response.ok || !response.message) {
+          reject(new Error(response.error || 'Unable to send message'));
+          return;
+        }
+        resolve(response.message);
+      };
+
+      this.socket.on('messageSent', handleMessageSent);
+      this.socket.emit('sendMessage', { conversationId, content, clientRequestId });
+    });
   }
 
   markAsRead(conversationId: string) {

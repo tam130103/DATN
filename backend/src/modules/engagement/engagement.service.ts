@@ -69,6 +69,19 @@ export class EngagementService {
     return { liked: true, likesCount };
   }
 
+  async unlike(userId: string, postId: string): Promise<{ liked: boolean; likesCount: number }> {
+    const existingLike = await this.likeRepository.findOne({
+      where: { userId, postId },
+    });
+
+    if (existingLike) {
+      await this.likeRepository.remove(existingLike);
+    }
+
+    const likesCount = await this.likeRepository.count({ where: { postId } });
+    return { liked: false, likesCount };
+  }
+
   async getPostLikes(postId: string): Promise<Like[]> {
     return this.likeRepository.find({
       where: { postId },
@@ -115,12 +128,6 @@ export class EngagementService {
     });
     const savedComment = await this.commentRepository.save(comment);
 
-    // Reload with user relation so the response includes full user info
-    const fullComment = await this.commentRepository.findOne({
-      where: { id: savedComment.id },
-      relations: ['user', 'replyToUser'],
-    });
-
     if (resolvedParentId) {
       // Reply → notify parent comment author
       const parentComment = await this.commentRepository.findOne({
@@ -152,6 +159,12 @@ export class EngagementService {
       // Emit realtime notification
       this.notificationGateway.emitToUser(post.userId, 'notification', notification);
     }
+
+    // Reload with user relation so the response includes full user info
+    const fullComment = await this.commentRepository.findOne({
+      where: { id: savedComment.id },
+      relations: ['user', 'replyToUser'],
+    });
 
     return fullComment || savedComment;
   }
@@ -304,19 +317,42 @@ export class EngagementService {
 
     // Notify comment author
     if (comment.userId !== userId) {
-      const notification = await this.notificationService.createCommentLikeNotification(
-        userId,
-        comment.userId,
-        comment.postId,
-        commentId,
-        comment.parentId,
-      );
+      const notification = comment.parentId
+        ? await this.notificationService.createCommentLikeNotification(
+            userId,
+            comment.userId,
+            comment.postId,
+            commentId,
+            comment.parentId,
+          )
+        : await this.notificationService.createCommentLikeNotification(
+            userId,
+            comment.userId,
+            comment.postId,
+            commentId,
+          );
       if (notification) {
         this.notificationGateway.emitToUser(comment.userId, 'notification', notification);
       }
     }
 
     return { liked: true, likesCount };
+  }
+
+  async unlikeComment(
+    userId: string,
+    commentId: string,
+  ): Promise<{ liked: boolean; likesCount: number }> {
+    const existingLike = await this.commentLikeRepository.findOne({
+      where: { userId, commentId },
+    });
+
+    if (existingLike) {
+      await this.commentLikeRepository.remove(existingLike);
+    }
+
+    const likesCount = await this.commentLikeRepository.count({ where: { commentId } });
+    return { liked: false, likesCount };
   }
 
   async deleteComment(commentId: string, userId: string): Promise<void> {
@@ -375,5 +411,17 @@ export class EngagementService {
     const savedPost = this.savedPostRepository.create({ userId, postId });
     await this.savedPostRepository.save(savedPost);
     return { saved: true };
+  }
+
+  async unsave(userId: string, postId: string): Promise<{ saved: boolean }> {
+    const existing = await this.savedPostRepository.findOne({
+      where: { userId, postId },
+    });
+
+    if (existing) {
+      await this.savedPostRepository.remove(existing);
+    }
+
+    return { saved: false };
   }
 }

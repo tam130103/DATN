@@ -138,7 +138,16 @@ export class AuthService {
   private async verifyGoogleToken(idToken: string) {
     try {
       const response = await axios.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
-      return response.data;
+      const googleClientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
+      const tokenInfo = response.data;
+      const emailVerified =
+        tokenInfo?.email_verified === true || tokenInfo?.email_verified === 'true';
+
+      if (!googleClientId || tokenInfo?.aud !== googleClientId || !emailVerified) {
+        return null;
+      }
+
+      return tokenInfo;
     } catch {
       return null;
     }

@@ -65,12 +65,29 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   const [isLoadingReplies, setIsLoadingReplies] = useState(false);
   const [localRepliesCount, setLocalRepliesCount] = useState(comment.repliesCount || 0);
 
+  const loadReplies = React.useCallback(async () => {
+    if (showReplies) {
+      setShowReplies(false);
+      return;
+    }
+    setIsLoadingReplies(true);
+    try {
+      const data = await engagementService.getCommentReplies(comment.id);
+      setReplies(data);
+      setShowReplies(true);
+    } catch {
+      toast.error('KhÃ´ng thá»ƒ táº£i pháº£n há»“i.');
+    } finally {
+      setIsLoadingReplies(false);
+    }
+  }, [comment.id, showReplies]);
+
   // Auto-expand replies if this is the target parent
   React.useEffect(() => {
     if (expandParentId === comment.id && localRepliesCount > 0 && !showReplies && !isLoadingReplies) {
-      handleLoadReplies();
+      loadReplies();
     }
-  }, [expandParentId, comment.id, localRepliesCount, showReplies]);
+  }, [expandParentId, comment.id, localRepliesCount, showReplies, isLoadingReplies, loadReplies]);
 
   // Auto-highlight if this is the target comment
   React.useEffect(() => {

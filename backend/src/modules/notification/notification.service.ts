@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Notification, NotificationType } from './entities/notification.entity';
@@ -65,8 +65,15 @@ export class NotificationService {
     }));
   }
 
-  async markAsRead(notificationId: string): Promise<void> {
-    await this.notificationRepository.update(notificationId, { isRead: true });
+  async markAsRead(notificationId: string, userId: string): Promise<void> {
+    const result = await this.notificationRepository.update(
+      { id: notificationId, recipientId: userId },
+      { isRead: true },
+    );
+
+    if (!result.affected) {
+      throw new NotFoundException('Notification not found');
+    }
   }
 
   async markAllAsRead(userId: string): Promise<void> {
