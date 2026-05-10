@@ -27,17 +27,20 @@ export class CloudinaryService {
   /**
    * Upload a remote image/video URL to Cloudinary for permanent hosting.
    * Returns the permanent Cloudinary URL, or the original URL on failure.
+   * If publicId is provided, Cloudinary will deduplicate (same ID = same asset).
    */
   async uploadFromUrl(
     remoteUrl: string,
     folder = 'datn-social/facebook',
     resourceType: 'image' | 'video' | 'auto' = 'auto',
+    publicId?: string,
   ): Promise<string> {
     try {
       const result = await cloudinary.uploader.upload(remoteUrl, {
         folder,
         resource_type: resourceType,
         timeout: 30000,
+        ...(publicId ? { public_id: publicId, overwrite: false, unique_filename: false } : {}),
       });
       return result.secure_url;
     } catch (error) {

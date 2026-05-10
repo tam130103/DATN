@@ -446,16 +446,22 @@ export class PostService {
 
   /**
    * Re-upload Facebook CDN media to Cloudinary for permanent URLs.
+   * Uses a deterministic publicId derived from sourceId to avoid duplicate uploads.
    */
   private async reuploadMediaToCloudinary(
     media: Array<{ url: string; type: MediaType }>,
+    sourceId?: string,
   ): Promise<Array<{ url: string; type: MediaType }>> {
+    const FB_FOLDER = 'datn-social/facebook';
     const results: Array<{ url: string; type: MediaType }> = [];
-    for (const item of media) {
+    for (let i = 0; i < media.length; i++) {
+      const item = media[i];
+      const publicId = sourceId ? `${sourceId.replace(/[^a-zA-Z0-9_-]/g, '_')}_${i}` : undefined;
       const permanentUrl = await this.cloudinaryService.uploadFromUrl(
         item.url,
-        'datn-social/facebook',
+        FB_FOLDER,
         item.type === MediaType.VIDEO ? 'video' : 'image',
+        publicId,
       );
       results.push({ url: permanentUrl, type: item.type });
     }
@@ -967,7 +973,7 @@ export class PostService {
       }
 
       const rawMedia = this.normalizeFacebookMedia(fbPost);
-      const media = await this.reuploadMediaToCloudinary(rawMedia);
+      const media = await this.reuploadMediaToCloudinary(rawMedia, fbPost.id);
 
       const created = await this.createExternalPost(
         userId,
@@ -1049,7 +1055,7 @@ export class PostService {
     }
 
     const rawMedia = this.normalizeFacebookMedia(fbPost);
-    const media = await this.reuploadMediaToCloudinary(rawMedia);
+    const media = await this.reuploadMediaToCloudinary(rawMedia, fbPost.id);
     const created = await this.createExternalPost(
       userId,
       caption,
