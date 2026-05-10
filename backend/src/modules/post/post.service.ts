@@ -17,6 +17,7 @@ import { SavedPost } from '../engagement/entities/saved-post.entity';
 import { AIService } from '../ai/ai.service';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationGateway } from '../notification/notification.gateway';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 const FOLLOWER_MENTION_COMMAND_ALIASES = ['followers', 'tatca', 'moinguoi'] as const;
 
@@ -52,6 +53,7 @@ export class PostService {
     private readonly aiService: AIService,
     private readonly notificationService: NotificationService,
     private readonly notificationGateway: NotificationGateway,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   private extractHashtags(caption: string): string[] {
@@ -440,6 +442,24 @@ export class PostService {
 
   private getEffectivePostDate(post: Pick<Post, 'createdAt' | 'sourceCreatedAt'>): Date {
     return post.sourceCreatedAt ?? post.createdAt;
+  }
+
+  /**
+   * Re-upload Facebook CDN media to Cloudinary for permanent URLs.
+   */
+  private async reuploadMediaToCloudinary(
+    media: Array<{ url: string; type: MediaType }>,
+  ): Promise<Array<{ url: string; type: MediaType }>> {
+    const results: Array<{ url: string; type: MediaType }> = [];
+    for (const item of media) {
+      const permanentUrl = await this.cloudinaryService.uploadFromUrl(
+        item.url,
+        'datn-social/facebook',
+        item.type === MediaType.VIDEO ? 'video' : 'image',
+      );
+      results.push({ url: permanentUrl, type: item.type });
+    }
+    return results;
   }
 
   private async createExternalPost(
@@ -946,7 +966,8 @@ export class PostService {
         continue;
       }
 
-      const media = this.normalizeFacebookMedia(fbPost);
+      const rawMedia = this.normalizeFacebookMedia(fbPost);
+      const media = await this.reuploadMediaToCloudinary(rawMedia);
 
       const created = await this.createExternalPost(
         userId,
@@ -1027,7 +1048,8 @@ export class PostService {
       return { imported: null, skipped: true };
     }
 
-    const media = this.normalizeFacebookMedia(fbPost);
+    const rawMedia = this.normalizeFacebookMedia(fbPost);
+    const media = await this.reuploadMediaToCloudinary(rawMedia);
     const created = await this.createExternalPost(
       userId,
       caption,

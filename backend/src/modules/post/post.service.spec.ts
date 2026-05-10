@@ -102,6 +102,10 @@ const createServiceSetup = () => {
     emitToUser: jest.fn(),
   } as unknown as jest.Mocked<NotificationGateway>;
 
+  const cloudinaryService = {
+    uploadFromUrl: jest.fn(async (url: string) => url),
+  };
+
   const service = new PostService(
     postRepository,
     mediaRepository,
@@ -118,6 +122,7 @@ const createServiceSetup = () => {
     aiService,
     notificationService,
     notificationGateway,
+    cloudinaryService as any,
   );
 
   return {
