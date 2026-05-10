@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { ThemeToggle } from '../common/ThemeToggle';
@@ -7,15 +7,33 @@ import './AdminShell.css';
 const AdminShell: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
+  const closeSidebar = () => setSidebarOpen(false);
+
   return (
     <div className="admin-shell">
-      <aside className="admin-sidebar">
+      {/* Mobile hamburger */}
+      <button
+        className="admin-mobile-toggle"
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        aria-label="Toggle admin menu"
+      >
+        {sidebarOpen ? '✕' : '☰'}
+      </button>
+
+      {/* Overlay */}
+      <div
+        className={`admin-sidebar-overlay ${sidebarOpen ? 'visible' : ''}`}
+        onClick={closeSidebar}
+      />
+
+      <aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="admin-sidebar-header">
           <div className="admin-logo">
             <span className="admin-logo-icon">⚙️</span>
@@ -23,7 +41,7 @@ const AdminShell: React.FC = () => {
           </div>
           <div className="admin-user-info">
             <img
-              src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Admin')}&background=6366f1&color=fff`}
+              src={user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Admin')}&background=4150F7&color=fff`}
               alt="avatar"
               className="admin-avatar"
             />
@@ -35,23 +53,23 @@ const AdminShell: React.FC = () => {
         </div>
 
         <nav className="admin-nav">
-          <NavLink to="/admin" end className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}>
+          <NavLink to="/admin" end className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={closeSidebar}>
             <span className="nav-icon">📊</span>
             <span>Dashboard</span>
           </NavLink>
-          <NavLink to="/admin/users" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}>
+          <NavLink to="/admin/users" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={closeSidebar}>
             <span className="nav-icon">👥</span>
             <span>Người dùng</span>
           </NavLink>
-          <NavLink to="/admin/posts" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}>
+          <NavLink to="/admin/posts" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={closeSidebar}>
             <span className="nav-icon">📝</span>
             <span>Bài viết</span>
           </NavLink>
-          <NavLink to="/admin/comments" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}>
+          <NavLink to="/admin/comments" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={closeSidebar}>
             <span className="nav-icon">💬</span>
             <span>Bình luận</span>
           </NavLink>
-          <NavLink to="/admin/reports" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`}>
+          <NavLink to="/admin/reports" className={({ isActive }) => `admin-nav-item ${isActive ? 'active' : ''}`} onClick={closeSidebar}>
             <span className="nav-icon">🚨</span>
             <span>Báo cáo</span>
           </NavLink>
@@ -65,7 +83,7 @@ const AdminShell: React.FC = () => {
              </div>
              <ThemeToggle />
           </div>
-          <NavLink to="/" className="admin-nav-item">
+          <NavLink to="/" className="admin-nav-item" onClick={closeSidebar}>
             <span className="nav-icon">🏠</span>
             <span>Về trang chủ</span>
           </NavLink>
@@ -84,3 +102,4 @@ const AdminShell: React.FC = () => {
 };
 
 export default AdminShell;
+

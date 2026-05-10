@@ -395,7 +395,6 @@
   margin: 0 0 16px;
 }
 
-/* Report target */
 .target-text {
   font-size: 12px;
   color: var(--app-muted-strong);
@@ -404,3 +403,177 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ========== Mobile Toggle Button ========== */
+.admin-mobile-toggle {
+  display: none;
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 1001;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-text);
+  font-size: 20px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  transition: background 0.15s;
+}
+
+.admin-mobile-toggle:hover {
+  background: var(--app-bg-soft);
+}
+
+/* Overlay backdrop */
+.admin-sidebar-overlay {
+  display: none;
+}
+
+/* ========== Responsive: Tablet & Mobile (< 768px) ========== */
+@media (max-width: 768px) {
+  .admin-mobile-toggle {
+    display: flex;
+  }
+
+  .admin-sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(2px);
+  }
+
+  .admin-sidebar-overlay.visible {
+    display: block;
+  }
+
+  .admin-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+  }
+
+  .admin-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .admin-main {
+    padding: 60px 16px 24px;
+    width: 100%;
+  }
+
+  /* Stat cards: 2 columns on tablet, stack on tiny */
+  .admin-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .admin-stat-card {
+    padding: 16px;
+  }
+
+  .admin-stat-value {
+    font-size: 22px;
+  }
+
+  /* Tables: horizontal scroll */
+  .admin-table-container {
+    overflow-x: auto;
+    border-radius: 10px;
+  }
+
+  .admin-table {
+    min-width: 600px;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  /* Toolbar stacks */
+  .admin-table-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .admin-search-input {
+    min-width: unset;
+    width: 100%;
+  }
+
+  /* Page header */
+  .admin-page-title {
+    font-size: 20px;
+  }
+
+  .admin-page-header {
+    margin-bottom: 20px;
+  }
+
+  /* Action buttons wrap */
+  .admin-action-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+    margin-right: 4px;
+    margin-bottom: 4px;
+  }
+
+  /* Pagination compact */
+  .admin-pagination {
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 12px;
+  }
+
+  .admin-page-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+}
+
+/* ========== Responsive: Small phones (< 480px) ========== */
+@media (max-width: 480px) {
+  .admin-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-main {
+    padding: 56px 12px 20px;
+  }
+
+  .admin-page-title {
+    font-size: 18px;
+  }
+
+  .admin-table {
+    min-width: 500px;
+  }
+
+  .user-cell {
+    gap: 6px;
+  }
+
+  .user-cell-avatar {
+    width: 24px;
+    height: 24px;
+  }
+
+  .target-text {
+    max-width: 120px;
+  }
+}
+
