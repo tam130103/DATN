@@ -1,52 +1,85 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
+  /* ── Instagram-Inspired Design System ── */
 
-  --app-primary: #007fff; /* Modern Sapphire Blue */
-  --app-primary-strong: #0066cc;
-  --app-primary-soft: rgba(0, 127, 255, 0.1);
-  --app-accent: #ff3b30;
-  --app-bg: #f8f9fa;
-  --app-bg-soft: #f1f3f5;
-  --app-surface: #ffffff;
-  --app-surface-muted: #fbfbfb;
-  --app-border: #e9ecef;
-  --app-border-strong: #dee2e6;
-  --app-text: #1a1a1a;
-  --app-muted: #868e96;
-  --app-muted-strong: #495057;
-  --app-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --app-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.08);
+  /* Primary */
+  --app-primary: #4150F7;
+  --app-primary-strong: #3A41D6;
+  --app-primary-soft: rgba(65, 80, 247, 0.1);
+  --app-active: #2F36B0;
+
+  /* Accent & Status */
+  --app-accent: #0095F6;
+  --app-success: #1CD164;
+  --app-danger: #E74C3C;
+  --app-warning: #FACEB6;
+
+  /* Surfaces */
+  --app-bg: #F0F2F5;
+  --app-bg-soft: #F8F9F9;
+  --app-surface: #FFFFFF;
+  --app-surface-muted: #F8F9F9;
+
+  /* Borders */
+  --app-border: #E4E6EB;
+  --app-border-strong: #D1D5DB;
+
+  /* Text */
+  --app-text: #1C1E21;
+  --app-muted: #737373;
+  --app-muted-strong: #2B3036;
+
+  /* Elevation */
+  --app-shadow: 0px 1px 3px rgba(0, 0, 0, 0.06);
+  --app-shadow-lg: 0px 4px 12px rgba(0, 0, 0, 0.12);
+  --app-shadow-floating: 0px 2px 8px rgba(65, 80, 247, 0.24);
+  --app-shadow-elevated: 0px 8px 24px rgba(0, 0, 0, 0.16);
+
+  /* Layout */
   --app-header-height: 60px;
   --app-bottom-nav-height: 56px;
   --app-safe-top: env(safe-area-inset-top, 0px);
   --app-safe-bottom: env(safe-area-inset-bottom, 0px);
-  --app-glass-bg: rgba(255, 255, 255, 0.75);
-  --app-glass-border: rgba(0, 0, 0, 0.05);
+
+  /* Glass */
+  --app-glass-bg: rgba(255, 255, 255, 0.78);
+  --app-glass-border: rgba(0, 0, 0, 0.06);
 }
 
 .dark {
-  --app-primary: #007fff;
-  --app-primary-strong: #3399ff;
-  --app-primary-soft: rgba(0, 127, 255, 0.2);
-  --app-accent: #ff453a;
-  --app-bg: #0a0a0a;
-  --app-bg-soft: #121212;
-  --app-surface: #000000;
-  --app-surface-muted: #121212;
-  --app-border: #1f1f1f;
-  --app-border-strong: #2a2a2a;
-  --app-text: #f8f9fa;
-  --app-muted: #adb5bd;
-  --app-muted-strong: #dee2e6;
-  --app-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-  --app-shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
-  --app-glass-bg: rgba(0, 0, 0, 0.65);
+  --app-primary: #6370FF;
+  --app-primary-strong: #8B95FF;
+  --app-primary-soft: rgba(99, 112, 255, 0.18);
+  --app-active: #4150F7;
+
+  --app-accent: #3DA5FF;
+  --app-success: #34D87A;
+  --app-danger: #F87171;
+  --app-warning: #FCD34D;
+
+  --app-bg: #0C1014;
+  --app-bg-soft: #151A1E;
+  --app-surface: #111518;
+  --app-surface-muted: #1A1F24;
+
+  --app-border: #252B30;
+  --app-border-strong: #3E4042;
+
+  --app-text: #F0F2F5;
+  --app-muted: #8E8E93;
+  --app-muted-strong: #C7C7CC;
+
+  --app-shadow: 0px 1px 4px rgba(0, 0, 0, 0.4);
+  --app-shadow-lg: 0px 8px 24px rgba(0, 0, 0, 0.5);
+  --app-shadow-floating: 0px 2px 8px rgba(99, 112, 255, 0.3);
+  --app-shadow-elevated: 0px 12px 40px rgba(0, 0, 0, 0.6);
+
+  --app-glass-bg: rgba(17, 21, 24, 0.75);
   --app-glass-border: rgba(255, 255, 255, 0.08);
+
   color-scheme: dark;
 }
 
@@ -65,10 +98,10 @@ body {
   min-height: 100vh;
   background: var(--app-bg);
   color: var(--app-text);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
-  letter-spacing: -0.01em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  line-height: 20px;
+  letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -86,9 +119,9 @@ h5,
 h6 {
   margin: 0;
   color: var(--app-text);
-  font-family: 'Outfit', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 button,
@@ -118,7 +151,7 @@ video {
 }
 
 ::selection {
-  background: rgba(0, 149, 246, 0.18);
+  background: rgba(65, 80, 247, 0.18);
 }
 
 ::-webkit-scrollbar {
@@ -145,6 +178,7 @@ select:focus {
 
 ::placeholder {
   color: var(--app-muted);
+  font-weight: 400;
 }
 
 .app-shell {
@@ -243,46 +277,46 @@ select:focus {
   }
 }
 
-/* ── Facebook-style unread notification highlight ── */
+/* ── Notification highlight ── */
 @keyframes notifFadeIn {
   0%   { background-color: transparent; }
-  30%  { background-color: rgba(0, 149, 246, 0.10); }
-  100% { background-color: rgba(0, 149, 246, 0.10); }
+  30%  { background-color: rgba(65, 80, 247, 0.10); }
+  100% { background-color: rgba(65, 80, 247, 0.10); }
 }
 
 .notification-unread {
   animation: notifFadeIn 0.8s ease-out forwards;
-  background-color: rgba(0, 149, 246, 0.10);
+  background-color: rgba(65, 80, 247, 0.10);
 }
 
 .dark .notification-unread {
-  background-color: rgba(0, 149, 246, 0.12);
+  background-color: rgba(99, 112, 255, 0.12);
 }
 
-/* ── Facebook-style comment highlight (slow fade in → hold → fade out) ── */
+/* ── Comment highlight (slow fade in → hold → fade out) ── */
 @keyframes commentHighlightFade {
   0%   { background-color: transparent; }
-  12%  { background-color: rgba(0, 149, 246, 0.15); }
-  60%  { background-color: rgba(0, 149, 246, 0.15); }
+  12%  { background-color: rgba(65, 80, 247, 0.15); }
+  60%  { background-color: rgba(65, 80, 247, 0.15); }
   100% { background-color: transparent; }
 }
 
 .comment-highlight {
   animation: commentHighlightFade 2.4s ease-in-out 2 forwards;
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 /* Kept for backward compat */
 @keyframes blinkBg {
   0%   { background-color: transparent; }
-  20%  { background-color: rgba(0, 149, 246, 0.15); }
-  60%  { background-color: rgba(0, 149, 246, 0.15); }
+  20%  { background-color: rgba(65, 80, 247, 0.15); }
+  60%  { background-color: rgba(65, 80, 247, 0.15); }
   100% { background-color: transparent; }
 }
 
 .animate-blink {
   animation: blinkBg 2.4s ease-in-out 2 forwards;
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 /* ── Accessibility: Focus States ── */

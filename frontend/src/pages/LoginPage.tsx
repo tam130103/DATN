@@ -154,7 +154,7 @@ const LoginPage: React.FC = () => {
       <div className="mt-5 text-center">
         <Link
           to="#"
-          className="text-xs font-semibold text-[#385185] transition hover:opacity-80"
+          className="text-xs font-semibold text-[var(--app-primary)] transition hover:text-[var(--app-primary-strong)]"
         >
           Quên mật khẩu?
         </Link>

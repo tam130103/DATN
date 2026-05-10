@@ -45,7 +45,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
             className={confirmClass}
             style={{
               padding: '8px 20px', borderRadius: 8, border: 'none',
-              background: confirmClass === 'btn-danger' ? '#ef4444' : '#6366f1',
+              background: confirmClass === 'btn-danger' ? '#ef4444' : '#4150F7',
               color: '#fff', cursor: 'pointer', fontWeight: 600,
             }}
           >{confirmLabel}</button>
@@ -309,7 +309,7 @@ const AdminUsersPage: React.FC = () => {
                   <td>
                     <div className="user-cell">
                       <img
-                        src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || user.email)}&size=32&background=6366f1&color=fff`}
+                        src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || user.email)}&size=32&background=4150F7&color=fff`}
                         alt="avatar"
                         className="user-cell-avatar"
                       />

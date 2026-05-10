@@ -12,7 +12,11 @@ export default {
           primary: 'var(--app-primary)',
           'primary-strong': 'var(--app-primary-strong)',
           'primary-soft': 'var(--app-primary-soft)',
+          active: 'var(--app-active)',
           accent: 'var(--app-accent)',
+          success: 'var(--app-success)',
+          danger: 'var(--app-danger)',
+          warning: 'var(--app-warning)',
           bg: 'var(--app-bg)',
           'bg-soft': 'var(--app-bg-soft)',
           surface: 'var(--app-surface)',
@@ -25,15 +29,20 @@ export default {
         }
       },
       fontFamily: {
-        inter: ['Inter', 'sans-serif'],
-        outfit: ['Outfit', 'sans-serif'],
+        sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Helvetica', 'Arial', 'sans-serif'],
       },
       boxShadow: {
         app: 'var(--app-shadow)',
         'app-lg': 'var(--app-shadow-lg)',
+        'app-floating': 'var(--app-shadow-floating)',
+        'app-elevated': 'var(--app-shadow-elevated)',
+      },
+      borderRadius: {
+        'app': '8px',
+        'app-lg': '12px',
+        'app-xl': '16px',
       }
     },
   },
   plugins: [],
 }
-

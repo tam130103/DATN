@@ -242,12 +242,12 @@ export const AppShell: React.FC<AppShellProps> = ({
                     <span className="relative">
                       <ShieldIcon filled={location.pathname.startsWith('/admin')} />
                     </span>
-                    <span className="text-[#6366f1] font-semibold">Quản trị</span>
+                    <span className="text-[#4150F7] font-semibold">Quản trị</span>
                   </span>
                 </span>
                 <span className="block xl:hidden">
                   <span className={compactNavItemClass(location.pathname.startsWith('/admin'))}>
-                    <span className="relative text-[#6366f1]">
+                    <span className="relative text-[#4150F7]">
                       <ShieldIcon filled={location.pathname.startsWith('/admin')} />
                     </span>
                   </span>
@@ -423,7 +423,7 @@ export const AppShell: React.FC<AppShellProps> = ({
           {isAdmin && (
             <NavLink
               to="/admin"
-              className="relative flex h-14 w-14 items-center justify-center text-[#6366f1]"
+              className="relative flex h-14 w-14 items-center justify-center text-[#4150F7]"
             >
               <span className={`relative transition ${location.pathname.startsWith('/admin') ? 'scale-110' : ''}`}>
                 <ShieldIcon filled={location.pathname.startsWith('/admin')} />

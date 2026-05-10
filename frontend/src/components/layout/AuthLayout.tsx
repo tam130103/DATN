@@ -42,11 +42,11 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   children,
 }) => {
   return (
-    <div className="min-h-screen bg-[var(--app-bg)] px-4 py-10 sm:px-6">
+    <div className="min-h-screen bg-[var(--app-bg)] px-4 py-10 sm:px-6 lg:px-10">
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-[935px] items-center justify-center gap-12">
         <section className="hidden flex-1 items-center justify-center lg:flex">
           <div className="relative">
-            <div className="absolute -bottom-6 -left-10 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(0,149,246,0.15),transparent_68%)]" />
+            <div className="absolute -bottom-6 -left-10 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(65,80,247,0.15),transparent_68%)]" />
             <div className="relative h-[540px] w-[280px] overflow-hidden rounded-[38px] border-[8px] border-slate-900 bg-white p-3 shadow-[0_25px_50px_rgba(0,0,0,0.12)]">
               <div className="mx-auto h-1.5 w-20 rounded-full bg-slate-200" />
 
@@ -105,8 +105,8 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           </div>
         </section>
 
-        <section className="w-full max-w-[360px]">
-          <div className="surface-card rounded-[1px] px-8 py-10 text-center sm:px-10">
+        <section className="w-full max-w-[420px]">
+          <div className="surface-card rounded-lg px-8 py-10 text-center sm:px-10">
 
             <p className="mt-6 text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--app-muted)]">
               {badge}
@@ -119,7 +119,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             <div className="mt-8 text-left">{children}</div>
           </div>
 
-          <div className="surface-card mt-3 rounded-[1px] px-6 py-4 text-center text-sm text-[var(--app-muted-strong)]">
+          <div className="surface-card mt-3 rounded-lg px-6 py-4 text-center text-sm text-[var(--app-muted-strong)]">
             {footerText}{' '}
             <Link
               to={footerLinkTo}

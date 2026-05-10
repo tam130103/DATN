@@ -135,7 +135,7 @@ const AdminDashboardPage: React.FC = () => {
                       type="monotone"
                       name="Người dùng mới"
                       dataKey="users"
-                      stroke="#6366f1"
+                      stroke="#4150F7"
                       strokeWidth={3}
                       dot={{ r: 4, strokeWidth: 2 }}
                       activeDot={{ r: 6 }}

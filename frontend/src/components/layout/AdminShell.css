@@ -4,7 +4,7 @@
   min-height: 100vh;
   background: var(--app-bg);
   color: var(--app-text);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
 /* Sidebar */
@@ -40,7 +40,7 @@
 .admin-logo-text {
   font-size: 17px;
   font-weight: 700;
-  background: linear-gradient(135deg, #6366f1, #a78bfa);
+  background: linear-gradient(135deg, #4150F7, #8B95FF);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -57,7 +57,7 @@
   height: 36px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #6366f1;
+  border: 2px solid #4150F7;
 }
 
 .admin-user-name {
@@ -68,7 +68,7 @@
 
 .admin-user-role {
   font-size: 11px;
-  color: #6366f1;
+  color: #4150F7;
   font-weight: 500;
 }
 
@@ -105,8 +105,8 @@
 }
 
 .admin-nav-item.active {
-  background: rgba(99, 102, 241, 0.15);
-  color: #818cf8;
+  background: rgba(65, 80, 247, 0.15);
+  color: #6370FF;
 }
 
 .nav-icon {
@@ -225,7 +225,7 @@
 }
 
 .admin-search-input:focus {
-  border-color: #6366f1;
+  border-color: #4150F7;
 }
 
 .admin-filter-select {
@@ -291,7 +291,7 @@
 .status-badge.open { background: rgba(251,191,36,0.12); color: #facc15; }
 .status-badge.resolved { background: rgba(34,197,94,0.12); color: #4ade80; }
 .status-badge.rejected { background: rgba(100,116,139,0.12); color: #64748b; }
-.status-badge.admin { background: rgba(99,102,241,0.12); color: #818cf8; }
+.status-badge.admin { background: rgba(65, 80, 247, 0.12); color: #6370FF; }
 .status-badge.user { background: rgba(100,116,139,0.12); color: var(--app-muted-strong); }
 
 /* Action Buttons */
@@ -320,8 +320,8 @@
 .admin-action-btn.resolve:hover { background: rgba(34,197,94,0.25); }
 .admin-action-btn.reject { background: rgba(100,116,139,0.15); color: #94a3b8; }
 .admin-action-btn.reject:hover { background: rgba(100,116,139,0.25); }
-.admin-action-btn.view { background: rgba(99,102,241,0.15); color: #818cf8; }
-.admin-action-btn.view:hover { background: rgba(99,102,241,0.25); }
+.admin-action-btn.view { background: rgba(65, 80, 247, 0.15); color: #6370FF; }
+.admin-action-btn.view:hover { background: rgba(65, 80, 247, 0.25); }
 
 /* User cell */
 .user-cell {
@@ -372,12 +372,12 @@
 }
 
 .admin-page-btn:hover:not(:disabled) {
-  border-color: #6366f1;
-  color: #818cf8;
+  border-color: #4150F7;
+  color: #6370FF;
 }
 
 .admin-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.admin-page-btn.active { background: #6366f1; color: white; border-color: #6366f1; }
+.admin-page-btn.active { background: #4150F7; color: white; border-color: #4150F7; }
 
 /* Loading & Empty */
 .admin-loading, .admin-empty {
