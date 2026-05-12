@@ -8,9 +8,12 @@ import {
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 
+type ViolationCategory = 'harassment' | 'hate_speech' | 'violence' | 'sexual' | 'self_harm' | 'spam';
+
 type ModerationResult = {
   isSafe: boolean;
   reason?: string;
+  category?: ViolationCategory | null;
 };
 
 export type AssistantChatResult = {
@@ -389,12 +392,31 @@ export class AIService implements OnModuleInit {
 
     try {
       const raw = await this.generateGenericChat(
-        `Ban la he thong kiem duyet noi dung mang xa hoi bang tieng Viet. Hay danh gia noi dung sau co an toan de dang cong khai hay khong:
+        `Bạn là hệ thống kiểm duyệt nội dung mạng xã hội tiếng Việt.
+
+## Nội dung cần đánh giá
 "${text}"
-Chi chan cac truong hop doc hai ro rang: quay roi truc tiep, xuc pham nang, thu ghet, de doa, bao luc cuc doan.
-Khong danh dau khong an toan chi vi bai viet co so, ma don, timestamp, gia tien, ky tu viet tat, thong tin lien he thong thuong, ma san pham hoac chuoi ky tu ngau nhien.
-Neu noi dung trung tinh, sinh hoat doi thuong, mo ta trang thai ca nhan hoac khong co dau hieu doc hai ro rang, mac dinh isSafe=true.
-Tra ve JSON duy nhat theo schema: {"isSafe": true, "reason": ""}. Neu khong an toan thi dat isSafe=false kem ly do. Khong them markdown.`,
+
+## Tiêu chí đánh giá (chỉ đánh dấu không an toàn khi VI PHẠM RÕ RÀNG)
+
+### Các loại vi phạm
+1. harassment: Quấy rối, xúc phạm trực tiếp cá nhân
+2. hate_speech: Ngôn từ thù ghét, kích động nhóm
+3. violence: Bạo lực, đe dọa tính mạng
+4. sexual: Nội dung khiêu dâm
+5. self_harm: Tự gây thương tích
+6. spam: Quảng cáo, lừa đảo rõ ràng
+
+### Các nội dung KHÔNG vi phạm (mặc định isSafe=true)
+- Số, mã đơn, timestamp, giá tiền, ký tự viết tắt
+- Thông tin liên hệ thông thường
+- Trạng thái cá nhân, sinh hoạt đời thường
+- Nội dung trung tính hoặc không rõ ý đồ
+
+## Output Format (JSON only)
+Nếu an toàn: {"isSafe": true, "reason": "", "category": null}
+Nếu không an toàn: {"isSafe": false, "reason": "mô tả ngắn gọn lý do", "category": "harassment|hate_speech|violence|sexual|self_harm|spam"}
+Trả về DUY NHẤT JSON, không thêm markdown hay giải thích.`,
       );
 
       const parsed = this.parseJsonPayload<ModerationResult>(raw);
@@ -405,6 +427,7 @@ Tra ve JSON duy nhat theo schema: {"isSafe": true, "reason": ""}. Neu khong an t
       return this.applyModerationGuardrails(text, {
         isSafe: parsed.isSafe,
         reason: parsed.reason?.trim() || undefined,
+        category: parsed.category ?? undefined,
       });
     } catch (error) {
       this.logger.warn(`Moderation fallback triggered: ${error}`);
@@ -423,9 +446,20 @@ Tra ve JSON duy nhat theo schema: {"isSafe": true, "reason": ""}. Neu khong an t
 
     try {
       const raw = await this.generateGenericChat(
-        `Ban la he thong phan tich cam xuc bai viet mang xa hoi tieng Viet. Danh gia cam xuc chinh cua noi dung sau:
+        `Bạn là hệ thống phân tích cảm xúc bài viết mạng xã hội tiếng Việt.
+
+## Nội dung cần phân tích
 "${text}"
-Tra ve JSON duy nhat: {"label":"positive|neutral|negative|mixed","score":0.8,"summary":"mo ta ngan"}. score tu 0 den 1.`,
+
+## Rubric chấm điểm
+- positive (score 0.7-1.0): Vui vẻ, tích cực, truyền cảm hứng, khen ngợi
+- neutral (score 0.4-0.6): Thông tin, mô tả, không có cảm xúc rõ ràng
+- negative (score 0.0-0.3): Buồn, thất vọng, phàn nàn, tức giận
+- mixed (score 0.4-0.6): Vừa tích cực vừa tiêu cực trong cùng nội dung
+
+## Output Format (JSON only)
+{"label": "positive|neutral|negative|mixed", "score": 0.8, "summary": "mô tả ngắn 1 câu"}
+Trả về DUY NHẤT JSON, không thêm markdown hay giải thích.`,
       );
 
       const parsed = this.parseJsonPayload<SentimentResult>(raw);

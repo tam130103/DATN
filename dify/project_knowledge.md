@@ -5,42 +5,136 @@
 - **Mục tiêu**: Xây dựng một không gian mạng xã hội thu nhỏ cho phép người dùng chia sẻ khoảnh khắc, tương tác và trò chuyện theo thời gian thực, tích hợp sâu các tính năng Trí Tuệ Nhân Tạo (AI) nhằm nâng cao trải nghiệm người dùng.
 - **Tác giả / Nhóm phát triển**: Sinh viên (HUMG) làm Đồ án tốt nghiệp (DATN).
 
+---
+
+## Hướng dẫn đăng bài viết
+
+### Cách tạo bài viết mới
+1. Nhấn nút "+" hoặc "Tạo bài viết" trên thanh navigation.
+2. Nhập nội dung caption. Có thể đính kèm ảnh hoặc video.
+3. Nhấn "Đăng" để chia sẻ bài viết lên bản tin (feed).
+
+### Chỉnh sửa bài viết
+- Nhấn biểu tượng "..." trên bài viết của mình → chọn "Sửa".
+- Thay đổi caption, hệ thống sẽ tự động cập nhật hashtag.
+- Nội dung sau khi sửa sẽ được AI kiểm duyệt lại.
+
+### Xóa bài viết
+- Nhấn biểu tượng "..." → chọn "Xóa".
+- Hành động này không thể hoàn tác.
+
+### Ghim bài viết
+- Nhấn biểu tượng "..." → chọn "Ghim bài viết".
+- Bài ghim sẽ luôn hiển thị đầu tiên trên trang cá nhân.
+- Chỉ ghim được 1 bài tại một thời điểm.
+
+---
+
+## Sử dụng AI Draft Caption
+
+Tính năng AI Draft giúp tạo nội dung tự động khi bạn viết bài:
+1. Trong màn hình tạo bài, nhấn biểu tượng ✨ (AI Draft).
+2. Nhập vài từ khóa về chủ đề bạn muốn viết.
+3. Chọn giọng điệu phù hợp: tự nhiên, hài hước, truyền cảm hứng, chuyên nghiệp, Gen Z, lãng mạn, hoặc học thuật.
+4. AI sẽ viết nháp một đoạn status 100-200 từ.
+5. Bạn có thể chỉnh sửa thêm trước khi đăng.
+
+**Lưu ý**: AI Draft chỉ tạo nháp gợi ý, bạn hoàn toàn có thể sửa lại theo ý mình.
+
+---
+
+## Gợi ý Hashtag tự động
+
+Sau khi viết caption, hệ thống có thể tự động gợi ý hashtag:
+- Nhấn nút "Gợi ý hashtag" (hoặc biểu tượng #).
+- AI sẽ đọc nội dung bài viết và đề xuất 5-8 hashtag liên quan.
+- Bạn có thể chọn hashtag nào muốn thêm vào bài viết.
+- Hashtag giúp bài viết dễ tìm thấy hơn và tăng độ nhận diện.
+
+---
+
+## Đồng bộ Facebook
+
+Hệ thống tự động import bài đăng từ Facebook Fanpage về bản tin:
+- Bài viết được đồng bộ tự động khi có bài mới trên Fanpage.
+- Ảnh và video từ Facebook được re-upload lên Cloudinary để giữ link vĩnh viễn.
+- Caption và nội dung gốc được giữ nguyên.
+- Bài Facebook hiển thị trên feed như bài bình thường, có thể like và comment.
+
+---
+
+## Nhắn tin & AI Chatbot
+
+### Nhắn tin người dùng
+- Vào mục **Messages** để xem danh sách cuộc hội thoại.
+- Hỗ trợ chat 1-1 giữa người dùng với nhau.
+- Hỗ trợ tạo nhóm chat (group chat).
+- Có trạng thái online, "đang gõ..." (typing indicator), và đánh dấu đã đọc.
+
+### AI Chatbot Companion
+- Trong mục Messages, bạn sẽ thấy một cuộc hội thoại với **DATN AI Assistant**.
+- Chatbot có thể trò chuyện, gợi ý caption, giải thích khái niệm, brainstorm ý tưởng.
+- Chatbot ghi nhớ ngữ cảnh hội thoại trước đó nhờ hệ thống memory.
+- Chatbot xưng "Mình", gọi bạn là "Bạn", trả lời thân thiện và tự nhiên.
+
+### AI Agent (Trợ lý thông minh)
+- AI Agent có khả năng truy vấn dữ liệu thật từ hệ thống DATN Social.
+- Bạn có thể hỏi: "Có bao nhiêu bài viết?", "Hashtag nào đang hot?", "Tìm user admin".
+- Agent sẽ tra cứu dữ liệu thực tế và trả lời chính xác.
+
+---
+
+## Tương tác trên bài viết
+
+### Like (Thích)
+- Nhấn biểu tượng ❤️ để thích bài viết.
+- Nhấn lại để bỏ thích.
+
+### Comment (Bình luận)
+- Nhấn biểu tượng 💬 để mở phần bình luận.
+- Nhập nội dung và gửi.
+
+### Follow (Theo dõi)
+- Nhấn nút "Follow" trên trang cá nhân của người khác.
+- Bài viết của người bạn theo dõi sẽ xuất hiện trên feed.
+
+### Lưu bài viết
+- Nhấn biểu tượng 🔖 để lưu bài viết.
+- Xem lại bài đã lưu trong mục "Saved Posts" trên trang cá nhân.
+
+---
+
+## Quy tắc cộng đồng
+
+### Nội dung được khuyến khích
+- Chia sẻ khoảnh khắc cuộc sống, câu chuyện cá nhân.
+- Nội dung tích cực, truyền cảm hứng.
+- Thảo luận văn minh, tôn trọng ý kiến khác biệt.
+
+### Nội dung bị cấm
+- Quấy rối, xúc phạm, công kích cá nhân.
+- Ngôn từ thù ghét, kích động bạo lực.
+- Nội dung khiêu dâm hoặc không phù hợp.
+- Spam, quảng cáo, lừa đảo.
+
+### Cơ chế kiểm duyệt AI
+- Mỗi bài viết mới sẽ được AI kiểm duyệt tự động trước khi hiển thị.
+- Nếu nội dung vi phạm, bài viết sẽ bị chặn và người dùng nhận thông báo.
+- Người dùng có thể báo cáo (report) bài viết vi phạm.
+- Admin xem xét các báo cáo và quyết định xử lý.
+
+---
+
 ## Công nghệ sử dụng
-- **Frontend**: React.js, TypeScript, Vite, TailwindCSS, Zustand (State Management), React Router.
-- **Backend**: NestJS, TypeScript, TypeORM, PostgreSQL, Socket.io (WebSockets cho real-time).
-- **Hệ thống AI**: Tích hợp Dify (LLM Workflow/Agent) kết hợp các model như DeepSeek, Gemini.
-- **Cơ sở hạ tầng**: Docker & Docker Compose, Supabase (Database Hosting), Cloudinary (Lưu trữ ảnh/video).
+- **Frontend**: React.js, TypeScript, Vite, TailwindCSS, Zustand.
+- **Backend**: NestJS, TypeScript, TypeORM, PostgreSQL, Socket.io.
+- **Hệ thống AI**: Dify (LLM Workflow/Agent) kết hợp Gemini, DeepSeek.
+- **Cơ sở hạ tầng**: Docker, Supabase, Cloudinary, Fly.io.
 
-## Các tính năng chính (Core Features)
-1. **Quản lý tài khoản**: Đăng ký, Đăng nhập (Local & Google OAuth), quản lý Profile.
-2. **Giao tiếp & Tương tác (Feed)**: 
-   - Đăng bài viết kèm hình ảnh/video.
-   - Thích (Like), Bình luận (Comment), Theo dõi (Follow).
-3. **Nhắn tin thời gian thực (Chat)**:
-   - Chat 1-1 giữa người dùng với nhau hoặc chat nhóm.
-   - Trạng thái online, "đang gõ..." (typing indicator), và đánh dấu đã đọc.
-4. **Đồng bộ Facebook**: Auto-sync bài đăng từ một Fanpage Facebook cụ thể về bản tin hệ thống qua Webhooks.
-
-## Các tính năng Trí Tuệ Nhân Tạo (AI Features) - Tích hợp Dify
-Hệ thống mạng xã hội DATN Social nhấn mạnh vào sự hỗ trợ của AI cho người dùng ở mọi khía cạnh:
-1. **AI Chatbot Companion (Trợ lý nhắn tin)**: 
-   - Chatbot AI đóng vai trò như một người bạn hoặc trợ lý hỗ trợ trực tiếp bên trong mục Messages. 
-   - Có khả năng ghi nhớ ngữ cảnh hội thoại (memory) dựa vào ID cuộc hội thoại (`difyConversationId`).
-2. **Draft Caption (Tạo nội dung tự động)**: 
-   - Khi người dùng đăng bài, chỉ cần gõ vài từ khóa, AI sẽ thay người dùng viết nháp một đoạn trạng thái (caption) dài, tự nhiên và phong phú. Cắt bỏ hoàn toàn các thẻ lập trình hoặc tư duy nháp của LLM.
-3. **Suggest Hashtags (Gợi ý Hashtag)**: 
-   - Đọc nội dung người dùng viết và trả về danh sách các hashtags (`#`) phù hợp để tăng độ nhận diện bài viết.
-4. **AI Content Moderation (Kiểm duyệt nội dung ngầm)**:
-   - Mỗi lần người dùng đăng bài, backend gọi AI check độ an toàn của từ ngữ (Safety & Sentiment analysis). Nếu chứa từ chửi bậy, bạo lực hay vi phạm, AI sẽ gắn cờ đánh dấu không an toàn.
-
-## Kiến trúc Database (Mô hình Dữ liệu)
-- **User**: Lưu thông tin người đăng ký, mật khẩu băm, avatar mạng xã hội.
-- **Post & Media**: Lưu bài viết và đường dẫn link ảnh/video trên Cloudinary.
-- **Engagement**: Lưu lượt like, comment.
-- **Conversation & Message**: Hệ thống chat. Conversation (`difyConversationId` dùng để liên kết chuỗi hội thoại với Dify).
-- **Notifications**: Lưu thông báo sự kiện mạng xã hội.
+---
 
 ## Quy định và Tone giọng của AI Chatbot
-- **Bắt buộc**: Chatbot là "Trợ lý ảo DATN", xưng "Tôi" hoặc "Mình", gọi người dùng là "Bạn". 
-- **Tính cách**: Thân thiện, hỗ trợ, rành mạch, hiểu biết sâu về dự án mạng xã hội này. 
-- Nếu người dùng hỏi các câu liên quan đến đồ án hoặc tính năng ("làm thế nào để đăng bài?", "bạn có tính năng gì?"), AI phải lấy thông tin từ tài liệu dự án này để giải đáp một cách chính xác.
+- **Bắt buộc**: Chatbot xưng "Mình", gọi người dùng là "Bạn".
+- **Tính cách**: Thân thiện, hỗ trợ, rõ ràng, hiểu biết sâu về dự án.
+- Nếu người dùng hỏi về tính năng của hệ thống, AI phải lấy thông tin từ tài liệu này để trả lời chính xác.
+- Nếu không có thông tin, nói rõ: "Mình chưa có thông tin về vấn đề này."

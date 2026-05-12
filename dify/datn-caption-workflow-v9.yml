@@ -1,17 +1,14 @@
 app:
-  description: Workflow tạo caption MXH siêu mượt với Groq Llama 3.1. Sửa lỗi hoàn toàn việc không nhận diện tham số ở Dify.
-  icon: 🚀
+  description: Bản V9 Đơn Giản - Khắc phục hoàn toàn lỗi kẹt Node Code trên Dify Cloud. Không dùng Python Node. Xuất trực tiếp chuỗi chuẩn JSON.
+  icon: ✍️
   icon_background: '#E4FBCC'
   icon_type: emoji
   mode: workflow
-  name: DATN Caption Generator (Groq Llama Final)
+  name: DATN Caption Generator V9 (Stable)
   use_icon_as_answer_icon: false
-dependencies: []
 kind: app
-version: 0.6.0
+version: 0.1.0
 workflow:
-  conversation_variables: []
-  environment_variables: []
   features:
     file_upload:
       enabled: false
@@ -19,11 +16,9 @@ workflow:
     edges:
     - data:
         isInIteration: false
-        isInLoop: false
         sourceType: start
         targetType: llm
       id: start-llm-edge
-      selected: false
       source: start-node
       sourceHandle: source
       target: caption-llm
@@ -32,11 +27,9 @@ workflow:
       zIndex: 0
     - data:
         isInIteration: false
-        isInLoop: false
         sourceType: llm
         targetType: end
       id: llm-end-edge
-      selected: false
       source: caption-llm
       sourceHandle: source
       target: end-node
@@ -45,7 +38,7 @@ workflow:
       zIndex: 0
     nodes:
     - data:
-        desc: Khai báo chủ đề.
+        desc: Khai báo chủ đề và giọng điệu.
         selected: false
         title: Bắt đầu
         type: start
@@ -70,83 +63,54 @@ workflow:
           required: false
           type: select
           variable: tone
-      height: 178
       id: start-node
       position:
         x: 80
         y: 282
-      positionAbsolute:
-        x: 80
-        y: 282
-      selected: false
-      sourcePosition: right
-      targetPosition: left
       type: custom
-      width: 242
     - data:
         context:
           enabled: false
           variable_selector: []
-        desc: Sinh caption MXH.
+        desc: Sinh caption. Có thể đổi model thoải mái.
         model:
           completion_params:
             max_tokens: 1024
             temperature: 0.7
             top_p: 0.9
           mode: chat
-          name: llama-3.1-8b-instant
-          provider: groq
+          name: gemini-1.5-flash
+          provider: langgenius/gemini/google
         prompt_template:
         - id: sys01
           role: system
-          text: "Bạn là một Content Creator trẻ ở Việt Nam.\n\nLUẬT:\n1. Bắt buộc viết bằng tiếng Việt (50-200 từ).\n2. NỘI DUNG PHẢI ĐÚNG CHỦ ĐỀ.\n3. Cấm nhắc đến trường học, đồ án, sinh viên nếu chủ đề không đề cập.\n4. Tuyệt đối KHÔNG viết các câu như \"Caption:\", \"Trạng thái:\".\n5. Dùng 2-4 emoji."
+          text: "Bạn là Content Creator chuyên nghiệp tại Việt Nam.\n\n## Nhiệm vụ\nViết MỘT status mạng xã hội bằng tiếng Việt, đồng thời gợi ý hashtag phù hợp.\n\n## Quy tắc bắt buộc\n1. Caption phải xoay quanh ĐÚNG chủ đề được cung cấp.\n2. Độ dài: 100-200 từ.\n3. Câu đầu tiên phải liên quan trực tiếp đến chủ đề.\n4. Triển khai 2-3 ý liên quan, kết bằng 1 câu hỏi tương tác.\n5. Dùng 2-4 emoji tự nhiên.\n6. Gợi ý 5-8 hashtag ngắn, sát chủ đề.\n\n## Quy tắc định dạng\n- KHÔNG viết tiêu đề, nhãn \"Caption:\", \"Bài đăng:\", \"Dưới đây là status\".\n- KHÔNG dùng markdown (**, ##, ```).\n- KHÔNG giải thích biến topic/tone hay nhắc đến hệ thống AI.\n- Vào thẳng nội dung status, viết như một người dùng thật đang đăng bài.\n\n## Quy tắc giọng điệu\n- tự nhiên: nói chuyện bạn bè, gần gũi\n- hài hước: dí dỏm, bắt trend, vui nhộn\n- truyền cảm hứng: tích cực, động lực, ấm áp\n- chuyên nghiệp: lịch sự, chỉn chu, sắc sảo\n- Gen Z: trẻ trung, xen tiếng Anh, bắt trend\n- lãng mạn: mềm mại, tinh tế, cảm xúc\n- học thuật: sâu sắc, phân tích, chiêm nghiệm\n\n## Output Format (JSON only)\n{\"caption\": \"<nội dung status 100-200 từ>\", \"hashtags\": [\"#tag1\", \"#tag2\", \"#tag3\", \"#tag4\", \"#tag5\"]}\nTrả về DUY NHẤT JSON object, không thêm bất kỳ text nào khác."
         - id: usr01
           role: user
-          text: "Chủ đề cần xem: {{#start-node.topic#}}\nGiọng văn mong muốn: {{#start-node.tone#}}\n\nViết status mạng xã hội ngay bây giờ:"
+          text: "Chủ đề cần viết: {{#start-node.topic#}}\nGiọng văn: {{#start-node.tone#}}\n\nViết status mạng xã hội ngay bây giờ:"
         selected: true
-        title: Sinh Caption MXH
+        title: Sinh Caption + Hashtag
         type: llm
         variables: []
         vision:
           enabled: false
-      height: 131
       id: caption-llm
       position:
         x: 400
         y: 282
-      positionAbsolute:
-        x: 400
-        y: 282
-      selected: true
-      sourcePosition: right
-      targetPosition: left
       type: custom
-      width: 241
     - data:
         desc: Xuất kết quả
         outputs:
         - value_selector:
           - caption-llm
           - text
-          variable: caption
+          variable: text
         selected: false
         title: Kết thúc
         type: end
-      height: 115
       id: end-node
       position:
         x: 720
         y: 282
-      positionAbsolute:
-        x: 720
-        y: 282
-      selected: false
-      sourcePosition: right
-      targetPosition: left
       type: custom
-      width: 241
-    viewport:
-      x: -100
-      y: 100
-      zoom: 0.8
-  rag_pipeline_variables: []
