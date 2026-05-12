@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AppShell } from '../components/layout/AppShell';
@@ -383,6 +384,7 @@ const MessagesPage: React.FC = () => {
                             <div className={`rounded-[22px] px-4 py-3 text-sm leading-6 ${isMine ? 'rounded-br-[8px] bg-[var(--app-primary)] text-white selection:bg-white/30 selection:text-white' : 'rounded-bl-[8px] border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] selection:bg-[var(--app-primary)] selection:text-white'}`}>
                                 <div className={`chat-markdown-body ${isMine ? 'chat-markdown-mine text-white' : ''}`}>
                                   <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
                                     components={{
                                       p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
                                       strong: ({ children }) => <strong className="font-bold">{children}</strong>,
