@@ -380,7 +380,7 @@ const MessagesPage: React.FC = () => {
                             </div>
                           ) : null}
                           <div className="group max-w-[82%] sm:max-w-[70%]">
-                            <div className={`rounded-[22px] px-4 py-3 text-sm leading-6 ${isMine ? 'rounded-br-[8px] bg-[var(--app-primary)] text-white' : 'rounded-bl-[8px] border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)]'}`}>
+                            <div className={`rounded-[22px] px-4 py-3 text-sm leading-6 ${isMine ? 'rounded-br-[8px] bg-[var(--app-primary)] text-white selection:bg-white/30 selection:text-white' : 'rounded-bl-[8px] border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] selection:bg-[var(--app-primary)] selection:text-white'}`}>
                                 <div className={`chat-markdown-body ${isMine ? 'chat-markdown-mine text-white' : ''}`}>
                                   <ReactMarkdown
                                     components={{
