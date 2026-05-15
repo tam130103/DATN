@@ -577,24 +577,105 @@ Trả về DUY NHẤT JSON, không thêm markdown hay giải thích.`,
       this.configService.get<string>('DIFY_API_URL'),
     );
 
-    const response = await axios.post(
+    const user = `datn-caption-${Date.now()}`;
+    const payload = {
+      inputs: {},
+      query: query.trim(),
+      response_mode: 'blocking' as const,
+      user,
+    };
+
+    try {
+      const response = await axios.post(
+        `${apiUrl}/chat-messages`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: timeoutMs,
+        },
+      );
+      return response.data?.answer || '';
+    } catch (error) {
+      const status = (error as any)?.response?.status as number | undefined;
+      if (status !== 400) {
+        throw error;
+      }
+
+      this.logger.warn(
+        'Caption chatbot rejected blocking mode (400). Retrying in streaming mode.',
+      );
+      return this.generateCaptionChatStreaming(apiUrl, apiKey, query, user, timeoutMs);
+    }
+  }
+
+  private async generateCaptionChatStreaming(
+    apiUrl: string,
+    apiKey: string,
+    query: string,
+    user: string,
+    timeoutMs: number,
+  ): Promise<string> {
+    const res = await axios.post(
       `${apiUrl}/chat-messages`,
       {
         inputs: {},
         query: query.trim(),
-        response_mode: 'blocking',
-        user: `datn-caption-${Date.now()}`,
+        response_mode: 'streaming',
+        user,
       },
       {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
         },
         timeout: timeoutMs,
+        responseType: 'stream',
       },
     );
 
-    return response.data?.answer || '';
+    return new Promise<string>((resolve, reject) => {
+      let answerBuffer = '';
+      let rawChunk = '';
+
+      res.data.on('data', (chunk: Buffer) => {
+        rawChunk += chunk.toString('utf8');
+        const lines = rawChunk.split('\n');
+        rawChunk = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
+
+          try {
+            const event = JSON.parse(jsonStr) as Record<string, any>;
+            if (
+              (event.event === 'message' || event.event === 'agent_message') &&
+              typeof event.answer === 'string'
+            ) {
+              answerBuffer += event.answer;
+            }
+            if (event.event === 'error') {
+              reject(new Error(`Dify stream error: ${event.message || JSON.stringify(event)}`));
+              return;
+            }
+          } catch {
+            // Ignore malformed stream chunks.
+          }
+        }
+      });
+
+      res.data.on('end', () => {
+        const cleaned = this.cleanPlainTextResponse(answerBuffer);
+        resolve(cleaned);
+      });
+
+      res.data.on('error', (err: Error) => reject(err));
+    });
   }
 
   private async generateGenericChat(query: string, timeoutMs = 30_000): Promise<string> {
