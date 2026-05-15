@@ -1,80 +1,40 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import { ShieldCheck, UserCircle, Users } from '@phosphor-icons/react';
 import { AdminStateView } from '../../components/admin/AdminStateView';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { PromptDialog } from '../../components/common/PromptDialog';
 import { adminService, AdminUser } from '../../services/admin.service';
 import { useAuth } from '../../contexts/AuthContext';
 import { getApiMessage } from '../../utils/api-error';
 
-// ─── Confirmation Modal ───────────────────────────────────────────────────────
-
-interface ConfirmModalProps {
-  open: boolean;
-  title: string;
-  message: string;
-  confirmLabel: string;
-  confirmClass?: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}
-
-const ConfirmModal: React.FC<ConfirmModalProps> = ({
-  open, title, message, confirmLabel, confirmClass = 'btn-danger', onConfirm, onCancel
-}) => {
-  if (!open) return null;
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 1000,
-      background: 'rgba(0,0,0,0.45)', display: 'flex',
-      alignItems: 'center', justifyContent: 'center',
-    }}>
-      <div style={{
-        background: '#fff', borderRadius: 14, padding: '32px 36px',
-        maxWidth: 420, width: '90%', boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
-      }}>
-        <h3 style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 700 }}>{title}</h3>
-        <p style={{ margin: '0 0 24px', color: '#555', lineHeight: 1.6 }}>{message}</p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-          <button
-            onClick={onCancel}
-            style={{
-              padding: '8px 20px', borderRadius: 8, border: '1px solid #ddd',
-              background: '#f5f5f5', cursor: 'pointer', fontWeight: 600,
-            }}
-          >Hủy</button>
-          <button
-            onClick={onConfirm}
-            className={confirmClass}
-            style={{
-              padding: '8px 20px', borderRadius: 8, border: 'none',
-              background: confirmClass === 'btn-danger' ? '#ef4444' : '#4150F7',
-              color: '#fff', cursor: 'pointer', fontWeight: 600,
-            }}
-          >{confirmLabel}</button>
+const AdminTableSkeleton = React.memo(() => (
+  <div className="p-5">
+    {Array.from({ length: 7 }, (_, index) => (
+      <div key={index} className="flex items-center gap-4 border-b border-[var(--app-border)] py-3 last:border-b-0">
+        <div className="skeleton h-9 w-9 rounded-full" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="skeleton h-3 w-1/3" />
+          <div className="skeleton h-3 w-2/3" />
         </div>
+        <div className="skeleton h-8 w-24" />
       </div>
-    </div>
-  );
-};
-
-// ─── Role Badge ───────────────────────────────────────────────────────────────
-
-const roleMeta: Record<string, { label: string; bg: string; color: string }> = {
-  admin: { label: '⭐ Admin', bg: '#fef3c7', color: '#92400e' },
-  user:  { label: '👤 Thành viên', bg: '#ede9fe', color: '#5b21b6' },
-  system:{ label: '🤖 Hệ thống', bg: '#f0fdf4', color: '#166534' },
-};
+    ))}
+  </div>
+));
 
 const RoleBadge: React.FC<{ role: string }> = ({ role }) => {
-  const meta = roleMeta[role] ?? { label: role, bg: '#f3f4f6', color: '#374151' };
+  const isAdmin = role === 'admin';
+  const isSystem = role === 'system';
+  const Icon = isAdmin ? ShieldCheck : UserCircle;
+  const label = isSystem ? 'Hệ thống' : isAdmin ? 'Admin' : 'Thành viên';
   return (
-    <span style={{
-      display: 'inline-block', padding: '3px 10px', borderRadius: 20,
-      fontSize: 12, fontWeight: 600,
-      background: meta.bg, color: meta.color,
-    }}>{meta.label}</span>
+    <span className={`status-badge ${isAdmin ? 'admin' : 'user'}`}>
+      <Icon size={14} aria-hidden="true" />
+      {label}
+    </span>
   );
 };
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
 
 const AdminUsersPage: React.FC = () => {
   const { user: currentUser } = useAuth();
@@ -88,22 +48,9 @@ const AdminUsersPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
-
-  // Confirm modal state
-  const [confirmModal, setConfirmModal] = useState<{
-    open: boolean;
-    title: string;
-    message: string;
-    confirmLabel: string;
-    confirmClass?: string;
-    onConfirm: () => void;
-  }>({ open: false, title: '', message: '', confirmLabel: '', onConfirm: () => {} });
-
-  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+  const [pendingBlockUser, setPendingBlockUser] = useState<AdminUser | null>(null);
+  const [pendingUnblockUser, setPendingUnblockUser] = useState<AdminUser | null>(null);
+  const [pendingRoleChange, setPendingRoleChange] = useState<{ user: AdminUser; role: 'user' | 'admin' } | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -123,145 +70,89 @@ const AdminUsersPage: React.FC = () => {
       setUsers([]);
       setTotal(0);
       setTotalPages(1);
-      setError(getApiMessage(nextError, 'Khong the tai danh sach nguoi dung.'));
+      setError(getApiMessage(nextError, 'Không thể tải danh sách người dùng.'));
     } finally {
       setLoading(false);
     }
   }, [search, status, roleFilter, page]);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(() => {
+    void fetchUsers();
+  }, [fetchUsers]);
 
-  // ─── Actions ──────────────────────────────────────────────────────────────
-
-  const handleStatusUpdate = (user: AdminUser, newStatus: 'active' | 'blocked') => {
-    if (newStatus === 'blocked') {
-      const reason = window.prompt('Lý do khóa tài khoản:');
-      if (reason === null) return; // cancelled
-      setConfirmModal({
-        open: true,
-        title: 'Xác nhận khóa tài khoản',
-        message: `Bạn có chắc muốn khóa tài khoản @${user.username || user.email}?`,
-        confirmLabel: 'Khóa tài khoản',
-        confirmClass: 'btn-danger',
-        onConfirm: async () => {
-          setConfirmModal(m => ({ ...m, open: false }));
-          setActionLoading(user.id);
-          try {
-            await adminService.updateUserStatus(user.id, 'blocked', reason);
-            showToast(`Đã khóa tài khoản @${user.username || user.email}`);
-            fetchUsers();
-          } catch {
-            showToast('Có lỗi xảy ra', 'error');
-          } finally {
-            setActionLoading(null);
-          }
-        },
-      });
-    } else {
-      setConfirmModal({
-        open: true,
-        title: 'Mở khóa tài khoản',
-        message: `Bạn có chắc muốn mở khóa tài khoản @${user.username || user.email}?`,
-        confirmLabel: 'Mở khóa',
-        confirmClass: 'btn-primary',
-        onConfirm: async () => {
-          setConfirmModal(m => ({ ...m, open: false }));
-          setActionLoading(user.id);
-          try {
-            await adminService.updateUserStatus(user.id, 'active');
-            showToast(`Đã mở khóa tài khoản @${user.username || user.email}`);
-            fetchUsers();
-          } catch {
-            showToast('Có lỗi xảy ra', 'error');
-          } finally {
-            setActionLoading(null);
-          }
-        },
-      });
+  const updateUserStatus = async (user: AdminUser, nextStatus: 'active' | 'blocked', reason?: string) => {
+    setActionLoading(user.id);
+    try {
+      await adminService.updateUserStatus(user.id, nextStatus, reason);
+      toast.success(nextStatus === 'blocked' ? 'Đã khóa tài khoản.' : 'Đã mở khóa tài khoản.');
+      await fetchUsers();
+    } catch (nextError) {
+      toast.error(getApiMessage(nextError, 'Có lỗi xảy ra khi cập nhật tài khoản.'));
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  const handleRoleChange = (user: AdminUser, newRole: 'user' | 'admin') => {
+  const updateUserRole = async (user: AdminUser, nextRole: 'user' | 'admin') => {
+    setActionLoading(`${user.id}-role`);
+    try {
+      await adminService.updateUserRole(user.id, nextRole);
+      toast.success('Đã cập nhật vai trò.');
+      await fetchUsers();
+    } catch (nextError) {
+      toast.error(getApiMessage(nextError, 'Có lỗi xảy ra khi cập nhật vai trò.'));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRoleChange = (user: AdminUser, nextRole: 'user' | 'admin') => {
     if (user.id === currentUser?.id) {
-      showToast('Bạn không thể thay đổi vai trò của chính mình', 'error');
+      toast.error('Bạn không thể thay đổi vai trò của chính mình.');
       return;
     }
     if (user.role === 'system') {
-      showToast('Không thể thay đổi vai trò tài khoản hệ thống', 'error');
+      toast.error('Không thể thay đổi vai trò tài khoản hệ thống.');
       return;
     }
-
-    const roleLabel = newRole === 'admin' ? '⭐ Admin' : '👤 Thành viên';
-    setConfirmModal({
-      open: true,
-      title: `Thay đổi vai trò`,
-      message: `Bạn có chắc muốn đặt tài khoản @${user.username || user.email} thành ${roleLabel}?`,
-      confirmLabel: 'Xác nhận',
-      confirmClass: 'btn-primary',
-      onConfirm: async () => {
-        setConfirmModal(m => ({ ...m, open: false }));
-        setActionLoading(user.id + '-role');
-        try {
-          await adminService.updateUserRole(user.id, newRole);
-          showToast(`Đã cập nhật vai trò thành ${roleLabel}`);
-          fetchUsers();
-        } catch (e: any) {
-          const msg = e?.response?.data?.message || 'Có lỗi xảy ra';
-          showToast(msg, 'error');
-        } finally {
-          setActionLoading(null);
-        }
-      },
-    });
+    if (user.role === nextRole) return;
+    setPendingRoleChange({ user, role: nextRole });
   };
 
   const isSelf = (userId: string) => userId === currentUser?.id;
 
   return (
     <div>
-      {/* ── Toast ── */}
-      {toast && (
-        <div style={{
-          position: 'fixed', top: 24, right: 24, zIndex: 2000,
-          padding: '12px 20px', borderRadius: 10, fontWeight: 600, fontSize: 14,
-          background: toast.type === 'success' ? '#22c55e' : '#ef4444',
-          color: '#fff', boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          animation: 'fadeIn .2s ease',
-        }}>
-          {toast.type === 'success' ? '✅ ' : '❌ '}{toast.msg}
-        </div>
-      )}
-
-      {/* ── Confirm Modal ── */}
-      <ConfirmModal
-        open={confirmModal.open}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        confirmLabel={confirmModal.confirmLabel}
-        confirmClass={confirmModal.confirmClass}
-        onConfirm={confirmModal.onConfirm}
-        onCancel={() => setConfirmModal(m => ({ ...m, open: false }))}
-      />
-
-      {/* ── Header ── */}
       <div className="admin-page-header">
-        <h1 className="admin-page-title">👥 Quản lý người dùng</h1>
-        <p className="admin-page-subtitle">Tổng cộng {total} người dùng</p>
+        <h1 className="admin-page-title flex items-center gap-2">
+          <Users size={26} weight="bold" aria-hidden="true" />
+          Quản lý người dùng
+        </h1>
+        <p className="admin-page-subtitle">Tổng cộng {total.toLocaleString('vi-VN')} người dùng</p>
       </div>
 
       <div className="admin-table-container">
-        {/* ── Toolbar ── */}
         <div className="admin-table-toolbar" style={{ flexWrap: 'wrap', gap: 10 }}>
           <input
             className="admin-search-input"
-            placeholder="Tìm theo email, username, tên..."
+            name="admin-user-search"
+            placeholder="Tìm theo email, username, tên…"
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            autoComplete="off"
+            spellCheck={false}
           />
           <select
             className="admin-filter-select"
             value={status}
-            onChange={(e) => { setStatus(e.target.value); setPage(1); }}
+            onChange={(event) => {
+              setStatus(event.target.value);
+              setPage(1);
+            }}
+            aria-label="Lọc trạng thái người dùng"
           >
             <option value="">Tất cả trạng thái</option>
             <option value="active">Hoạt động</option>
@@ -270,7 +161,11 @@ const AdminUsersPage: React.FC = () => {
           <select
             className="admin-filter-select"
             value={roleFilter}
-            onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
+            onChange={(event) => {
+              setRoleFilter(event.target.value);
+              setPage(1);
+            }}
+            aria-label="Lọc vai trò người dùng"
           >
             <option value="">Tất cả vai trò</option>
             <option value="user">Thành viên</option>
@@ -278,15 +173,10 @@ const AdminUsersPage: React.FC = () => {
           </select>
         </div>
 
-        {/* ── Table ── */}
         {loading ? (
-          <div className="admin-loading">Đang tải...</div>
+          <AdminTableSkeleton />
         ) : error ? (
-          <AdminStateView
-            title="Khong the tai nguoi dung"
-            description={error}
-            onRetry={() => void fetchUsers()}
-          />
+          <AdminStateView title="Không thể tải người dùng" description={error} onRetry={() => void fetchUsers()} />
         ) : users.length === 0 ? (
           <div className="admin-empty">Không tìm thấy người dùng nào</div>
         ) : (
@@ -305,85 +195,54 @@ const AdminUsersPage: React.FC = () => {
             <tbody>
               {users.map((user) => (
                 <tr key={user.id} style={{ opacity: actionLoading?.startsWith(user.id) ? 0.6 : 1, transition: 'opacity .2s' }}>
-                  {/* Avatar + name */}
                   <td>
                     <div className="user-cell">
                       <img
                         src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || user.email)}&size=32&background=4150F7&color=fff`}
-                        alt="avatar"
+                        alt={user.name || user.username || user.email}
                         className="user-cell-avatar"
                       />
                       <div>
-                        <div className="user-cell-name" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          {user.name || '—'}
-                          {isSelf(user.id) && (
-                            <span style={{ fontSize: 10, background: '#dbeafe', color: '#1d4ed8', padding: '1px 6px', borderRadius: 10, fontWeight: 600 }}>Bạn</span>
-                          )}
+                        <div className="user-cell-name">
+                          {user.name || '-'}
+                          {isSelf(user.id) ? <span className="ml-2 status-badge user">Bạn</span> : null}
                         </div>
-                        <div className="user-cell-email">@{user.username || '—'}</div>
+                        <div className="user-cell-email">@{user.username || '-'}</div>
                       </div>
                     </div>
                   </td>
-
-                  {/* Email */}
-                  <td style={{ fontSize: 13, color: '#555' }}>{user.email}</td>
-
-                  {/* Role badge */}
+                  <td>{user.email}</td>
                   <td><RoleBadge role={user.role} /></td>
-
-                  {/* Status badge */}
                   <td>
-                    <span className={`status-badge ${user.status}`}>
-                      {user.status === 'active' ? 'Hoạt động' : 'Bị khóa'}
-                    </span>
+                    <span className={`status-badge ${user.status}`}>{user.status === 'active' ? 'Hoạt động' : 'Bị khóa'}</span>
                   </td>
-
-                  {/* Created at */}
-                  <td style={{ fontSize: 13, color: '#888' }}>
-                    {new Date(user.createdAt).toLocaleDateString('vi-VN')}
-                  </td>
-
-                  {/* ── Role assignment ── */}
+                  <td>{new Date(user.createdAt).toLocaleDateString('vi-VN')}</td>
                   <td>
                     {user.role === 'system' || isSelf(user.id) ? (
-                      <span style={{ fontSize: 12, color: '#bbb' }}>—</span>
+                      <span className="text-xs text-[var(--app-muted)]">-</span>
                     ) : (
                       <select
-                        disabled={actionLoading === user.id + '-role'}
+                        disabled={actionLoading === `${user.id}-role`}
                         value={user.role}
-                        onChange={(e) => handleRoleChange(user, e.target.value as 'user' | 'admin')}
-                        style={{
-                          padding: '5px 10px', borderRadius: 8,
-                          border: '1px solid #e5e7eb', background: '#fafafa',
-                          fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                          color: user.role === 'admin' ? '#92400e' : '#5b21b6',
-                        }}
+                        onChange={(event) => handleRoleChange(user, event.target.value as 'user' | 'admin')}
+                        className="admin-filter-select"
+                        aria-label={`Đổi vai trò ${user.email}`}
                       >
-                        <option value="user">👤 Thành viên</option>
-                        <option value="admin">⭐ Admin</option>
+                        <option value="user">Thành viên</option>
+                        <option value="admin">Admin</option>
                       </select>
                     )}
                   </td>
-
-                  {/* ── Block / Unblock ── */}
                   <td>
                     {isSelf(user.id) || user.role === 'system' ? (
-                      <span style={{ fontSize: 12, color: '#bbb' }}>—</span>
+                      <span className="text-xs text-[var(--app-muted)]">-</span>
                     ) : user.status === 'active' ? (
-                      <button
-                        className="admin-action-btn block"
-                        disabled={actionLoading === user.id}
-                        onClick={() => handleStatusUpdate(user, 'blocked')}
-                      >
-                        {actionLoading === user.id ? '...' : 'Khóa'}
+                      <button className="admin-action-btn block" type="button" disabled={actionLoading === user.id} onClick={() => setPendingBlockUser(user)}>
+                        {actionLoading === user.id ? 'Đang xử lý…' : 'Khóa'}
                       </button>
                     ) : (
-                      <button
-                        className="admin-action-btn unblock"
-                        disabled={actionLoading === user.id}
-                        onClick={() => handleStatusUpdate(user, 'active')}
-                      >
-                        {actionLoading === user.id ? '...' : 'Mở khóa'}
+                      <button className="admin-action-btn unblock" type="button" disabled={actionLoading === user.id} onClick={() => setPendingUnblockUser(user)}>
+                        {actionLoading === user.id ? 'Đang xử lý…' : 'Mở khóa'}
                       </button>
                     )}
                   </td>
@@ -393,17 +252,55 @@ const AdminUsersPage: React.FC = () => {
           </table>
         )}
 
-        {/* ── Pagination ── */}
         {totalPages > 1 && (
           <div className="admin-pagination">
-            <button className="admin-page-btn" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>← Trước</button>
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(p => (
-              <button key={p} className={`admin-page-btn ${p === page ? 'active' : ''}`} onClick={() => setPage(p)}>{p}</button>
+            <button className="admin-page-btn" type="button" disabled={page <= 1} onClick={() => setPage((prev) => prev - 1)}>Trước</button>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, index) => index + 1).map((nextPage) => (
+              <button key={nextPage} className={`admin-page-btn ${nextPage === page ? 'active' : ''}`} type="button" onClick={() => setPage(nextPage)}>{nextPage}</button>
             ))}
-            <button className="admin-page-btn" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>Sau →</button>
+            <button className="admin-page-btn" type="button" disabled={page >= totalPages} onClick={() => setPage((prev) => prev + 1)}>Sau</button>
           </div>
         )}
       </div>
+
+      <PromptDialog
+        open={Boolean(pendingBlockUser)}
+        title="Khóa tài khoản"
+        description="Nhập lý do khóa để người quản trị khác có thể theo dõi quyết định."
+        label="Lý do khóa"
+        placeholder="Ví dụ: Tài khoản spam hoặc vi phạm tiêu chuẩn cộng đồng…"
+        confirmLabel="Khóa tài khoản"
+        onCancel={() => setPendingBlockUser(null)}
+        onConfirm={(reason) => {
+          const user = pendingBlockUser;
+          setPendingBlockUser(null);
+          if (user) void updateUserStatus(user, 'blocked', reason);
+        }}
+      />
+      <ConfirmDialog
+        open={Boolean(pendingUnblockUser)}
+        title="Mở khóa tài khoản"
+        description={`Tài khoản ${pendingUnblockUser?.email || ''} sẽ hoạt động trở lại.`}
+        confirmLabel="Mở khóa"
+        onCancel={() => setPendingUnblockUser(null)}
+        onConfirm={() => {
+          const user = pendingUnblockUser;
+          setPendingUnblockUser(null);
+          if (user) void updateUserStatus(user, 'active');
+        }}
+      />
+      <ConfirmDialog
+        open={Boolean(pendingRoleChange)}
+        title="Thay đổi vai trò"
+        description={`Đặt tài khoản ${pendingRoleChange?.user.email || ''} thành ${pendingRoleChange?.role === 'admin' ? 'Admin' : 'Thành viên'}?`}
+        confirmLabel="Xác nhận"
+        onCancel={() => setPendingRoleChange(null)}
+        onConfirm={() => {
+          const next = pendingRoleChange;
+          setPendingRoleChange(null);
+          if (next) void updateUserRole(next.user, next.role);
+        }}
+      />
     </div>
   );
 };

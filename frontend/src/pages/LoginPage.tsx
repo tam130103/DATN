@@ -6,7 +6,14 @@ import { AuthLayout } from '../components/layout/AuthLayout';
 
 declare global {
   interface Window {
-    google: any;
+    google: {
+      accounts: {
+        id: {
+          initialize: (config: { client_id: string; callback: (response: { credential: string }) => Promise<void>; auto_select: boolean }) => void;
+          renderButton: (element: HTMLElement | null, options: Record<string, string | number>) => void;
+        };
+      };
+    };
   }
 }
 
@@ -23,7 +30,7 @@ const LoginPage: React.FC = () => {
       if (!window.google) return;
       window.google.accounts.id.initialize({
         client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID',
-        callback: async (response: any) => {
+        callback: async (response) => {
           setIsGoogleLoading(true);
           try {
             await loginWithGoogle(response.credential);
@@ -47,7 +54,7 @@ const LoginPage: React.FC = () => {
     const existingScript = document.querySelector('script[data-google-gsi="true"]');
     if (existingScript) {
       initializeGoogleButton();
-      return;
+      return undefined;
     }
 
     const script = document.createElement('script');
@@ -57,6 +64,7 @@ const LoginPage: React.FC = () => {
     script.dataset.googleGsi = 'true';
     script.onload = initializeGoogleButton;
     document.body.appendChild(script);
+    return undefined;
   }, [loginWithGoogle, navigate]);
 
   if (!isLoading && isAuthenticated) return <Navigate to="/feed" replace />;
@@ -72,8 +80,15 @@ const LoginPage: React.FC = () => {
     try {
       await login(email, password);
       navigate('/feed');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Đăng nhập thất bại.');
+    } catch (error: unknown) {
+      const message =
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
+          ? (error as { response: { data: { message: string } } }).response.data.message
+          : 'Đăng nhập thất bại.';
+      toast.error(message);
     } finally {
       setIsLoggingIn(false);
     }
@@ -89,38 +104,38 @@ const LoginPage: React.FC = () => {
       footerLinkTo="/register"
     >
       <form onSubmit={handleLogin} className="space-y-3" data-testid="login-form">
-        <div className="space-y-1.5">
+        <div className="float-in stagger-1 space-y-1.5 opacity-0">
           <label htmlFor="login-email" className="text-xs font-medium text-[var(--app-muted)]">
             Số điện thoại, tên người dùng hoặc email
           </label>
           <input
             id="login-email"
+            name="username"
             type="text"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(event) => setEmail(event.target.value)}
             placeholder="Số điện thoại, tên người dùng hoặc email"
             data-testid="login-email"
             autoComplete="username"
-            className="min-h-[44px] w-full rounded-md border border-[var(--app-border)] bg-[var(--app-bg-soft)] px-3 text-sm text-[var(--app-text)] outline-none transition focus:border-[var(--app-border-strong)]"
+            spellCheck={false}
+            className="min-h-[38px] w-full border-0 border-b border-[var(--app-border)] bg-white px-3 pb-[1px] pt-[18px] text-[15px] font-medium text-[var(--app-text)] transition-colors placeholder:text-[var(--app-muted)] focus:border-b-2 focus:border-[var(--app-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
           />
         </div>
 
-        <div className="space-y-1.5">
-          <label
-            htmlFor="login-password"
-            className="text-xs font-medium text-[var(--app-muted)]"
-          >
+        <div className="float-in stagger-2 space-y-1.5 opacity-0">
+          <label htmlFor="login-password" className="text-xs font-medium text-[var(--app-muted)]">
             Mật khẩu
           </label>
           <input
             id="login-password"
+            name="password"
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(event) => setPassword(event.target.value)}
             placeholder="Mật khẩu"
             data-testid="login-password"
             autoComplete="current-password"
-            className="min-h-[44px] w-full rounded-md border border-[var(--app-border)] bg-[var(--app-bg-soft)] px-3 text-sm text-[var(--app-text)] outline-none transition focus:border-[var(--app-border-strong)]"
+            className="min-h-[38px] w-full border-0 border-b border-[var(--app-border)] bg-white px-3 pb-[1px] pt-[18px] text-[15px] font-medium text-[var(--app-text)] transition-colors placeholder:text-[var(--app-muted)] focus:border-b-2 focus:border-[var(--app-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
           />
         </div>
 
@@ -128,9 +143,9 @@ const LoginPage: React.FC = () => {
           type="submit"
           disabled={isLoggingIn || isLoading || !email || !password}
           data-testid="login-submit"
-          className="min-h-[44px] w-full rounded-md bg-[var(--app-primary)] px-5 text-sm font-semibold text-white transition hover:bg-[var(--app-primary-strong)] disabled:opacity-50"
+          className="btn-tactile spring-ease float-in stagger-3 min-h-[44px] w-full rounded-md bg-[var(--app-primary)] px-5 text-sm font-semibold text-white opacity-0 hover:bg-[var(--app-primary-strong)] disabled:bg-[var(--app-border)] disabled:text-[var(--app-muted)]"
         >
-          {isLoggingIn ? 'Đang đăng nhập...' : 'Đăng nhập'}
+          {isLoggingIn ? <span className="skeleton inline-block h-4 w-28 bg-white/30 align-middle" /> : 'Đăng nhập'}
         </button>
       </form>
 
@@ -145,16 +160,14 @@ const LoginPage: React.FC = () => {
       <div className="rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-5">
         <div id="google-signin-button" className="flex justify-center" />
         {isGoogleLoading ? (
-          <p className="mt-3 text-center text-sm text-[var(--app-muted)]">
-            Đang đăng nhập bằng Google...
-          </p>
+          <p className="mt-3 text-center text-sm text-[var(--app-muted)]">Đang đăng nhập bằng Google…</p>
         ) : null}
       </div>
 
       <div className="mt-5 text-center">
         <Link
           to="#"
-          className="text-xs font-semibold text-[var(--app-primary)] transition hover:text-[var(--app-primary-strong)]"
+          className="text-xs font-semibold text-[var(--app-primary)] transition-colors hover:text-[var(--app-primary-strong)]"
         >
           Quên mật khẩu?
         </Link>

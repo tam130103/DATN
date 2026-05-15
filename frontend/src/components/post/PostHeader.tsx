@@ -1,5 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import {
+  DotsThree,
+  PencilSimple,
+  PushPin,
+  Trash,
+  WarningCircle,
+} from '@phosphor-icons/react';
 import { Avatar } from '../common/Avatar';
 import { User } from '../../types';
 
@@ -31,14 +38,6 @@ function timeAgo(date: string | Date): string {
   return `${weeks}w`;
 }
 
-const MoreIcon = () => (
-  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-    <circle cx="12" cy="12" r="1.5" />
-    <circle cx="6" cy="12" r="1.5" />
-    <circle cx="18" cy="12" r="1.5" />
-  </svg>
-);
-
 export const PostHeader: React.FC<PostHeaderProps> = ({
   user,
   createdAt,
@@ -58,23 +57,23 @@ export const PostHeader: React.FC<PostHeaderProps> = ({
   const avatarUrl = user?.avatarUrl;
   const name = user?.name;
   const username = user?.username;
+  const iconBoxClass =
+    'flex h-10 w-10 items-center justify-center rounded-full bg-[var(--app-bg-soft)] text-[var(--app-text)]';
 
   return (
     <>
-      {isPinned && isOwner && (
-        <div className="flex items-center gap-1 px-3 pt-2.5 text-[11px] font-semibold text-[var(--app-muted)]">
-          📌 Đã ghim
+      {isPinned && isOwner ? (
+        <div className="flex items-center gap-1.5 px-3 pt-2.5 text-[11px] font-semibold text-[var(--app-muted)]">
+          <PushPin size={14} weight="fill" aria-hidden="true" />
+          <span>Đã ghim</span>
         </div>
-      )}
+      ) : null}
       <div className="flex items-center justify-between gap-2 px-3 py-2">
-        <Link to={profilePath} className="flex min-w-0 items-center gap-2">
-          <Avatar
-            src={avatarUrl}
-            name={name}
-            username={username}
-            size="sm"
-            ring
-          />
+        <Link
+          to={profilePath}
+          className="flex min-w-0 items-center gap-2 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
+        >
+          <Avatar src={avatarUrl} name={name} username={username} size="sm" ring />
           <div className="min-w-0 leading-tight">
             <span className="text-sm font-semibold text-[var(--app-text)]">{displayName}</span>
             <span className="mx-1 text-xs text-[var(--app-muted)]">·</span>
@@ -90,56 +89,60 @@ export const PostHeader: React.FC<PostHeaderProps> = ({
             type="button"
             onClick={() => setShowOptionsDropdown(!showOptionsDropdown)}
             disabled={isDeleting}
-            className="interactive-icon inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)] disabled:opacity-50"
-            title="Tùy chọn bài viết"
+            className="interactive-icon spring-ease inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-text)] hover:bg-[var(--app-bg-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)] disabled:opacity-50"
+            aria-label="Tùy chọn bài viết"
           >
-            <MoreIcon />
+            <DotsThree size={22} weight="bold" aria-hidden="true" />
           </button>
 
-          {showOptionsDropdown && (
+          {showOptionsDropdown ? (
             <>
-              <div
-                className="fixed inset-0 z-[60]"
-                onClick={(e) => {
-                  e.stopPropagation();
+              <button
+                type="button"
+                aria-label="Đóng menu tùy chọn"
+                className="fixed inset-0 z-[60] cursor-default"
+                onClick={(event) => {
+                  event.stopPropagation();
                   setShowOptionsDropdown(false);
                 }}
               />
-              <div className="absolute right-0 top-full z-[70] mt-1 w-[320px] rounded-xl bg-[var(--app-bg)] p-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] ring-1 ring-gray-200">
+              <div className="absolute right-0 top-full z-[70] mt-1 w-[320px] rounded-xl bg-[var(--app-bg)] p-3 shadow-[0_8px_30px_rgba(28,30,33,0.12)] ring-1 ring-[var(--app-border)]">
                 {isOwner ? (
                   <>
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={(event) => {
+                        event.stopPropagation();
                         setShowOptionsDropdown(false);
                         onTogglePin?.();
                       }}
-                      className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
+                      className="spring-ease flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left hover:bg-[var(--app-bg-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
                     >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-800">
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                        </svg>
+                      <div className={iconBoxClass}>
+                        <PushPin size={20} weight={isPinned ? 'fill' : 'regular'} aria-hidden="true" />
                       </div>
                       <div>
-                        <div className="font-semibold text-[var(--app-text)]">{isPinned ? 'Bỏ ghim bài viết' : 'Ghim bài viết'}</div>
-                        <div className="text-xs text-[var(--app-muted)]">{isPinned ? 'Gỡ bài này khỏi màn hình Profile của bạn.' : 'Đưa bài này lên đầu trang cá nhân của bạn.'}</div>
+                        <div className="font-semibold text-[var(--app-text)]">
+                          {isPinned ? 'Bỏ ghim bài viết' : 'Ghim bài viết'}
+                        </div>
+                        <div className="text-xs text-[var(--app-muted)]">
+                          {isPinned
+                            ? 'Gỡ bài này khỏi đầu trang cá nhân của bạn.'
+                            : 'Đưa bài này lên đầu trang cá nhân của bạn.'}
+                        </div>
                       </div>
                     </button>
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={(event) => {
+                        event.stopPropagation();
                         setShowOptionsDropdown(false);
                         onEdit?.();
                       }}
-                      className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
+                      className="spring-ease flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left hover:bg-[var(--app-bg-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
                     >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-800">
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
+                      <div className={iconBoxClass}>
+                        <PencilSimple size={20} aria-hidden="true" />
                       </div>
                       <div>
                         <div className="font-semibold text-[var(--app-text)]">Chỉnh sửa bài viết</div>
@@ -148,50 +151,48 @@ export const PostHeader: React.FC<PostHeaderProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={(event) => {
+                        event.stopPropagation();
                         setShowOptionsDropdown(false);
                         onDelete?.();
                       }}
-                      className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
+                      className="spring-ease flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left hover:bg-[var(--app-bg-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
                     >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-800">
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                      <div className={iconBoxClass}>
+                        <Trash size={20} aria-hidden="true" />
                       </div>
                       <div>
-                        <div className="font-semibold text-[var(--app-text)] text-red-600">Xóa bài viết</div>
-                        <div className="text-xs text-[var(--app-muted)]">Gỡ bài viết này khỏi dòng thời gian.</div>
+                        <div className="font-semibold text-[var(--app-danger)]">Xóa bài viết</div>
+                        <div className="text-xs text-[var(--app-muted)]">
+                          Gỡ bài viết này khỏi dòng thời gian.
+                        </div>
                       </div>
                     </button>
                   </>
                 ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowOptionsDropdown(false);
-                        onReport?.();
-                      }}
-                      className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
-                    >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-800">
-                        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
-                        </svg>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setShowOptionsDropdown(false);
+                      onReport?.();
+                    }}
+                    className="spring-ease flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left hover:bg-[var(--app-bg-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
+                  >
+                    <div className={iconBoxClass}>
+                      <WarningCircle size={20} aria-hidden="true" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-[var(--app-text)]">Báo cáo bài viết</div>
+                      <div className="text-xs text-[var(--app-muted)]">
+                        Chúng tôi sẽ không cho {displayName} biết ai đã báo cáo.
                       </div>
-                      <div>
-                        <div className="font-semibold text-[var(--app-text)]">Báo cáo bài viết</div>
-                        <div className="text-xs text-[var(--app-muted)]">Chúng tôi sẽ không cho {displayName} biết ai đã báo cáo.</div>
-                      </div>
-                    </button>
-                  </>
+                    </div>
+                  </button>
                 )}
               </div>
             </>
-          )}
+          ) : null}
         </div>
       </div>
     </>

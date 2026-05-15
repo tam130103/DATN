@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { DotsThree, Heart, PencilSimple, Trash, WarningCircle } from '@phosphor-icons/react';
 import { Comment } from '../types';
 import { Avatar } from './common/Avatar';
 import { CommentContent } from './common/CommentContent';
+import { ConfirmDialog } from './common/ConfirmDialog';
 import { engagementService } from '../services/engagement.service';
 import { userService } from '../services/user.service';
 import { formatTimeAgo } from '../utils/formatTime';
@@ -21,20 +23,6 @@ interface CommentItemProps {
   expandParentId?: string;
 }
 
-const DotsIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={className} fill="currentColor">
-    <circle cx="5" cy="12" r="1.6" />
-    <circle cx="12" cy="12" r="1.6" />
-    <circle cx="19" cy="12" r="1.6" />
-  </svg>
-);
-
-const HeartSmallIcon = ({ filled, className }: { filled?: boolean; className?: string }) => (
-  <svg viewBox="0 0 24 24" className={className} fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
-    <path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.6l-1-1a5.5 5.5 0 00-7.8 7.8l1 1 7.8 7.8 7.8-7.8 1-1a5.5 5.5 0 000-7.8z" />
-  </svg>
-);
-
 export const CommentItem: React.FC<CommentItemProps> = ({
   comment,
   currentUserId,
@@ -48,18 +36,15 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   expandParentId,
 }) => {
   const [showOptionsDropdown, setShowOptionsDropdown] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [localContent, setLocalContent] = useState(comment.content);
   const [isFollowing, setIsFollowing] = useState(!!comment.user?.isFollowing);
-
-  // Like state
   const [liked, setLiked] = useState(!!comment.liked);
   const [likesCount, setLikesCount] = useState(comment.likesCount || 0);
-
-  // Replies state
   const [showReplies, setShowReplies] = useState(false);
   const [replies, setReplies] = useState<Comment[]>([]);
   const [isLoadingReplies, setIsLoadingReplies] = useState(false);
@@ -82,60 +67,58 @@ export const CommentItem: React.FC<CommentItemProps> = ({
     }
   }, [comment.id, showReplies]);
 
-  // Auto-expand replies if this is the target parent
   React.useEffect(() => {
     if (expandParentId === comment.id && localRepliesCount > 0 && !showReplies && !isLoadingReplies) {
-      loadReplies();
+      void loadReplies();
     }
   }, [expandParentId, comment.id, localRepliesCount, showReplies, isLoadingReplies, loadReplies]);
 
-  // Auto-highlight if this is the target comment
   React.useEffect(() => {
-    if (highlightCommentId === comment.id) {
-      let cancelled = false;
-      let removeTimer: ReturnType<typeof setTimeout>;
+    if (highlightCommentId !== comment.id) return;
 
+    let cancelled = false;
+    let removeTimer: ReturnType<typeof setTimeout> | undefined;
+
+    requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
+        if (cancelled) return;
+        const element = document.getElementById(`comment-${comment.id}`);
+        if (!element) return;
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        removeTimer = setTimeout(() => {
           if (cancelled) return;
-          const el = document.getElementById(`comment-${comment.id}`);
-          if (!el) return;
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          removeTimer = setTimeout(() => {
-            if (cancelled) return;
-            el.classList.add('comment-highlight');
-            setTimeout(() => { el.classList.remove('comment-highlight'); }, 5500);
-          }, 700);
-        });
+          element.classList.add('comment-highlight');
+          window.setTimeout(() => {
+            element.classList.remove('comment-highlight');
+          }, 5500);
+        }, 700);
       });
+    });
 
-      return () => {
-        cancelled = true;
-        clearTimeout(removeTimer);
-      };
-    }
+    return () => {
+      cancelled = true;
+      if (removeTimer) clearTimeout(removeTimer);
+    };
   }, [highlightCommentId, comment.id]);
 
   React.useEffect(() => {
-    if (comment.replies && comment.replies.length > 0) {
-      setReplies((prev) => {
-        const incomingIds = new Set(comment.replies!.map((r) => r.id));
-        // Remove stale optimistic (temp-) entries that were replaced by real ones
-        const cleaned = prev.filter((p) => !p.id.startsWith('temp-') || incomingIds.has(p.id));
-        // Add only truly new entries
-        const toAdd = comment.replies!.filter((r) => !cleaned.some((p) => p.id === r.id));
-        if (toAdd.length === 0 && cleaned.length === prev.length) return prev;
-        return [...cleaned, ...toAdd];
-      });
-      if (!showReplies) setShowReplies(true);
-      if (localRepliesCount < (comment.repliesCount || 0)) {
-        setLocalRepliesCount(comment.repliesCount!);
-      }
+    if (!comment.replies || comment.replies.length === 0) return;
+
+    setReplies((prev) => {
+      const incomingIds = new Set(comment.replies!.map((reply) => reply.id));
+      const cleaned = prev.filter((reply) => !reply.id.startsWith('temp-') || incomingIds.has(reply.id));
+      const toAdd = comment.replies!.filter((reply) => !cleaned.some((item) => item.id === reply.id));
+      if (toAdd.length === 0 && cleaned.length === prev.length) return prev;
+      return [...cleaned, ...toAdd];
+    });
+    if (!showReplies) setShowReplies(true);
+    if (localRepliesCount < (comment.repliesCount || 0)) {
+      setLocalRepliesCount(comment.repliesCount!);
     }
   }, [comment.replies, comment.repliesCount, showReplies, localRepliesCount]);
 
   const isOwner = currentUserId === comment.userId;
-  const authorLabel = comment.user?.username || comment.user?.name || 'Thành viên';
+  const authorLabel = comment.user?.username || comment.user?.name || 'ThÃ nh viÃªn';
   const profileLink = `/${comment.user?.username || comment.user?.id}`;
 
   const handleNavigateClick = () => {
@@ -157,30 +140,13 @@ export const CommentItem: React.FC<CommentItemProps> = ({
     } catch {
       setLiked(prevLiked);
       setLikesCount(prevCount);
-      toast.error('Không thể cập nhật lượt thích.');
-    }
-  };
-
-  const handleLoadReplies = async () => {
-    if (showReplies) {
-      setShowReplies(false);
-      return;
-    }
-    setIsLoadingReplies(true);
-    try {
-      const data = await engagementService.getCommentReplies(comment.id);
-      setReplies(data);
-      setShowReplies(true);
-    } catch {
-      toast.error('Không thể tải phản hồi.');
-    } finally {
-      setIsLoadingReplies(false);
+      toast.error('KhÃ´ng thá»ƒ cáº­p nháº­t lÆ°á»£t thÃ­ch.');
     }
   };
 
   const handleSaveEdit = async () => {
     if (!editContent.trim()) {
-      toast.error('Bình luận không được để trống.');
+      toast.error('BÃ¬nh luáº­n khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng.');
       return;
     }
     if (editContent.trim() === localContent) {
@@ -193,24 +159,22 @@ export const CommentItem: React.FC<CommentItemProps> = ({
       const updated = await engagementService.updateComment(comment.id, editContent);
       setLocalContent(updated.content);
       setIsEditing(false);
-      toast.success('Đã cập nhật bình luận.');
+      toast.success('ÄÃ£ cáº­p nháº­t bÃ¬nh luáº­n.');
     } catch {
-      toast.error('Không thể sửa bình luận.');
+      toast.error('KhÃ´ng thá»ƒ sá»­a bÃ¬nh luáº­n.');
     } finally {
       setIsSavingEdit(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Xóa bình luận này?')) return;
-
     setIsDeleting(true);
     try {
       await engagementService.deleteComment(comment.id);
-      toast.success('Đã xóa bình luận.');
+      toast.success('ÄÃ£ xÃ³a bÃ¬nh luáº­n.');
       onDeleted(comment.id);
     } catch {
-      toast.error('Không thể xóa bình luận.');
+      toast.error('KhÃ´ng thá»ƒ xÃ³a bÃ¬nh luáº­n.');
       setIsDeleting(false);
     }
   };
@@ -223,27 +187,33 @@ export const CommentItem: React.FC<CommentItemProps> = ({
     try {
       if (previouslyFollowing) {
         await userService.unfollowUser(comment.user.id);
-        toast.success(`Đã bỏ theo dõi ${authorLabel}`);
+        toast.success(`ÄÃ£ bá» theo dÃµi ${authorLabel}`);
       } else {
         await userService.followUser(comment.user.id);
-        toast.success(`Đã theo dõi ${authorLabel}`);
+        toast.success(`ÄÃ£ theo dÃµi ${authorLabel}`);
       }
     } catch {
       setIsFollowing(previouslyFollowing);
-      toast.error('Có lỗi xảy ra, vui lòng thử lại.');
+      toast.error('CÃ³ lá»—i xáº£y ra, vui lÃ²ng thá»­ láº¡i.');
     }
   };
 
   const handleReplyDeleted = (replyId: string) => {
-    setReplies(prev => prev.filter(r => r.id !== replyId));
-    setLocalRepliesCount(prev => Math.max(0, prev - 1));
+    setReplies((prev) => prev.filter((reply) => reply.id !== replyId));
+    setLocalRepliesCount((prev) => Math.max(0, prev - 1));
   };
 
   return (
     <div>
-      <div id={`comment-${comment.id}`} className="group relative flex items-start gap-3 rounded-lg p-2 transition hover:bg-[var(--app-bg-soft)]">
-        {/* Avatar with profile link */}
-        <Link to={profileLink} onClick={handleNavigateClick} className="shrink-0">
+      <div
+        id={`comment-${comment.id}`}
+        className="group relative flex items-start gap-3 rounded-lg p-2 spring-ease hover:bg-[var(--app-bg-soft)]"
+      >
+        <Link
+          to={profileLink}
+          onClick={handleNavigateClick}
+          className="shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
+        >
           <Avatar
             src={comment.user?.avatarUrl}
             name={comment.user?.name}
@@ -251,188 +221,199 @@ export const CommentItem: React.FC<CommentItemProps> = ({
             size="sm"
           />
         </Link>
-        
+
         <div className="min-w-0 flex-1 text-sm leading-6 text-[var(--app-text)]">
-          <Link to={profileLink} onClick={handleNavigateClick} className="mr-2 font-semibold text-[var(--app-text)] hover:underline">
+          <Link
+            to={profileLink}
+            onClick={handleNavigateClick}
+            className="mr-2 rounded-sm font-semibold text-[var(--app-text)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
+          >
             {authorLabel}
           </Link>
-          
+
           {isEditing ? (
             <div className="mt-1">
               <textarea
                 autoFocus
-                className="w-full rounded-md border border-[var(--app-border)] bg-transparent p-2 text-sm text-[var(--app-text)] focus:border-[var(--app-primary)] focus:outline-none"
+                className="w-full rounded-md border border-[var(--app-border)] bg-transparent p-2 text-sm text-[var(--app-text)] focus:border-[var(--app-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
                 rows={2}
                 value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
+                onChange={(event) => setEditContent(event.target.value)}
                 disabled={isSavingEdit || isDeleting}
+                name="comment-edit"
+                spellCheck={false}
               />
               <div className="mt-1 flex justify-end gap-2">
                 <button
                   type="button"
-                  className="rounded-md px-2 py-1 text-xs font-semibold text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]"
+                  className="rounded-md px-2 py-1 text-xs font-semibold text-[var(--app-text)] hover:bg-[var(--app-bg-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
                   onClick={() => setIsEditing(false)}
                   disabled={isSavingEdit || isDeleting}
                 >
-                  Hủy
+                  Há»§y
                 </button>
                 <button
                   type="button"
-                  className="rounded-md bg-[var(--app-primary)] px-2 py-1 text-xs font-semibold text-white hover:bg-[var(--app-primary-strong)] disabled:opacity-50"
+                  className="rounded-md bg-[var(--app-primary)] px-2 py-1 text-xs font-semibold text-white hover:bg-[var(--app-primary-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)] disabled:opacity-50"
                   onClick={handleSaveEdit}
                   disabled={isSavingEdit || isDeleting}
                 >
-                  {isSavingEdit ? 'Đang lưu...' : 'Lưu lại'}
+                  {isSavingEdit ? 'Äang lÆ°uâ€¦' : 'LÆ°u láº¡i'}
                 </button>
               </div>
             </div>
           ) : (
             <>
               <span className="whitespace-pre-wrap">
-                {comment.replyToUser && (
+                {comment.replyToUser ? (
                   <Link
                     to={`/${encodeURIComponent(comment.replyToUser.username || comment.replyToUser.id)}`}
                     onClick={handleNavigateClick}
-                    className="font-semibold text-[var(--app-primary)] hover:underline mr-1"
+                    className="mr-1 font-semibold text-[var(--app-primary)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
                   >
                     @{comment.replyToUser.username || comment.replyToUser.name}
                   </Link>
-                )}
+                ) : null}
                 <CommentContent content={localContent} onNavigate={handleNavigateClick} />
               </span>
-              {/* Action buttons row */}
               <div className="mt-1 flex items-center gap-3 text-xs font-semibold text-[var(--app-muted)]">
                 <span>{formatTimeAgo(comment.createdAt)}</span>
-                {likesCount > 0 && (
-                  <span>{likesCount} lượt thích</span>
-                )}
-                {onReplyClick && (
+                {likesCount > 0 ? <span>{likesCount} lÆ°á»£t thÃ­ch</span> : null}
+                {onReplyClick ? (
                   <button
                     type="button"
                     onClick={() => onReplyClick(comment)}
-                    className="hover:text-[var(--app-text)] transition"
+                    className="spring-ease hover:text-[var(--app-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
                   >
-                    Trả lời
+                    Tráº£ lá»i
                   </button>
-                )}
+                ) : null}
               </div>
             </>
           )}
         </div>
 
-        {/* Like button - always visible */}
-        {!isEditing && (
-          <div className="flex shrink-0 flex-col items-center gap-0.5 mt-2">
+        {!isEditing ? (
+          <div className="mt-2 flex shrink-0 flex-col items-center gap-0.5">
             <button
               type="button"
               onClick={handleLikeToggle}
-              className={`rounded-full p-1 transition ${liked ? 'text-rose-500' : 'text-[var(--app-muted)] hover:text-rose-400'}`}
-              aria-label={liked ? 'Bỏ thích bình luận' : 'Thích bình luận'}
+              className={`rounded-full p-1 spring-ease focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)] ${
+                liked ? 'text-[var(--app-danger)]' : 'text-[var(--app-muted)] hover:text-[var(--app-danger)]'
+              }`}
+              aria-label={liked ? 'Bá» thÃ­ch bÃ¬nh luáº­n' : 'ThÃ­ch bÃ¬nh luáº­n'}
             >
-              <HeartSmallIcon filled={liked} className="h-3.5 w-3.5" />
+              <Heart size={16} weight={liked ? 'fill' : 'regular'} aria-hidden="true" />
             </button>
           </div>
-        )}
+        ) : null}
 
-        {/* Options dropdown */}
-        {!isEditing && (
-          <div className="relative flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100">
+        {!isEditing ? (
+          <div className="relative flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
+              onClick={(event) => {
+                event.stopPropagation();
                 setShowOptionsDropdown(!showOptionsDropdown);
               }}
               disabled={isDeleting}
-              className="rounded-full p-1 text-[var(--app-muted)] transition hover:bg-[var(--app-surface)] hover:text-[var(--app-text)] disabled:opacity-50"
-              aria-label="Tùy chọn bình luận"
+              className="rounded-full p-1 text-[var(--app-muted)] spring-ease hover:bg-[var(--app-surface)] hover:text-[var(--app-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)] disabled:opacity-50"
+              aria-label="TÃ¹y chá»n bÃ¬nh luáº­n"
             >
-              <DotsIcon className="h-4 w-4" />
+              <DotsThree size={18} weight="bold" aria-hidden="true" />
             </button>
 
-            {showOptionsDropdown && (
+            {showOptionsDropdown ? (
               <>
-                <div
-                  className="fixed inset-0 z-[60]"
-                  onClick={(e) => {
-                    e.stopPropagation();
+                <button
+                  type="button"
+                  aria-label="ÄÃ³ng menu bÃ¬nh luáº­n"
+                  className="fixed inset-0 z-[60] cursor-default"
+                  onClick={(event) => {
+                    event.stopPropagation();
                     setShowOptionsDropdown(false);
                   }}
                 />
-                <div className="absolute right-0 top-full mt-1 z-[70] w-[180px] rounded-xl bg-[var(--app-bg)] py-1 shadow-lg ring-1 ring-[var(--app-border)]">
+                <div className="absolute right-0 top-full z-[70] mt-1 w-[190px] rounded-xl bg-[var(--app-bg)] py-1 shadow-lg ring-1 ring-[var(--app-border)]">
                   {isOwner ? (
                     <>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
                           setShowOptionsDropdown(false);
                           setIsEditing(true);
                           setEditContent(localContent);
                         }}
-                        className="w-full px-4 py-2 text-left text-sm font-medium text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]"
+                        className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm font-medium text-[var(--app-text)] hover:bg-[var(--app-bg-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
                       >
-                        Chỉnh sửa
+                        <PencilSimple size={16} aria-hidden="true" />
+                        Chá»‰nh sá»­a
                       </button>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
                           setShowOptionsDropdown(false);
-                          handleDelete();
+                          setIsDeleteOpen(true);
                         }}
-                        className="w-full px-4 py-2 text-left text-sm font-medium text-red-500 hover:bg-[var(--app-bg-soft)]"
+                        className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm font-medium text-[var(--app-danger)] hover:bg-[var(--app-bg-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
                       >
-                        Xóa
+                        <Trash size={16} aria-hidden="true" />
+                        XÃ³a
                       </button>
                     </>
                   ) : (
                     <>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
                           setShowOptionsDropdown(false);
-                          handleToggleFollow();
+                          void handleToggleFollow();
                         }}
-                        className="w-full px-4 py-2 text-left text-sm font-medium text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]"
+                        className="w-full px-4 py-2 text-left text-sm font-medium text-[var(--app-text)] hover:bg-[var(--app-bg-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
                       >
-                        {isFollowing ? `Bỏ theo dõi ${authorLabel}` : `Theo dõi ${authorLabel}`}
+                        {isFollowing ? `Bá» theo dÃµi ${authorLabel}` : `Theo dÃµi ${authorLabel}`}
                       </button>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
                           setShowOptionsDropdown(false);
                           onReport(comment.id);
                         }}
-                        className="w-full px-4 py-2 text-left text-sm font-medium text-orange-500 hover:bg-[var(--app-bg-soft)]"
+                        className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm font-medium text-[var(--app-warning)] hover:bg-[var(--app-bg-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
                       >
-                        Báo cáo
+                        <WarningCircle size={16} aria-hidden="true" />
+                        BÃ¡o cÃ¡o
                       </button>
                     </>
                   )}
                 </div>
               </>
-            )}
+            ) : null}
           </div>
-        )}
+        ) : null}
       </div>
 
-      {/* Replies section - only for root comments (depth === 0) */}
-      {depth === 0 && localRepliesCount > 0 && (
+      {depth === 0 && localRepliesCount > 0 ? (
         <div className="pl-10">
           <button
             type="button"
-            onClick={handleLoadReplies}
+            onClick={loadReplies}
             disabled={isLoadingReplies}
-            className="mb-1 flex items-center gap-2 px-2 py-1 text-xs font-semibold text-[var(--app-muted)] transition hover:text-[var(--app-text)]"
+            className="mb-1 flex items-center gap-2 px-2 py-1 text-xs font-semibold text-[var(--app-muted)] spring-ease hover:text-[var(--app-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
           >
             <span className="inline-block w-6 border-t border-[var(--app-muted)]" />
             {isLoadingReplies
-              ? 'Đang tải...'
+              ? 'Äang táº£iâ€¦'
               : showReplies
-                ? 'Ẩn phản hồi'
-                : `Xem ${localRepliesCount} phản hồi`}
+                ? 'áº¨n pháº£n há»“i'
+                : `Xem ${localRepliesCount} pháº£n há»“i`}
           </button>
 
-          {showReplies && (
+          {showReplies ? (
             <div className="space-y-0.5">
               {replies.map((reply) => (
                 <CommentItem
@@ -450,9 +431,20 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                 />
               ))}
             </div>
-          )}
+          ) : null}
         </div>
-      )}
+      ) : null}
+
+      <ConfirmDialog
+        open={isDeleteOpen}
+        title="XÃ³a bÃ¬nh luáº­n?"
+        description="BÃ¬nh luáº­n nÃ y sáº½ bá»‹ gá»¡ khá»i bÃ i viáº¿t. HÃ nh Ä‘á»™ng nÃ y khÃ´ng thá»ƒ hoÃ n tÃ¡c."
+        confirmLabel="XÃ³a bÃ¬nh luáº­n"
+        variant="danger"
+        isLoading={isDeleting}
+        onCancel={() => setIsDeleteOpen(false)}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 };

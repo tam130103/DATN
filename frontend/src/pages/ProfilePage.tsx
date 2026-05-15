@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { PushPin } from '@phosphor-icons/react';
 import { AppShell } from '../components/layout/AppShell';
 import { Avatar } from '../components/common/Avatar';
 import { PostLightbox } from '../components/PostLightbox';
@@ -161,7 +162,7 @@ const FollowListModal: React.FC<FollowListModalProps> = ({
       onClick={onClose}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/65" />
+      <div className="absolute inset-0 bg-[rgba(28,30,33,0.72)]" />
 
       {/* Modal */}
       <div
@@ -176,6 +177,7 @@ const FollowListModal: React.FC<FollowListModalProps> = ({
             type="button"
             onClick={onClose}
             className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"
+            aria-label="Đóng danh sách"
           >
             <CloseIcon />
           </button>
@@ -192,7 +194,10 @@ const FollowListModal: React.FC<FollowListModalProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Tìm kiếm"
-              className="flex-1 bg-transparent text-sm text-[var(--app-text)] placeholder:text-[var(--app-muted)]"
+              className="flex-1 bg-transparent text-sm text-[var(--app-text)] placeholder:text-[var(--app-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
+              name="follow-search"
+              autoComplete="off"
+              spellCheck={false}
             />
           </div>
         </div>
@@ -319,7 +324,7 @@ const ProfilePage: React.FC = () => {
     const fetchProfile = async () => {
       setIsLoading(true);
       try {
-        const data = username ? await userService.getByUsername(username) : await userService.getMe();
+        const data = username ? await userService.getByUsername(username) : currentUser;
         if (!isActive || !data) {
           setProfile(null);
           return;
@@ -349,7 +354,7 @@ const ProfilePage: React.FC = () => {
     return () => {
       isActive = false;
     };
-  }, [username, currentUser?.id]);
+  }, [username, currentUser]);
 
   useEffect(() => {
     if (!avatarFile) {
@@ -494,7 +499,7 @@ const ProfilePage: React.FC = () => {
             key={post.id}
             type="button"
             onClick={() => setActivePost(post)}
-            className="group relative aspect-square overflow-hidden bg-[var(--app-bg-soft)] text-left focus-visible:outline-none"
+            className="group relative aspect-square overflow-hidden bg-[var(--app-bg-soft)] text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
           >
             {cover?.type === 'VIDEO' ? (
               <video src={cover.url} muted playsInline preload="metadata" className="h-full w-full object-cover" />
@@ -508,24 +513,24 @@ const ProfilePage: React.FC = () => {
 
             <div className="absolute left-2 top-2 flex gap-1.5">
               {hasCarousel ? (
-                <span className="rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
+                <span className="rounded-full bg-[rgba(28,30,33,0.72)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
                   Nhiều ảnh
                 </span>
               ) : null}
               {hasVideo ? (
-                <span className="rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
+                <span className="rounded-full bg-[rgba(28,30,33,0.72)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
                   Video
                 </span>
               ) : null}
             </div>
 
             {post.isPinned && (
-              <div className="absolute right-2 top-2 text-lg leading-none drop-shadow-md">
-                📌
+              <div className="absolute right-2 top-2 rounded-full bg-[rgba(28,30,33,0.72)] p-1 text-white drop-shadow-md">
+                <PushPin size={16} weight="fill" aria-hidden="true" />
               </div>
             )}
 
-            <div className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 transition group-hover:opacity-100">
+            <div className="absolute inset-0 flex items-center justify-center bg-[rgba(28,30,33,0.45)] opacity-0 transition group-hover:opacity-100">
               <div className="flex gap-6 text-sm font-semibold text-white">
                 <span>{post.likesCount ?? 0} lượt thích</span>
                 <span>{post.commentsCount ?? 0} bình luận</span>

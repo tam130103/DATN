@@ -8,6 +8,30 @@ export default {
   theme: {
     extend: {
       colors: {
+        primary: {
+          DEFAULT: 'var(--app-primary)',
+          strong: 'var(--app-primary-strong)',
+          active: 'var(--app-active)',
+          soft: 'var(--app-primary-soft)',
+        },
+        accent: 'var(--app-accent)',
+        success: 'var(--app-success)',
+        danger: 'var(--app-danger)',
+        warning: 'var(--app-warning)',
+        surface: {
+          DEFAULT: 'var(--app-surface)',
+          muted: 'var(--app-surface-muted)',
+          bg: 'var(--app-bg)',
+        },
+        border: {
+          DEFAULT: 'var(--app-border)',
+          strong: 'var(--app-border-strong)',
+        },
+        text: {
+          DEFAULT: 'var(--app-text)',
+          muted: 'var(--app-muted)',
+          strong: 'var(--app-muted-strong)',
+        },
         app: {
           primary: 'var(--app-primary)',
           'primary-strong': 'var(--app-primary-strong)',
@@ -29,7 +53,7 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Helvetica', 'Arial', 'sans-serif'],
+        sans: ['Optimistic', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Helvetica', 'Arial', 'sans-serif'],
       },
       boxShadow: {
         app: 'var(--app-shadow)',

@@ -1,7 +1,7 @@
 /* AdminShell Styles */
 .admin-shell {
   display: flex;
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--app-bg);
   color: var(--app-text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
@@ -10,14 +10,14 @@
 /* Sidebar */
 .admin-sidebar {
   width: 250px;
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--app-surface);
   border-right: 1px solid var(--app-border);
   display: flex;
   flex-direction: column;
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
 }
 
@@ -34,16 +34,14 @@
 }
 
 .admin-logo-icon {
-  font-size: 22px;
+  color: var(--app-primary);
+  flex-shrink: 0;
 }
 
 .admin-logo-text {
   font-size: 17px;
   font-weight: 700;
-  background: linear-gradient(135deg, #4150F7, #8B95FF);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--app-primary);
 }
 
 .admin-user-info {
@@ -91,7 +89,9 @@
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  transition: all 0.15s;
+  transition-duration: 0.18s;
+  transition-property: background-color, border-color, color, transform;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
   border: none;
   background: none;
@@ -105,14 +105,25 @@
 }
 
 .admin-nav-item.active {
-  background: rgba(65, 80, 247, 0.15);
-  color: #6370FF;
+  background: var(--app-primary-soft);
+  color: var(--app-primary);
+  box-shadow: inset 3px 0 0 var(--app-primary);
 }
 
 .nav-icon {
-  font-size: 16px;
   width: 20px;
-  text-align: center;
+  flex-shrink: 0;
+}
+
+.admin-theme-row {
+  justify-content: space-between;
+  cursor: default;
+}
+
+.admin-theme-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 /* Sidebar Footer */
@@ -125,12 +136,12 @@
 }
 
 .admin-logout-btn {
-  color: #f87171;
+  color: var(--app-danger);
 }
 
 .admin-logout-btn:hover {
-  background: rgba(248, 113, 113, 0.1);
-  color: #f87171;
+  background: rgba(231, 76, 60, 0.1);
+  color: var(--app-danger);
 }
 
 /* Main Content */
@@ -143,6 +154,8 @@
 /* Common admin page styles */
 .admin-page-header {
   margin-bottom: 28px;
+  border-top: 3px solid var(--app-primary);
+  padding-top: 18px;
 }
 
 .admin-page-title {
@@ -185,6 +198,8 @@
   font-weight: 700;
   color: var(--app-text);
   line-height: 1;
+  font-family: Menlo, monospace;
+  font-variant-numeric: tabular-nums;
 }
 
 .admin-stat-label {
@@ -285,13 +300,13 @@
   letter-spacing: 0.3px;
 }
 
-.status-badge.active, .status-badge.visible { background: rgba(34,197,94,0.12); color: #4ade80; }
-.status-badge.blocked, .status-badge.hidden { background: rgba(251,146,60,0.12); color: #fb923c; }
-.status-badge.deleted { background: rgba(248,113,113,0.12); color: #f87171; }
-.status-badge.open { background: rgba(251,191,36,0.12); color: #facc15; }
-.status-badge.resolved { background: rgba(34,197,94,0.12); color: #4ade80; }
-.status-badge.rejected { background: rgba(100,116,139,0.12); color: #64748b; }
-.status-badge.admin { background: rgba(65, 80, 247, 0.12); color: #6370FF; }
+.status-badge.active, .status-badge.visible { background: rgba(28,209,100,0.12); color: var(--app-success); }
+.status-badge.blocked, .status-badge.hidden { background: rgba(250,206,182,0.34); color: var(--app-muted-strong); }
+.status-badge.deleted { background: rgba(231,76,60,0.12); color: var(--app-danger); }
+.status-badge.open { background: rgba(250,206,182,0.34); color: var(--app-muted-strong); }
+.status-badge.resolved { background: rgba(28,209,100,0.12); color: var(--app-success); }
+.status-badge.rejected { background: rgba(115,115,115,0.12); color: var(--app-muted-strong); }
+.status-badge.admin { background: var(--app-primary-soft); color: var(--app-primary); }
 .status-badge.user { background: rgba(100,116,139,0.12); color: var(--app-muted-strong); }
 
 /* Action Buttons */
@@ -302,25 +317,27 @@
   font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: all 0.15s;
+  transition-duration: 0.18s;
+  transition-property: background-color, border-color, color, transform;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   margin-right: 6px;
 }
 
-.admin-action-btn.block { background: rgba(251,146,60,0.15); color: #fb923c; }
-.admin-action-btn.block:hover { background: rgba(251,146,60,0.25); }
-.admin-action-btn.unblock { background: rgba(34,197,94,0.15); color: #4ade80; }
-.admin-action-btn.unblock:hover { background: rgba(34,197,94,0.25); }
-.admin-action-btn.hide { background: rgba(251,146,60,0.15); color: #fb923c; }
-.admin-action-btn.hide:hover { background: rgba(251,146,60,0.25); }
-.admin-action-btn.show { background: rgba(34,197,94,0.15); color: #4ade80; }
-.admin-action-btn.show:hover { background: rgba(34,197,94,0.25); }
-.admin-action-btn.danger { background: rgba(248,113,113,0.15); color: #f87171; }
-.admin-action-btn.danger:hover { background: rgba(248,113,113,0.25); }
-.admin-action-btn.resolve { background: rgba(34,197,94,0.15); color: #4ade80; }
-.admin-action-btn.resolve:hover { background: rgba(34,197,94,0.25); }
+.admin-action-btn.block { background: rgba(250,206,182,0.34); color: var(--app-muted-strong); }
+.admin-action-btn.block:hover { background: rgba(250,206,182,0.52); }
+.admin-action-btn.unblock { background: rgba(28,209,100,0.15); color: var(--app-success); }
+.admin-action-btn.unblock:hover { background: rgba(28,209,100,0.25); }
+.admin-action-btn.hide { background: rgba(250,206,182,0.34); color: var(--app-muted-strong); }
+.admin-action-btn.hide:hover { background: rgba(250,206,182,0.52); }
+.admin-action-btn.show { background: rgba(28,209,100,0.15); color: var(--app-success); }
+.admin-action-btn.show:hover { background: rgba(28,209,100,0.25); }
+.admin-action-btn.danger { background: rgba(231,76,60,0.15); color: var(--app-danger); }
+.admin-action-btn.danger:hover { background: rgba(231,76,60,0.25); }
+.admin-action-btn.resolve { background: rgba(28,209,100,0.15); color: var(--app-success); }
+.admin-action-btn.resolve:hover { background: rgba(28,209,100,0.25); }
 .admin-action-btn.reject { background: rgba(100,116,139,0.15); color: #94a3b8; }
 .admin-action-btn.reject:hover { background: rgba(100,116,139,0.25); }
-.admin-action-btn.view { background: rgba(65, 80, 247, 0.15); color: #6370FF; }
+.admin-action-btn.view { background: var(--app-primary-soft); color: var(--app-primary); }
 .admin-action-btn.view:hover { background: rgba(65, 80, 247, 0.25); }
 
 /* User cell */
@@ -368,7 +385,9 @@
   background: var(--app-surface-muted);
   color: var(--app-muted-strong);
   cursor: pointer;
-  transition: all 0.15s;
+  transition-duration: 0.18s;
+  transition-property: background-color, border-color, color, transform;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .admin-page-btn:hover:not(:disabled) {

@@ -160,8 +160,9 @@ export const PostComments: React.FC<PostCommentsProps> = ({
               type="button"
               onClick={handleCancelReply}
               className="ml-1 text-[var(--app-muted)] hover:text-[var(--app-text)]"
+              aria-label="Hủy trả lời"
             >
-              ✕
+              X
             </button>
           </div>
         )}
@@ -172,7 +173,8 @@ export const PostComments: React.FC<PostCommentsProps> = ({
           onChange={(e) => setCommentText(e.target.value)}
           placeholder={replyTarget ? `Trả lời @${replyTarget.user?.username || replyTarget.user?.name}...` : 'Thêm bình luận...'}
           autoComplete="off"
-          className="min-h-[34px] flex-1 bg-transparent text-sm text-[var(--app-text)] outline-none"
+          spellCheck={false}
+          className="min-h-[34px] flex-1 bg-transparent text-sm text-[var(--app-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
           onKeyDown={(e) => {
             if (e.key === 'Escape' && replyTarget) {
               handleCancelReply();

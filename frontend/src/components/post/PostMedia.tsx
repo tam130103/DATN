@@ -19,7 +19,7 @@ export const PostMedia: React.FC<PostMediaProps> = ({ media }) => {
   if (sortedMedia.length === 0 || !currentItem) return null;
 
   return (
-    <div className="relative border-y border-[var(--app-border)] bg-black">
+    <div className="relative border-y border-[var(--app-border)] bg-[var(--app-text)]">
       <div className="relative aspect-square">
         {currentItem.type === 'IMAGE' ? (
           <img src={currentItem.url} alt="" className="h-full w-full object-contain" />
@@ -34,6 +34,7 @@ export const PostMedia: React.FC<PostMediaProps> = ({ media }) => {
                 type="button"
                 onClick={() => setCurrentIndex((prev) => prev - 1)}
                 className="absolute left-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-sm font-semibold text-[var(--app-text)] shadow-sm transition hover:bg-white"
+                aria-label="Xem media trước"
               >
                 {'<'}
               </button>
@@ -44,6 +45,7 @@ export const PostMedia: React.FC<PostMediaProps> = ({ media }) => {
                 type="button"
                 onClick={() => setCurrentIndex((prev) => prev + 1)}
                 className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-sm font-semibold text-[var(--app-text)] shadow-sm transition hover:bg-white"
+                aria-label="Xem media sau"
               >
                 {'>'}
               </button>

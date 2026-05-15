@@ -283,8 +283,8 @@ const MessagesPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => void handleOpenAssistantChat()} disabled={isOpeningAssistant} className="inline-flex min-h-[36px] items-center justify-center gap-2 rounded-full border border-[var(--app-border)] bg-[var(--app-primary-soft)] px-3 text-xs font-semibold text-[var(--app-primary)] transition hover:opacity-80 disabled:opacity-50" title="Chat với Trợ lý AI"><SparkleIcon />{isOpeningAssistant ? 'Đang mở...' : '💬 Chat AI'}</button>
-                  <button type="button" onClick={() => setShowCompose((prev) => !prev)} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"><ComposeIcon /></button>
+                  <button type="button" onClick={() => void handleOpenAssistantChat()} disabled={isOpeningAssistant} className="inline-flex min-h-[36px] items-center justify-center gap-2 rounded-full border border-[var(--app-border)] bg-[var(--app-primary-soft)] px-3 text-xs font-semibold text-[var(--app-primary)] transition hover:opacity-80 disabled:opacity-50" title="Chat với Trợ lý AI" aria-label="Chat với Trợ lý AI"><SparkleIcon />{isOpeningAssistant ? 'Đang mở…' : 'Chat AI'}</button>
+                  <button type="button" onClick={() => setShowCompose((prev) => !prev)} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]" aria-label="Tạo cuộc trò chuyện"><ComposeIcon /></button>
                 </div>
               </div>
             </div>
@@ -402,7 +402,7 @@ const MessagesPage: React.FC = () => {
                                         <code className={`rounded px-1.5 py-0.5 font-mono text-xs ${isMine ? 'bg-white/20 text-white' : 'bg-[var(--app-bg-soft)] text-[var(--app-text)]'}`}>{children}</code>
                                       ),
                                       pre: ({ children }) => (
-                                        <pre className={`my-2 overflow-x-auto rounded-lg p-3 text-xs ${isMine ? 'bg-black/20 text-white' : 'bg-[var(--app-bg-soft)] text-[var(--app-text)]'}`}>{children}</pre>
+                                        <pre className={`my-2 overflow-x-auto rounded-lg p-3 text-xs ${isMine ? 'bg-[rgba(28,30,33,0.2)] text-white' : 'bg-[var(--app-bg-soft)] text-[var(--app-text)]'}`}>{children}</pre>
                                       ),
                                       blockquote: ({ children }) => (
                                         <blockquote className={`my-2 border-l-4 pl-3 italic ${isMine ? 'border-white/30 text-white/80' : 'border-[var(--app-border)] text-[var(--app-muted)]'}`}>{children}</blockquote>
@@ -457,7 +457,7 @@ const MessagesPage: React.FC = () => {
                 <p className="text-3xl font-semibold text-[var(--app-text)]">Tin nhắn của bạn</p>
                 <p className="mt-4 text-sm leading-6 text-[var(--app-muted)]">Chọn một cuộc trò chuyện hoặc tạo một cuộc trò chuyện mới.</p>
                 <div className="mt-5 flex items-center justify-center gap-3">
-                  <button type="button" onClick={() => void handleOpenAssistantChat()} disabled={isOpeningAssistant} className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-md border border-[var(--app-border)] bg-[var(--app-primary-soft)] px-5 text-sm font-semibold text-[var(--app-primary)] transition hover:opacity-80 disabled:opacity-50"><SparkleIcon />{isOpeningAssistant ? 'Đang mở...' : '💬 Chat với AI'}</button>
+                  <button type="button" onClick={() => void handleOpenAssistantChat()} disabled={isOpeningAssistant} className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-md border border-[var(--app-border)] bg-[var(--app-primary-soft)] px-5 text-sm font-semibold text-[var(--app-primary)] transition hover:opacity-80 disabled:opacity-50" aria-label="Chat với AI"><SparkleIcon />{isOpeningAssistant ? 'Đang mở…' : 'Chat với AI'}</button>
                   <button type="button" onClick={() => setShowCompose(true)} className="inline-flex min-h-[40px] items-center justify-center rounded-md bg-[var(--app-primary)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--app-primary-strong)]">Tạo cuộc trò chuyện</button>
                 </div>
               </div>

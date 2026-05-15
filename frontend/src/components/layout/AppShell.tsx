@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import {
+  Heart,
+  House,
+  MagnifyingGlass,
+  PaperPlaneTilt,
+  ShieldCheck,
+  SignOut,
+} from '@phosphor-icons/react';
+import type { Icon } from '@phosphor-icons/react';
 import { useAuth } from '../../contexts/AuthContext';
 import { chatService } from '../../services/chat.service';
 import { chatSocketService } from '../../services/chat-socket.service';
@@ -17,78 +27,13 @@ interface AppShellProps {
   fullWidth?: boolean;
 }
 
-const HomeIcon = ({ filled }: { filled?: boolean }) =>
-  filled ? (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
-      <path d="M22 23h-6.001a1 1 0 01-1-1v-5.455a2.997 2.997 0 10-5.993 0V22a1 1 0 01-1 1H2a1 1 0 01-1-1V11.543a1.002 1.002 0 01.31-.724l10-9.543a1.001 1.001 0 011.38 0l10 9.543a1.002 1.002 0 01.31.724V22a1 1 0 01-1 1z" />
-    </svg>
-  ) : (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.9">
-      <path d="M9.005 16.545a2.997 2.997 0 012.997-2.997A2.997 2.997 0 0115 16.545V22h7V11.543L12 2 2 11.543V22h7.005v-5.455z" strokeLinejoin="round" />
-    </svg>
-  );
+type NavIcon = Icon;
 
-const SearchIcon = ({ filled }: { filled?: boolean }) =>
-  filled ? (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
-      <path d="M10.5 18.5a8 8 0 118-8 8 8 0 01-8 8zm0-14a6 6 0 100 12 6 6 0 000-12z" />
-      <path d="M22 22l-4.35-4.35" />
-    </svg>
-  ) : (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.9">
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  );
-
-const MessengerIcon = ({ filled }: { filled?: boolean }) =>
-  filled ? (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
-      <path d="M22 2L15 22l-4-9-9-4 20-7z" />
-      <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" fill="none" />
-    </svg>
-  ) : (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.9">
-      <path d="M22 2L11 13" />
-      <path d="M22 2L15 22l-4-9-9-4 20-7z" />
-    </svg>
-  );
-
-const HeartIcon = ({ filled }: { filled?: boolean }) =>
-  filled ? (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
-      <path d="M16.792 3.904A4.989 4.989 0 0121.5 9.122c0 3.072-2.652 4.959-5.197 7.222-2.512 2.243-3.865 3.469-4.303 3.752-.477-.309-1.834-1.527-4.303-3.752C5.152 14.08 2.5 12.194 2.5 9.122a4.989 4.989 0 014.708-5.218 4.21 4.21 0 013.675 1.941c.84 1.175.98 1.763 1.12 1.763s.278-.588 1.11-1.766a4.17 4.17 0 013.679-1.938z" />
-    </svg>
-  ) : (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.9">
-      <path d="M16.792 3.904A4.989 4.989 0 0121.5 9.122c0 3.072-2.652 4.959-5.197 7.222-2.512 2.243-3.865 3.469-4.303 3.752-.477-.309-1.834-1.527-4.303-3.752C5.152 14.08 2.5 12.194 2.5 9.122a4.989 4.989 0 014.708-5.218 4.21 4.21 0 013.675 1.941c.84 1.175.98 1.763 1.12 1.763s.278-.588 1.11-1.766a4.17 4.17 0 013.679-1.938z" />
-    </svg>
-  );
-
-const MenuIcon = () => (
-  <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.9">
-    <line x1="3" y1="6" x2="21" y2="6" />
-    <line x1="3" y1="12" x2="21" y2="12" />
-    <line x1="3" y1="18" x2="21" y2="18" />
-  </svg>
-);
-
-const ShieldIcon = ({ filled }: { filled?: boolean }) =>
-  filled ? (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  ) : (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  );
-
-const navItems = [
-  { to: '/feed', label: 'Trang chủ', icon: HomeIcon },
-  { to: '/explore', label: 'Khám phá', icon: SearchIcon },
-  { to: '/messages', label: 'Tin nhắn', icon: MessengerIcon },
-  { to: '/notifications', label: 'Thông báo', icon: HeartIcon },
+const navItems: Array<{ to: string; label: string; icon: NavIcon }> = [
+  { to: '/feed', label: 'Trang chủ', icon: House },
+  { to: '/explore', label: 'Khám phá', icon: MagnifyingGlass },
+  { to: '/messages', label: 'Tin nhắn', icon: PaperPlaneTilt },
+  { to: '/notifications', label: 'Thông báo', icon: Heart },
 ];
 
 const getPageLabel = (pathname: string) => {
@@ -107,15 +52,15 @@ const notificationBadge = (count: number) =>
   ) : null;
 
 const desktopNavItemClass = (isActive: boolean) =>
-  `group flex items-center gap-4 rounded-lg px-3 py-3 text-base transition ${
+  `spring-ease group relative flex items-center gap-4 rounded-lg px-3 py-3 text-base ${
     isActive
-      ? 'font-semibold text-[var(--app-text)]'
+      ? 'font-semibold text-[var(--app-text)] before:absolute before:-left-2 before:top-1/2 before:hidden before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-[var(--app-primary)] xl:before:block'
       : 'font-normal text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]'
   }`;
 
 const compactNavItemClass = (isActive: boolean) =>
-  `group flex h-12 w-12 items-center justify-center rounded-lg transition ${
-    isActive ? 'text-[var(--app-text)]' : 'text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]'
+  `spring-ease group flex h-12 w-12 items-center justify-center rounded-lg ${
+    isActive ? 'text-[var(--app-primary)]' : 'text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]'
   }`;
 
 export const AppShell: React.FC<AppShellProps> = ({
@@ -141,7 +86,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
-    if (!user || !token) return;
+    if (!user || !token) return undefined;
 
     notificationService.connect(token);
     chatSocketService.connect(token);
@@ -151,14 +96,11 @@ export const AppShell: React.FC<AppShellProps> = ({
 
     const unsubscribeMessages = chatSocketService.on('unreadCount', setUnreadMessages);
     const unsubscribeNotifications = notificationService.on('unreadCount', setUnreadNotifications);
-    
     const unsubscribeNewNotification = notificationService.on('notification', () => {
       setUnreadNotifications((prev) => prev + 1);
     });
-
-    const unsubscribeNewMessage = chatSocketService.on('newMessage', (message: any) => {
-      if (user && message.senderId !== user.id) {
-        // Fetch real unread count to be 100% accurate, as we might already be in the chat reading it
+    const unsubscribeNewMessage = chatSocketService.on('newMessage', (message: { senderId?: string }) => {
+      if (message.senderId !== user.id) {
         chatService.getUnreadCount?.().then(setUnreadMessages).catch(() => {});
       }
     });
@@ -178,8 +120,6 @@ export const AppShell: React.FC<AppShellProps> = ({
       setUnreadMessages(0);
     }
 
-    // Badge-only: zero the local counter for snappy UI.
-    // Actual mark-read side-effects are owned by NotificationsPage.
     if (location.pathname.startsWith('/notifications')) {
       setUnreadNotifications(0);
     }
@@ -187,17 +127,18 @@ export const AppShell: React.FC<AppShellProps> = ({
 
   return (
     <div className="app-shell">
+      <a
+        href="#main-content"
+        className="sr-only z-[1001] rounded-md bg-[var(--app-primary)] px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+      >
+        Chuyển tới nội dung chính
+      </a>
+
       <aside className="glass-panel fixed inset-y-0 left-0 z-30 hidden border-r lg:flex lg:w-[72px] xl:w-[244px]">
         <div className="flex h-full w-full flex-col px-2 py-4 xl:px-3">
           <Link to="/feed" className="flex h-[92px] items-center px-2 xl:px-3">
-            <BrandLogo
-              variant="full"
-              className="hidden h-auto w-[112px] object-contain xl:block"
-            />
-            <BrandLogo
-              variant="mark"
-              className="h-8 w-8 rounded-lg object-contain xl:hidden"
-            />
+            <BrandLogo variant="full" className="hidden h-auto w-[112px] object-contain xl:block" />
+            <BrandLogo variant="mark" className="h-8 w-8 rounded-lg object-contain xl:hidden" />
           </Link>
 
           <nav className="flex flex-1 flex-col gap-1">
@@ -216,7 +157,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                   <span className="hidden xl:block">
                     <span className={desktopNavItemClass(isActive)}>
                       <span className="relative">
-                        <Icon filled={isActive} />
+                        <Icon size={24} weight={isActive ? 'fill' : 'regular'} aria-hidden="true" />
                         {notificationBadge(badge)}
                       </span>
                       <span>{item.label}</span>
@@ -226,7 +167,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                   <span className="block xl:hidden">
                     <span className={compactNavItemClass(isActive)}>
                       <span className="relative">
-                        <Icon filled={isActive} />
+                        <Icon size={24} weight={isActive ? 'fill' : 'regular'} aria-hidden="true" />
                         {notificationBadge(badge)}
                       </span>
                     </span>
@@ -239,16 +180,16 @@ export const AppShell: React.FC<AppShellProps> = ({
               <NavLink to="/admin" className="xl:block">
                 <span className="hidden xl:block">
                   <span className={desktopNavItemClass(location.pathname.startsWith('/admin'))}>
-                    <span className="relative">
-                      <ShieldIcon filled={location.pathname.startsWith('/admin')} />
+                    <span className="relative text-[var(--app-primary)]">
+                      <ShieldCheck size={24} weight={location.pathname.startsWith('/admin') ? 'fill' : 'regular'} aria-hidden="true" />
                     </span>
-                    <span className="text-[#4150F7] font-semibold">Quản trị</span>
+                    <span className="font-semibold text-[var(--app-primary)]">Quản trị</span>
                   </span>
                 </span>
                 <span className="block xl:hidden">
                   <span className={compactNavItemClass(location.pathname.startsWith('/admin'))}>
-                    <span className="relative text-[#4150F7]">
-                      <ShieldIcon filled={location.pathname.startsWith('/admin')} />
+                    <span className="relative text-[var(--app-primary)]">
+                      <ShieldCheck size={24} weight={location.pathname.startsWith('/admin') ? 'fill' : 'regular'} aria-hidden="true" />
                     </span>
                   </span>
                 </span>
@@ -258,26 +199,20 @@ export const AppShell: React.FC<AppShellProps> = ({
             <NavLink to={profilePath}>
               <span className="hidden xl:block">
                 <span className={desktopNavItemClass(isProfileRoute)}>
-                  <Avatar
-                    src={user?.avatarUrl}
-                    name={user?.name}
-                    username={user?.username}
-                    size="sm"
-                    ring={isProfileRoute}
-                  />
+                  <span className="relative">
+                    <Avatar src={user?.avatarUrl} name={user?.name} username={user?.username} size="sm" ring={isProfileRoute} />
+                    <span className="status-dot-online absolute -bottom-0.5 -right-0.5 border-2 border-[var(--app-surface)]" />
+                  </span>
                   <span>Hồ sơ</span>
                 </span>
               </span>
 
               <span className="block xl:hidden">
                 <span className={compactNavItemClass(isProfileRoute)}>
-                  <Avatar
-                    src={user?.avatarUrl}
-                    name={user?.name}
-                    username={user?.username}
-                    size="sm"
-                    ring={isProfileRoute}
-                  />
+                  <span className="relative">
+                    <Avatar src={user?.avatarUrl} name={user?.name} username={user?.username} size="sm" ring={isProfileRoute} />
+                    <span className="status-dot-online absolute -bottom-0.5 -right-0.5 border-2 border-[var(--app-surface)]" />
+                  </span>
                 </span>
               </span>
             </NavLink>
@@ -286,34 +221,30 @@ export const AppShell: React.FC<AppShellProps> = ({
           <div className="mt-auto border-t border-[var(--app-border)] pt-4">
             {user ? (
               <div className="hidden items-center gap-3 px-3 pb-4 xl:flex">
-                <Avatar
-                  src={user.avatarUrl}
-                  name={user.name}
-                  username={user.username}
-                  size="md"
-                />
+                <span className="relative">
+                  <Avatar src={user.avatarUrl} name={user.name} username={user.username} size="md" />
+                  <span className="status-dot-online absolute -bottom-0.5 -right-0.5 border-2 border-[var(--app-surface)]" />
+                </span>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-[var(--app-text)]">
                     {user.username || user.name || 'Hồ sơ'}
                   </p>
-                  <p className="truncate text-sm text-[var(--app-muted)]">
-                    {user.name || 'DATN Social'}
-                  </p>
+                  <p className="truncate text-sm text-[var(--app-muted)]">{user.name || 'DATN Social'}</p>
                 </div>
               </div>
             ) : null}
 
             <div className="flex items-center justify-between px-3 pb-2">
-              <span className="hidden xl:inline text-sm font-medium text-[var(--app-text)]">Giao diện</span>
+              <span className="hidden text-sm font-medium text-[var(--app-text)] xl:inline">Giao diện</span>
               <ThemeToggle />
             </div>
 
             <button
               type="button"
               onClick={logout}
-              className="flex w-full items-center gap-4 rounded-lg px-3 py-3 text-left text-base text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"
+              className="spring-ease flex w-full items-center gap-4 rounded-lg px-3 py-3 text-left text-base text-[var(--app-text)] hover:bg-[var(--app-bg-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
             >
-              <MenuIcon />
+              <SignOut size={24} aria-hidden="true" />
               <span className="hidden xl:inline">Đăng xuất</span>
             </button>
           </div>
@@ -336,29 +267,21 @@ export const AppShell: React.FC<AppShellProps> = ({
               </Link>
             ) : null}
             {unreadNotifications > 0 ? (
-              <Link
-                to="/notifications"
-                className="text-xs font-semibold text-[var(--app-primary)]"
-              >
+              <Link to="/notifications" className="text-xs font-semibold text-[var(--app-primary)]">
                 {unreadNotifications} thông báo
               </Link>
             ) : null}
             <ThemeToggle />
             <Link to={profilePath}>
-              <Avatar
-                src={user?.avatarUrl}
-                name={user?.name}
-                username={user?.username}
-                size="sm"
-                ring={isProfileRoute}
-              />
+              <Avatar src={user?.avatarUrl} name={user?.name} username={user?.username} size="sm" ring={isProfileRoute} />
             </Link>
           </div>
         </div>
       </header>
 
-      <div className="min-h-screen lg:ml-[72px] xl:ml-[244px]">
+      <div className="min-h-[100dvh] lg:ml-[72px] xl:ml-[244px]">
         <main
+          id="main-content"
           className={`app-main mx-auto w-full ${
             isMessagesPage || fullWidth
               ? 'app-main--full max-w-full px-0 pt-0'
@@ -368,16 +291,8 @@ export const AppShell: React.FC<AppShellProps> = ({
           {showHeader ? (
             <div className="mb-6 flex flex-col gap-4 border-b border-[var(--app-border)] pb-4 sm:flex-row sm:items-end sm:justify-between">
               <div className="max-w-2xl">
-                {title ? (
-                  <h1 className="text-[28px] font-semibold leading-tight text-[var(--app-text)]">
-                    {title}
-                  </h1>
-                ) : null}
-                {description ? (
-                  <p className="mt-2 text-sm leading-6 text-[var(--app-muted-strong)]">
-                    {description}
-                  </p>
-                ) : null}
+                {title ? <h1 className="text-[28px] font-semibold leading-tight text-[var(--app-text)]">{title}</h1> : null}
+                {description ? <p className="mt-2 text-sm leading-6 text-[var(--app-muted-strong)]">{description}</p> : null}
               </div>
               {action ? <div className="sm:ml-auto">{action}</div> : null}
             </div>
@@ -407,38 +322,35 @@ export const AppShell: React.FC<AppShellProps> = ({
                   : 0;
 
             return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className="relative flex h-14 w-14 items-center justify-center"
-              >
-                <span className={`interactive-icon relative transition ${isActive ? 'scale-110' : ''}`}>
-                  <Icon filled={isActive} />
+              <NavLink key={item.to} to={item.to} className="relative flex h-14 w-14 items-center justify-center" aria-label={item.label}>
+                <motion.span
+                  className={`relative ${isActive ? 'text-[var(--app-primary)]' : 'text-[var(--app-text)]'}`}
+                  whileTap={{ scale: 0.88 }}
+                  animate={{ scale: isActive ? 1.12 : 1 }}
+                  transition={{ type: 'spring', stiffness: 360, damping: 22 }}
+                >
+                  <Icon size={24} weight={isActive ? 'fill' : 'regular'} aria-hidden="true" />
                   {notificationBadge(badge)}
-                </span>
+                </motion.span>
               </NavLink>
             );
           })}
 
           {isAdmin && (
-            <NavLink
-              to="/admin"
-              className="relative flex h-14 w-14 items-center justify-center text-[#4150F7]"
-            >
-              <span className={`relative transition ${location.pathname.startsWith('/admin') ? 'scale-110' : ''}`}>
-                <ShieldIcon filled={location.pathname.startsWith('/admin')} />
-              </span>
+            <NavLink to="/admin" className="relative flex h-14 w-14 items-center justify-center text-[var(--app-primary)]" aria-label="Quản trị">
+              <motion.span
+                className="relative"
+                whileTap={{ scale: 0.88 }}
+                animate={{ scale: location.pathname.startsWith('/admin') ? 1.12 : 1 }}
+                transition={{ type: 'spring', stiffness: 360, damping: 22 }}
+              >
+                <ShieldCheck size={24} weight={location.pathname.startsWith('/admin') ? 'fill' : 'regular'} aria-hidden="true" />
+              </motion.span>
             </NavLink>
           )}
 
-          <NavLink to={profilePath} className="flex h-14 w-14 items-center justify-center">
-            <Avatar
-              src={user?.avatarUrl}
-              name={user?.name}
-              username={user?.username}
-              size="sm"
-              ring={isProfileRoute}
-            />
+          <NavLink to={profilePath} className="flex h-14 w-14 items-center justify-center" aria-label="Hồ sơ">
+            <Avatar src={user?.avatarUrl} name={user?.name} username={user?.username} size="sm" ring={isProfileRoute} />
           </NavLink>
         </div>
       </nav>
