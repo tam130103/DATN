@@ -17,7 +17,7 @@ import { UserModule } from '../user/user.module';
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRATION', '2h'),
+          expiresIn: configService.get<string>('JWT_EXPIRATION', '2h') as any,
         },
       }),
     }),

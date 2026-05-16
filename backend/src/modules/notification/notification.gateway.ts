@@ -11,8 +11,11 @@ import {
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { Inject, forwardRef } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { createSocketCorsOptions } from '../../common/cors.util';
+import { UserService } from '../user/user.service';
+import { UserStatus } from '../user/entities/user.entity';
 
 @WebSocketGateway({
   cors: createSocketCorsOptions(),
@@ -30,10 +33,12 @@ export class NotificationGateway
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly notificationService: NotificationService,
+    @Inject(forwardRef(() => UserService))
+    private readonly userService: UserService,
   ) {}
 
   afterInit(server: Server) {
-    server.use((socket: Socket, next: (err?: Error) => void) => {
+    server.use(async (socket: Socket, next: (err?: Error) => void) => {
       const token =
         socket.handshake.auth?.token ||
         socket.handshake.headers?.authorization?.replace('Bearer ', '');
@@ -46,6 +51,12 @@ export class NotificationGateway
         const payload = this.jwtService.verify(token, {
           secret: this.configService.get<string>('JWT_SECRET'),
         }) as { sub: string };
+
+        const user = await this.userService.findById(payload.sub);
+        if (user.status !== UserStatus.ACTIVE) {
+          return next(new Error('ACCOUNT_BLOCKED'));
+        }
+
         socket.data.userId = payload.sub;
         return next();
       } catch (err: any) {
@@ -59,10 +70,31 @@ export class NotificationGateway
     console.log('Notification gateway initialized');
   }
 
-  async handleConnection(client: Socket) {
-    const userId = client.data.userId as string;
+  private async ensureActiveSocketUser(client: Socket): Promise<string | null> {
+    const userId = client.data.userId as string | undefined;
     if (!userId) {
-      client.disconnect();
+      client.disconnect(true);
+      return null;
+    }
+
+    try {
+      const user = await this.userService.findById(userId);
+      if (user.status !== UserStatus.ACTIVE) {
+        client.emit('error', { code: 'ACCOUNT_BLOCKED', message: 'Account is blocked' });
+        client.disconnect(true);
+        return null;
+      }
+      return userId;
+    } catch {
+      client.emit('error', { code: 'INVALID_TOKEN', message: 'User is no longer available' });
+      client.disconnect(true);
+      return null;
+    }
+  }
+
+  async handleConnection(client: Socket) {
+    const userId = await this.ensureActiveSocketUser(client);
+    if (!userId) {
       return;
     }
 
@@ -107,7 +139,9 @@ export class NotificationGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { notificationId: string },
   ) {
-    const userId = client.data.userId;
+    const userId = await this.ensureActiveSocketUser(client);
+    if (!userId) return;
+
     try {
       await this.notificationService.markAsRead(data.notificationId, userId);
     } catch (error: any) {
@@ -122,7 +156,9 @@ export class NotificationGateway
 
   @SubscribeMessage('markAllAsRead')
   async handleMarkAllAsRead(@ConnectedSocket() client: Socket) {
-    const userId = client.data.userId;
+    const userId = await this.ensureActiveSocketUser(client);
+    if (!userId) return;
+
     await this.notificationService.markAllAsRead(userId);
 
     // Update unread count

@@ -8,14 +8,12 @@ import {
   Body,
   Query,
   UseGuards,
-  ParseIntPipe,
+  ParseUUIDPipe,
   UseInterceptors,
   UploadedFile,
-  Req,
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Request } from 'express';
 import { UserService } from './user.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
@@ -24,6 +22,8 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationGateway } from '../notification/notification.gateway';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { assertAllowedUploadFile } from '../../common/media-validation.util';
+import { limitPipe, pagePipe } from '../../common/pipes/bounded-int.pipe';
 
 const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
@@ -53,7 +53,8 @@ export class UserController {
       throw new BadRequestException('File is required');
     }
 
-    if (!file.mimetype.startsWith('image/')) {
+    const detectedMime = await assertAllowedUploadFile(file);
+    if (!detectedMime.startsWith('image/')) {
       throw new BadRequestException('Only image files are allowed');
     }
 
@@ -65,8 +66,8 @@ export class UserController {
   getFollowers(
     @Param('id') id: string,
     @CurrentUser() currentUser: any,
-    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
+    @Query('page', pagePipe()) page: number = 1,
+    @Query('limit', limitPipe(20)) limit: number = 20,
   ) {
     return this.userService.getFollowers(id, page, limit, currentUser.id);
   }
@@ -75,8 +76,8 @@ export class UserController {
   getFollowing(
     @Param('id') id: string,
     @CurrentUser() currentUser: any,
-    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 20,
+    @Query('page', pagePipe()) page: number = 1,
+    @Query('limit', limitPipe(20)) limit: number = 20,
   ) {
     return this.userService.getFollowing(id, page, limit, currentUser.id);
   }
@@ -112,7 +113,7 @@ export class UserController {
   }
 
   @Post(':id/follow')
-  async follow(@CurrentUser() user: any, @Param('id') id: string) {
+  async follow(@CurrentUser() user: any, @Param('id', ParseUUIDPipe) id: string) {
     await this.userService.follow(user.id, id);
     const notification = await this.notificationService.createFollowNotification(user.id, id);
     if (notification) {
@@ -122,7 +123,7 @@ export class UserController {
   }
 
   @Delete(':id/follow')
-  unfollow(@CurrentUser() user: any, @Param('id') id: string) {
+  unfollow(@CurrentUser() user: any, @Param('id', ParseUUIDPipe) id: string) {
     return this.userService.unfollow(user.id, id);
   }
 }

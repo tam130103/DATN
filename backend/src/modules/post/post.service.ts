@@ -18,6 +18,7 @@ import { AIService } from '../ai/ai.service';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationGateway } from '../notification/notification.gateway';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { assertAllowedCloudinaryUrl } from '../../common/media-validation.util';
 
 const FOLLOWER_MENTION_COMMAND_ALIASES = ['followers', 'tatca', 'moinguoi'] as const;
 
@@ -96,8 +97,13 @@ export class PostService {
     manager: EntityManager,
     postId: string,
     mediaDto: Array<{ url: string; type: MediaType }>,
+    options: { requireCloudinary?: boolean } = {},
   ) {
     if (!mediaDto || mediaDto.length === 0) return;
+    if (options.requireCloudinary) {
+      mediaDto.forEach((item) => assertAllowedCloudinaryUrl(item.url, 'media URL'));
+    }
+
     const mediaEntities = mediaDto.map((item, index) =>
       manager.create(Media, { postId, url: item.url, type: item.type, orderIndex: index }),
     );
@@ -600,7 +606,7 @@ export class PostService {
       const post = manager.create(Post, { userId, caption: normalizedCaption });
       const createdPost = await manager.save(post);
 
-      await this.processMedia(manager, createdPost.id, mediaDto);
+      await this.processMedia(manager, createdPost.id, mediaDto, { requireCloudinary: true });
       await this.processHashtags(manager, createdPost.id, normalizedCaption);
       mentionedUsers = await this.processMentions(manager, createdPost.id, normalizedCaption, userId);
 

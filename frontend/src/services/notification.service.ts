@@ -87,6 +87,11 @@ class NotificationService {
       const code = error.message?.trim();
       console.warn('[Notifications] connect_error:', code);
 
+      if (code === 'ACCOUNT_BLOCKED') {
+        this.handleAccountBlocked();
+        return;
+      }
+
       const isAuthError =
         code === 'TOKEN_EXPIRED' ||
         code === 'INVALID_TOKEN' ||
@@ -103,6 +108,12 @@ class NotificationService {
     this.socket.io.on('reconnect_attempt', async () => {
       if (this.refreshing) return;
       await this.doRefresh();
+    });
+
+    this.socket.on('error', (data: { code?: string; message?: string }) => {
+      if (data?.code === 'ACCOUNT_BLOCKED' || data?.message === 'ACCOUNT_BLOCKED') {
+        this.handleAccountBlocked();
+      }
     });
   }
 
@@ -176,6 +187,16 @@ class NotificationService {
       }
     } finally {
       this.refreshing = false;
+    }
+  }
+
+  private handleAccountBlocked() {
+    console.warn('[Notifications] Account blocked, clearing session');
+    this.disconnect();
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
     }
   }
 

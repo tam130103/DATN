@@ -92,6 +92,11 @@ class ChatSocketService {
       const code = error.message?.trim();
       console.warn('[Chat] connect_error:', code);
 
+      if (code === 'ACCOUNT_BLOCKED') {
+        this._handleAccountBlocked();
+        return;
+      }
+
       const isAuthError =
         code === 'TOKEN_EXPIRED' ||
         code === 'INVALID_TOKEN' ||
@@ -135,9 +140,24 @@ class ChatSocketService {
       this.emit('unreadCount', count);
     });
 
-    this.socket.on('error', (data: { message?: string }) => {
+    this.socket.on('error', (data: { code?: string; message?: string }) => {
+      if (data?.code === 'ACCOUNT_BLOCKED' || data?.message === 'ACCOUNT_BLOCKED') {
+        this._handleAccountBlocked();
+        return;
+      }
+
       this.emit('error', data);
     });
+  }
+
+  private _handleAccountBlocked() {
+    console.warn('[Chat] Account blocked, clearing session');
+    this.disconnect();
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
   }
 
   /** Refresh the JWT and update socket auth. Redirects to /login if refresh fails. */

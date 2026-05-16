@@ -13,6 +13,7 @@ import { CreateConversationDto } from './dto/create-conversation.dto';
 import { ConversationMember } from './entities/conversation-member.entity';
 import { Conversation } from './entities/conversation.entity';
 import { Message } from './entities/message.entity';
+import { assertAllowedCloudinaryUrl } from '../../common/media-validation.util';
 
 @Injectable()
 export class ChatService {
@@ -201,6 +202,9 @@ export class ChatService {
     const isMember = await this.isMember(conversationId, senderId);
     if (!isMember) {
       throw new ForbiddenException('You are not a member of this conversation');
+    }
+    if (mediaUrl) {
+      assertAllowedCloudinaryUrl(mediaUrl, 'media URL');
     }
 
     const savedId = await this.dataSource.transaction(async (manager) => {

@@ -14,6 +14,8 @@ import { ConfigService } from '@nestjs/config';
 import { ChatService } from './chat.service';
 import { Message } from './entities/message.entity';
 import { createSocketCorsOptions } from '../../common/cors.util';
+import { UserService } from '../user/user.service';
+import { UserStatus } from '../user/entities/user.entity';
 
 // Online users map: userId -> Set of socket ids
 const onlineUsers = new Map<string, Set<string>>();
@@ -32,13 +34,14 @@ export class ChatGateway
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly chatService: ChatService,
+    private readonly userService: UserService,
   ) {}
 
   afterInit(server: Server) {
     // Auth middleware: runs BEFORE the connection is established.
     // Rejecting via next(error) fires 'connect_error' on the client
     // (vs client.disconnect() which fires 'disconnect' and suppresses auto-reconnect).
-    server.use((socket: Socket, next: (err?: Error) => void) => {
+    server.use(async (socket: Socket, next: (err?: Error) => void) => {
       const token =
         socket.handshake.auth?.token ||
         socket.handshake.headers?.authorization?.replace('Bearer ', '');
@@ -51,7 +54,12 @@ export class ChatGateway
         const payload = this.jwtService.verify(token, {
           secret: this.configService.get<string>('JWT_SECRET'),
         }) as { sub: string };
-        // Attach userId so handleConnection can read it
+
+        const user = await this.userService.findById(payload.sub);
+        if (user.status !== UserStatus.ACTIVE) {
+          return next(new Error('ACCOUNT_BLOCKED'));
+        }
+
         socket.data.userId = payload.sub;
         return next();
       } catch (err: any) {
@@ -66,12 +74,33 @@ export class ChatGateway
     console.log('Chat gateway initialized');
   }
 
+  private async ensureActiveSocketUser(client: Socket): Promise<string | null> {
+    const userId = client.data.userId as string | undefined;
+    if (!userId) {
+      client.disconnect(true);
+      return null;
+    }
+
+    try {
+      const user = await this.userService.findById(userId);
+      if (user.status !== UserStatus.ACTIVE) {
+        client.emit('error', { code: 'ACCOUNT_BLOCKED', message: 'Account is blocked' });
+        client.disconnect(true);
+        return null;
+      }
+      return userId;
+    } catch {
+      client.emit('error', { code: 'INVALID_TOKEN', message: 'User is no longer available' });
+      client.disconnect(true);
+      return null;
+    }
+  }
+
   async handleConnection(client: Socket) {
     // userId is already validated and set by the middleware above
-    const userId = client.data.userId as string;
+    const userId = await this.ensureActiveSocketUser(client);
     if (!userId) {
       // Shouldn't happen — middleware would have rejected already
-      client.disconnect();
       return;
     }
 
@@ -119,7 +148,9 @@ export class ChatGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { conversationId: string },
   ) {
-    const userId = client.data.userId;
+    const userId = await this.ensureActiveSocketUser(client);
+    if (!userId) return;
+
     const isMember = await this.chatService.isMember(data.conversationId, userId);
 
     if (!isMember) {
@@ -142,10 +173,13 @@ export class ChatGateway
   }
 
   @SubscribeMessage('leaveConversation')
-  handleLeaveConversation(
+  async handleLeaveConversation(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { conversationId: string },
   ) {
+    const userId = await this.ensureActiveSocketUser(client);
+    if (!userId) return;
+
     client.leave(data.conversationId);
   }
 
@@ -154,7 +188,8 @@ export class ChatGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { conversationId: string; content: string; mediaUrl?: string; clientRequestId?: string },
   ) {
-    const userId = client.data.userId;
+    const userId = await this.ensureActiveSocketUser(client);
+    if (!userId) return;
 
     try {
       // Save to DB first
@@ -192,7 +227,9 @@ export class ChatGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { conversationId: string },
   ) {
-    const userId = client.data.userId;
+    const userId = await this.ensureActiveSocketUser(client);
+    if (!userId) return;
+
     try {
       await this.chatService.markAsRead(data.conversationId, userId);
     } catch (error: any) {
@@ -212,7 +249,9 @@ export class ChatGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { conversationId: string; isTyping: boolean },
   ) {
-    const userId = client.data.userId;
+    const userId = await this.ensureActiveSocketUser(client);
+    if (!userId) return;
+
     const isMember = await this.chatService.isMember(data.conversationId, userId);
     if (!isMember) {
       client.emit('error', { message: 'Not a member of this conversation' });

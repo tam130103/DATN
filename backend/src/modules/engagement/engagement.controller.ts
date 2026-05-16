@@ -8,13 +8,12 @@ import {
   Param,
   Query,
   UseGuards,
-  ParseIntPipe,
-  DefaultValuePipe,
 } from '@nestjs/common';
 import { EngagementService } from './engagement.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { limitPipe, pagePipe } from '../../common/pipes/bounded-int.pipe';
 
 @Controller('posts')
 @UseGuards(JwtAuthGuard)
@@ -54,8 +53,8 @@ export class EngagementController {
   getPostComments(
     @CurrentUser() user: any,
     @Param('id') postId: string,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('page', pagePipe()) page: number,
+    @Query('limit', limitPipe(20)) limit: number,
   ) {
     return this.engagementService.getPostComments(postId, user?.id, page, limit);
   }
@@ -64,8 +63,8 @@ export class EngagementController {
   getCommentReplies(
     @CurrentUser() user: any,
     @Param('commentId') commentId: string,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('page', pagePipe()) page: number,
+    @Query('limit', limitPipe(20)) limit: number,
   ) {
     return this.engagementService.getCommentReplies(commentId, user?.id, page, limit);
   }

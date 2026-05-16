@@ -2,24 +2,33 @@ import { MigrationInterface, QueryRunner, TableColumn, TableForeignKey } from 't
 
 export class AddReplyToUserIdToComments1778000000002 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.addColumn(
-      'comments',
-      new TableColumn({
-        name: 'reply_to_user_id',
-        type: 'uuid',
-        isNullable: true,
-      }),
-    );
+    const hasColumn = await queryRunner.hasColumn('comments', 'reply_to_user_id');
+    if (!hasColumn) {
+      await queryRunner.addColumn(
+        'comments',
+        new TableColumn({
+          name: 'reply_to_user_id',
+          type: 'uuid',
+          isNullable: true,
+        }),
+      );
+    }
 
-    await queryRunner.createForeignKey(
-      'comments',
-      new TableForeignKey({
-        columnNames: ['reply_to_user_id'],
-        referencedColumnNames: ['id'],
-        referencedTableName: 'users',
-        onDelete: 'SET NULL',
-      }),
+    const table = await queryRunner.getTable('comments');
+    const hasForeignKey = table?.foreignKeys.some((fk) =>
+      fk.columnNames.includes('reply_to_user_id'),
     );
+    if (!hasForeignKey) {
+      await queryRunner.createForeignKey(
+        'comments',
+        new TableForeignKey({
+          columnNames: ['reply_to_user_id'],
+          referencedColumnNames: ['id'],
+          referencedTableName: 'users',
+          onDelete: 'SET NULL',
+        }),
+      );
+    }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
@@ -31,7 +40,10 @@ export class AddReplyToUserIdToComments1778000000002 implements MigrationInterfa
       if (foreignKey) {
         await queryRunner.dropForeignKey('comments', foreignKey);
       }
-      await queryRunner.dropColumn('comments', 'reply_to_user_id');
+      const hasColumn = await queryRunner.hasColumn('comments', 'reply_to_user_id');
+      if (hasColumn) {
+        await queryRunner.dropColumn('comments', 'reply_to_user_id');
+      }
     }
   }
 }

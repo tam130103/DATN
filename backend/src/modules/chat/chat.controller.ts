@@ -6,7 +6,6 @@ import {
   Param,
   Query,
   UseGuards,
-  ParseIntPipe,
   ParseUUIDPipe,
   BadRequestException,
 } from '@nestjs/common';
@@ -15,6 +14,7 @@ import { ChatGateway } from './chat.gateway';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { limitPipe, pagePipe } from '../../common/pipes/bounded-int.pipe';
 
 @Controller('conversations')
 export class ChatController {
@@ -59,8 +59,8 @@ export class ChatController {
   getMessages(
     @CurrentUser() user: any,
     @Param('id', ParseUUIDPipe) conversationId: string,
-    @Query('page', new ParseIntPipe({ optional: true })) page = 1,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit = 50,
+    @Query('page', pagePipe()) page = 1,
+    @Query('limit', limitPipe(50)) limit = 50,
   ) {
     return this.chatService.getMessages(conversationId, user.id, page, limit);
   }

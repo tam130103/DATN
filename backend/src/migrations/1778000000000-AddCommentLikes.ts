@@ -6,7 +6,7 @@ export class AddCommentLikes1778000000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create comment_likes table
     await queryRunner.query(`
-      CREATE TABLE "comment_likes" (
+      CREATE TABLE IF NOT EXISTS "comment_likes" (
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
         "user_id" uuid NOT NULL,
         "comment_id" uuid NOT NULL,
@@ -18,7 +18,7 @@ export class AddCommentLikes1778000000000 implements MigrationInterface {
       )
     `);
 
-    await queryRunner.query(`CREATE INDEX "IDX_comment_likes_user_id" ON "comment_likes" ("user_id")`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_comment_likes_user_id" ON "comment_likes" ("user_id")`);
 
     // Enable RLS + deny policy (same pattern as 1777400000000)
     await queryRunner.query(`

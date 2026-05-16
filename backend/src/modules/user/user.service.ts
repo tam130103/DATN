@@ -1,11 +1,12 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, Not } from 'typeorm';
-import { User, UserProvider } from './entities/user.entity';
+import { User, UserProvider, UserStatus } from './entities/user.entity';
 import { Follow } from './entities/follow.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import * as bcrypt from 'bcrypt';
+import { assertAllowedCloudinaryUrl } from '../../common/media-validation.util';
 
 @Injectable()
 export class UserService {
@@ -132,7 +133,17 @@ export class UserService {
     if (existing) return;
 
     await this.dataSource.transaction(async (manager) => {
-      await manager.save(Follow, { followerId: userId, followingId: bot.id });
+      const result = await manager
+        .createQueryBuilder()
+        .insert()
+        .into(Follow)
+        .values({ followerId: userId, followingId: bot.id })
+        .orIgnore()
+        .returning(['id'])
+        .execute();
+
+      if ((result.raw?.length ?? 0) === 0) return;
+
       await manager.increment(User, { id: bot.id }, 'followersCount', 1);
       await manager.increment(User, { id: userId }, 'followingCount', 1);
     });
@@ -156,31 +167,41 @@ export class UserService {
     if (missingIds.length === 0) return;
 
     await this.dataSource.transaction(async (manager) => {
-      await manager
+      const result = await manager
         .createQueryBuilder()
         .insert()
         .into(Follow)
         .values(missingIds.map((followerId) => ({ followerId, followingId: bot.id })))
         .orIgnore()
+        .returning(['followerId'])
         .execute();
+
+      const insertedFollowerIds = (result.raw ?? [])
+        .map((row: { followerId?: string }) => row.followerId)
+        .filter((id: string | undefined): id is string => Boolean(id));
+      if (insertedFollowerIds.length === 0) return;
 
       await manager
         .createQueryBuilder()
         .update(User)
         .set({ followingCount: () => '"followingCount" + 1' })
-        .where('id IN (:...ids)', { ids: missingIds })
+        .where('id IN (:...ids)', { ids: insertedFollowerIds })
         .execute();
 
       await manager
         .createQueryBuilder()
         .update(User)
-        .set({ followersCount: () => `"followersCount" + ${missingIds.length}` })
+        .set({ followersCount: () => `"followersCount" + ${insertedFollowerIds.length}` })
         .where('id = :id', { id: bot.id })
         .execute();
     });
   }
 
   async update(userId: string, updateProfileDto: UpdateProfileDto): Promise<User> {
+    if (updateProfileDto.avatarUrl) {
+      assertAllowedCloudinaryUrl(updateProfileDto.avatarUrl, 'avatar URL');
+    }
+
     await this.userRepository.update(userId, updateProfileDto);
     return this.findById(userId);
   }
@@ -190,34 +211,52 @@ export class UserService {
       throw new ConflictException('Cannot follow yourself');
     }
 
-    const existing = await this.followRepository.findOne({
-      where: { followerId, followingId },
-    });
-
-    if (existing) {
-      throw new ConflictException('Already following');
+    const target = await this.userRepository.findOne({ where: { id: followingId } });
+    if (!target) {
+      throw new NotFoundException('User not found');
+    }
+    if (target.status !== UserStatus.ACTIVE) {
+      throw new BadRequestException('Cannot follow this user');
     }
 
     await this.dataSource.transaction(async (manager) => {
-      await manager.save(Follow, { followerId, followingId });
+      const result = await manager
+        .createQueryBuilder()
+        .insert()
+        .into(Follow)
+        .values({ followerId, followingId })
+        .orIgnore()
+        .returning(['id'])
+        .execute();
+
+      if ((result.raw?.length ?? 0) === 0) {
+        throw new ConflictException('Already following');
+      }
+
       await manager.increment(User, { id: followingId }, 'followersCount', 1);
       await manager.increment(User, { id: followerId }, 'followingCount', 1);
     });
   }
 
   async unfollow(followerId: string, followingId: string): Promise<void> {
-    const follow = await this.followRepository.findOne({
-      where: { followerId, followingId },
-    });
-
-    if (!follow) {
-      throw new ConflictException('Not following');
-    }
-
     await this.dataSource.transaction(async (manager) => {
-      await manager.delete(Follow, { followerId, followingId });
-      await manager.decrement(User, { id: followingId }, 'followersCount', 1);
-      await manager.decrement(User, { id: followerId }, 'followingCount', 1);
+      const result = await manager.delete(Follow, { followerId, followingId });
+      if (!result.affected) {
+        throw new ConflictException('Not following');
+      }
+
+      await manager
+        .createQueryBuilder()
+        .update(User)
+        .set({ followersCount: () => 'GREATEST("followersCount" - 1, 0)' })
+        .where('id = :id', { id: followingId })
+        .execute();
+      await manager
+        .createQueryBuilder()
+        .update(User)
+        .set({ followingCount: () => 'GREATEST("followingCount" - 1, 0)' })
+        .where('id = :id', { id: followerId })
+        .execute();
     });
   }
 

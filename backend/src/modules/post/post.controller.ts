@@ -8,21 +8,21 @@ import {
   Param,
   Query,
   UseGuards,
-  ParseIntPipe,
   UseInterceptors,
   UploadedFile,
-  Req,
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Request } from 'express';
 import { PostService } from './post.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { AIService } from '../ai/ai.service';
+import { assertAllowedUploadFile } from '../../common/media-validation.util';
+import { limitPipe } from '../../common/pipes/bounded-int.pipe';
+import { OptionalCursorPipe } from '../../common/pipes/optional-cursor.pipe';
 
 
 @Controller('posts')
@@ -45,11 +45,9 @@ export class PostController {
       throw new BadRequestException('File is required');
     }
 
-    if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('video/')) {
-      throw new BadRequestException('Only image or video files are allowed');
-    }
+    const detectedMime = await assertAllowedUploadFile(file);
 
-    const folder = file.mimetype.startsWith('video/') ? 'datn-social/videos' : 'datn-social/images';
+    const folder = detectedMime.startsWith('video/') ? 'datn-social/videos' : 'datn-social/images';
     const result = await this.cloudinaryService.uploadFile(file, folder);
     
     return { url: result.secure_url };
@@ -71,8 +69,8 @@ export class PostController {
   @Get('feed')
   getFeed(
     @CurrentUser() user: any,
-    @Query('cursor') cursor?: string,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit = 20,
+    @Query('cursor', new OptionalCursorPipe()) cursor?: string,
+    @Query('limit', limitPipe(20)) limit = 20,
   ) {
     return this.postService.getFeed(user.id, cursor, limit);
   }
@@ -81,8 +79,8 @@ export class PostController {
   getByUser(
     @CurrentUser() user: any,
     @Param('id') id: string,
-    @Query('cursor') cursor?: string,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit = 24,
+    @Query('cursor', new OptionalCursorPipe()) cursor?: string,
+    @Query('limit', limitPipe(24)) limit = 24,
   ) {
     return this.postService.getPostsByUser(id, user.id, cursor, limit);
   }
@@ -91,8 +89,8 @@ export class PostController {
   getTaggedPosts(
     @CurrentUser() user: any,
     @Param('id') id: string,
-    @Query('cursor') cursor?: string,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit = 24,
+    @Query('cursor', new OptionalCursorPipe()) cursor?: string,
+    @Query('limit', limitPipe(24)) limit = 24,
   ) {
     return this.postService.getTaggedPosts(id, user.id, cursor, limit);
   }
@@ -101,8 +99,8 @@ export class PostController {
   getSavedPosts(
     @CurrentUser() user: any,
     @Param('id') id: string,
-    @Query('cursor') cursor?: string,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit = 24,
+    @Query('cursor', new OptionalCursorPipe()) cursor?: string,
+    @Query('limit', limitPipe(24)) limit = 24,
   ) {
     if (id !== user.id) {
       throw new ForbiddenException('Cannot access another user saved posts');
