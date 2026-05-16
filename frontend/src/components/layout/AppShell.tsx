@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import {
   Heart,
   House,
@@ -72,6 +72,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   fullWidth,
 }) => {
   const { user, isAdmin, logout, token } = useAuth();
+  const prefersReducedMotion = useReducedMotion();
   const location = useLocation();
   const isMessagesPage = location.pathname.startsWith('/messages');
   const showHeader = !fullWidth && !isMessagesPage && (title || description || action);
@@ -156,10 +157,18 @@ export const AppShell: React.FC<AppShellProps> = ({
                 <NavLink key={item.to} to={item.to} className="xl:block">
                   <span className="hidden xl:block">
                     <span className={desktopNavItemClass(isActive)}>
-                      <span className="relative">
+                      <motion.span
+                        className="relative"
+                        animate={
+                          isActive && !prefersReducedMotion
+                            ? { scale: [1, 1.08, 1] }
+                            : {}
+                        }
+                        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                      >
                         <Icon size={24} weight={isActive ? 'fill' : 'regular'} aria-hidden="true" />
                         {notificationBadge(badge)}
-                      </span>
+                      </motion.span>
                       <span>{item.label}</span>
                     </span>
                   </span>
@@ -300,11 +309,25 @@ export const AppShell: React.FC<AppShellProps> = ({
 
           {aside ? (
             <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
-              <div className={`w-full ${fullWidth ? '' : 'mx-auto max-w-[630px]'}`}>{children}</div>
+              <motion.div
+                initial={prefersReducedMotion ? {} : { opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                className={`w-full ${fullWidth ? '' : 'mx-auto max-w-[630px]'}`}
+              >
+                {children}
+              </motion.div>
               <aside className="hidden xl:block">{aside}</aside>
             </div>
           ) : (
-            <div className={fullWidth ? '' : 'mx-auto w-full max-w-[935px]'}>{children}</div>
+            <motion.div
+              initial={prefersReducedMotion ? {} : { opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className={fullWidth ? '' : 'mx-auto w-full max-w-[935px]'}
+            >
+              {children}
+            </motion.div>
           )}
         </main>
       </div>

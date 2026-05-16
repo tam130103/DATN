@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AppShell } from '../components/layout/AppShell';
+import { PageSkeleton } from '../components/common/PageSkeleton';
 import { Avatar } from '../components/common/Avatar';
 import { searchService } from '../services/search.service';
 import { Hashtag, User } from '../types';
@@ -280,9 +281,7 @@ const ExplorePage: React.FC = () => {
             </div>
 
             {isLoading ? (
-              <div className="surface-card rounded-xl px-6 py-12 text-center">
-                <p className="text-sm text-[var(--app-muted)]">Đang tìm kiếm...</p>
-              </div>
+              <PageSkeleton type="list" />
             ) : activeTab === 'users' ? (
               users.length === 0 ? (
                 <div className="surface-card rounded-xl px-6 py-12 text-center">

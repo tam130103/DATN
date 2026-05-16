@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Comment } from '../../types';
 import { engagementService } from '../../services/engagement.service';
 import { CommentItem } from '../CommentItem';
@@ -129,25 +130,49 @@ export const PostComments: React.FC<PostCommentsProps> = ({
 
   return (
     <>
-      <div className="mt-3 space-y-2 border-t border-[var(--app-border)]/40 pt-3">
+      <motion.div
+        className="mt-3 space-y-2 border-t border-[var(--app-border)]/40 pt-3"
+        initial={false}
+        animate={{ opacity: 1 }}
+      >
         {comments.length === 0 ? (
-          <p className="text-sm text-[var(--app-muted)] italic">Chưa có bình luận nào.</p>
+          <motion.p
+            className="text-sm italic text-[var(--app-muted)]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            Chưa có bình luận nào.
+          </motion.p>
         ) : (
-          comments.map((comment) => (
-            <CommentItem
-              key={comment.id}
-              comment={comment}
-              currentUserId={user?.id}
-              onDeleted={(id) => setComments((prev) => prev.filter((c) => c.id !== id))}
-              onReport={onReport}
-              onReplyClick={handleReplyClick}
-              postId={postId}
-              highlightCommentId={highlightCommentId}
-              expandParentId={expandParentId}
-            />
-          ))
+          <AnimatePresence mode="popLayout">
+            {comments.map((comment, i) => (
+              <motion.div
+                key={comment.id}
+                layout
+                initial={{ opacity: 0, y: 12, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                transition={{
+                  duration: 0.3,
+                  delay: i * 0.04,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+              >
+                <CommentItem
+                  comment={comment}
+                  currentUserId={user?.id}
+                  onDeleted={(id) => setComments((prev) => prev.filter((c) => c.id !== id))}
+                  onReport={onReport}
+                  onReplyClick={handleReplyClick}
+                  postId={postId}
+                  highlightCommentId={highlightCommentId}
+                  expandParentId={expandParentId}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
         )}
-      </div>
+      </motion.div>
 
       <form
         onSubmit={handleSubmitComment}

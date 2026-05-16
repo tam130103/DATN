@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { AppShell } from '../components/layout/AppShell';
 import { PostCard } from '../components/PostCard';
 import { StatePanel } from '../components/common/StatePanel';
+import { PageSkeleton } from '../components/common/PageSkeleton';
 import { postService } from '../services/post.service';
 import { Post } from '../types';
 
@@ -37,7 +38,7 @@ const PostDetailPage: React.FC = () => {
   if (isLoading) {
     return (
       <AppShell title="Bài viết" description="Đang tải chi tiết bài viết.">
-        <StatePanel title="Bài viết" description="Đang lấy dữ liệu hình ảnh và tương tác." />
+        <PageSkeleton type="post-detail" />
       </AppShell>
     );
   }

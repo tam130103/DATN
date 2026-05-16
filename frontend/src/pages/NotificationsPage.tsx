@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { AppShell } from '../components/layout/AppShell';
 import { Avatar } from '../components/common/Avatar';
 import { StatePanel } from '../components/common/StatePanel';
+import { PageSkeleton } from '../components/common/PageSkeleton';
 import { useAuth } from '../contexts/AuthContext';
 import { notificationService } from '../services/notification.service';
 import { Notification } from '../types';
@@ -246,7 +247,7 @@ const NotificationsPage: React.FC = () => {
     >
       <div className="space-y-4" data-testid="notifications-page">
         {isLoading ? (
-          <StatePanel title="Đang tải" description="Đang tải thông báo của bạn..." />
+          <PageSkeleton type="list" />
         ) : notifications.length === 0 ? (
           <StatePanel
             title="Hoạt động"

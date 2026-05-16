@@ -89,7 +89,7 @@ export const PostHeader: React.FC<PostHeaderProps> = ({
             type="button"
             onClick={() => setShowOptionsDropdown(!showOptionsDropdown)}
             disabled={isDeleting}
-            className="interactive-icon spring-ease inline-flex h-8 w-8 items-center justify-center rounded-full text-[var(--app-text)] hover:bg-[var(--app-bg-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)] disabled:opacity-50"
+            className="interactive-icon spring-ease inline-flex h-10 w-10 items-center justify-center rounded-full text-[var(--app-text)] hover:bg-[var(--app-bg-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)] disabled:opacity-50"
             aria-label="Tùy chọn bài viết"
           >
             <DotsThree size={22} weight="bold" aria-hidden="true" />

@@ -207,7 +207,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
     <div>
       <div
         id={`comment-${comment.id}`}
-        className="group relative flex items-start gap-3 rounded-lg p-2 spring-ease hover:bg-[var(--app-bg-soft)]"
+        className="group relative flex cursor-pointer items-start gap-3 rounded-lg p-2 spring-ease hover:bg-[var(--app-bg-soft)]"
       >
         <Link
           to={profileLink}
@@ -298,10 +298,10 @@ export const CommentItem: React.FC<CommentItemProps> = ({
             <button
               type="button"
               onClick={handleLikeToggle}
-              className={`rounded-full p-1 spring-ease focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)] ${
+              className={`flex h-9 w-9 items-center justify-center rounded-full spring-ease focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)] ${
                 liked ? 'text-[var(--app-danger)]' : 'text-[var(--app-muted)] hover:text-[var(--app-danger)]'
               }`}
-              aria-label={liked ? 'Bá» thÃ­ch bÃ¬nh luáº­n' : 'ThÃ­ch bÃ¬nh luáº­n'}
+              aria-label={liked ? 'Bỏ thích bình luận' : 'Thích bình luận'}
             >
               <Heart size={16} weight={liked ? 'fill' : 'regular'} aria-hidden="true" />
             </button>
@@ -317,8 +317,8 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                 setShowOptionsDropdown(!showOptionsDropdown);
               }}
               disabled={isDeleting}
-              className="rounded-full p-1 text-[var(--app-muted)] spring-ease hover:bg-[var(--app-surface)] hover:text-[var(--app-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)] disabled:opacity-50"
-              aria-label="TÃ¹y chá»n bÃ¬nh luáº­n"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--app-muted)] spring-ease hover:bg-[var(--app-surface)] hover:text-[var(--app-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)] disabled:opacity-50"
+              aria-label="Tùy chọn bình luận"
             >
               <DotsThree size={18} weight="bold" aria-hidden="true" />
             </button>

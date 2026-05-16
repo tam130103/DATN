@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { AppShell } from '../components/layout/AppShell';
 import { PostCard } from '../components/PostCard';
 import { StatePanel } from '../components/common/StatePanel';
+import { PageSkeleton } from '../components/common/PageSkeleton';
 import { Hashtag, Post } from '../types';
 import { searchService } from '../services/search.service';
 
@@ -118,7 +119,7 @@ const HashtagPage: React.FC = () => {
         </section>
 
         {isLoading ? (
-          <StatePanel title="Hashtag" description="Đang tải các bài viết từ hashtag này." />
+          <PageSkeleton type="feed" />
         ) : posts.length === 0 ? (
           <StatePanel title="Yên tĩnh" description={`Chưa có bài viết nào được gắn thẻ #${name}.`} />
         ) : (

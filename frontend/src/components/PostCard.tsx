@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { memo, useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Comment, Post } from '../types';
@@ -21,7 +21,7 @@ interface PostCardProps {
   onDeleted?: (postId: string) => void;
 }
 
-export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, onDeleted }) => {
+export const PostCard: React.FC<PostCardProps> = memo(({ post, highlightCommentId, onDeleted }) => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const isTargetPost = location.pathname.includes(`/posts/${post.id}`);
@@ -125,7 +125,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, on
     setShowShareModal(true);
   }, []);
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     setIsDeleting(true);
     try {
       await postService.deletePost(post.id);
@@ -136,19 +136,19 @@ export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, on
     } finally {
       setIsDeleting(false);
     }
-  };
+  }, [post.id, onDeleted]);
 
-  const handleTogglePin = async () => {
+  const handleTogglePin = useCallback(async () => {
     try {
       await postService.togglePin(post.id);
-      setLocalIsPinned(!localIsPinned);
+      setLocalIsPinned((prev) => !prev);
       toast.success(localIsPinned ? 'Đã bỏ ghim bài viết.' : 'Đã ghim bài viết.');
     } catch {
       toast.error('Không thể thao tác ghim.');
     }
-  };
+  }, [post.id, localIsPinned]);
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = useCallback(async () => {
     const nextCaption = editCaptionText.trim();
     if (!nextCaption) {
       toast.error('Nội dung không được để trống.');
@@ -170,7 +170,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, on
     } finally {
       setIsSavingEdit(false);
     }
-  };
+  }, [editCaptionText, localCaption, post.id]);
 
   const isOwner = user?.id === post.userId;
   const commentsCount = showComments
@@ -178,7 +178,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, on
     : (post.commentsCount ?? 0);
 
   return (
-    <article className="spring-ease border-b border-[var(--app-border)] bg-[var(--app-surface)] hover:bg-[var(--app-bg-soft)] last:border-b-0">
+    <article className="cursor-pointer spring-ease border-b border-[var(--app-border)] bg-[var(--app-surface)] hover:bg-[var(--app-bg-soft)] last:border-b-0">
       <PostHeader
         user={post.user}
         createdAt={post.createdAt}
@@ -288,4 +288,4 @@ export const PostCard: React.FC<PostCardProps> = ({ post, highlightCommentId, on
       />
     </article>
   );
-};
+}, (prev, next) => prev.post.id === next.post.id);

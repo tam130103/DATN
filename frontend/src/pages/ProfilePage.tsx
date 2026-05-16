@@ -5,6 +5,7 @@ import { PushPin } from '@phosphor-icons/react';
 import { AppShell } from '../components/layout/AppShell';
 import { Avatar } from '../components/common/Avatar';
 import { PostLightbox } from '../components/PostLightbox';
+import { PageSkeleton } from '../components/common/PageSkeleton';
 import { useAuth } from '../contexts/AuthContext';
 import { userService } from '../services/user.service';
 import { postService } from '../services/post.service';
@@ -545,9 +546,7 @@ const ProfilePage: React.FC = () => {
   if (isLoading) {
     return (
       <AppShell>
-        <div className="surface-card rounded-xl px-6 py-16 text-center">
-          <p className="text-sm text-[var(--app-muted)]">Đang tải hồ sơ...</p>
-        </div>
+        <PageSkeleton type="profile" />
       </AppShell>
     );
   }

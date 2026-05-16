@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+const ChatMarkdown = lazy(() => import('./ChatMarkdown'));
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AppShell } from '../components/layout/AppShell';
 import { Avatar } from '../components/common/Avatar';
+import { PageSkeleton } from '../components/common/PageSkeleton';
 import { useAuth } from '../contexts/AuthContext';
 import { chatService, Conversation } from '../services/chat.service';
 import { chatSocketService } from '../services/chat-socket.service';
@@ -306,7 +307,7 @@ const MessagesPage: React.FC = () => {
             ) : null}
 
             <div className="flex-1 overflow-y-auto">
-              {isLoadingConversations ? <div className="px-4 py-6 text-center text-sm text-[var(--app-muted)]">Đang tải cuộc trò chuyện...</div> : conversations.length === 0 ? (
+              {isLoadingConversations ? <PageSkeleton type="list" /> : conversations.length === 0 ? (
                 <div className="px-5 py-12 text-center">
                   <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-[var(--app-border)] bg-[var(--app-bg-soft)] text-[var(--app-muted)]"><ChatIcon /></div>
                   <p className="text-lg font-semibold text-[var(--app-text)]">Không có cuộc trò chuyện nào</p>
@@ -369,6 +370,7 @@ const MessagesPage: React.FC = () => {
                     <p className="mt-3 max-w-md text-sm leading-6 text-[var(--app-muted)]">Hãy nhắn tin để bắt đầu cuộc trò chuyện.</p>
                   </div>
                 ) : (
+                  <Suspense fallback={<PageSkeleton type="messages" />}>
                   <div className="space-y-3">
                     {messages.map((msg, idx) => {
                       const isMine = msg.senderId === user?.id;
@@ -383,35 +385,7 @@ const MessagesPage: React.FC = () => {
                           <div className="group max-w-[82%] sm:max-w-[70%]">
                             <div className={`rounded-[22px] px-4 py-3 text-sm leading-6 ${isMine ? 'rounded-br-[8px] bg-[var(--app-primary)] text-white selection:bg-white/30 selection:text-white' : 'rounded-bl-[8px] border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] selection:bg-[var(--app-primary)] selection:text-white'}`}>
                                 <div className={`chat-markdown-body ${isMine ? 'chat-markdown-mine text-white' : ''}`}>
-                                  <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                                    components={{
-                                      p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                                      strong: ({ children }) => <strong className="font-bold">{children}</strong>,
-                                      em: ({ children }) => <em className="italic">{children}</em>,
-                                      ul: ({ children }) => <ul className="my-2 ml-4 list-disc space-y-1">{children}</ul>,
-                                      ol: ({ children }) => <ol className="my-2 ml-4 list-decimal space-y-1">{children}</ol>,
-                                      li: ({ children }) => <li className="leading-6">{children}</li>,
-                                      h1: ({ children }) => <h1 className="mb-2 mt-3 text-base font-bold first:mt-0">{children}</h1>,
-                                      h2: ({ children }) => <h2 className="mb-2 mt-3 text-sm font-bold first:mt-0">{children}</h2>,
-                                      h3: ({ children }) => <h3 className="mb-1 mt-2 text-sm font-semibold first:mt-0">{children}</h3>,
-                                      a: ({ href, children }) => (
-                                        <a href={href} className={isMine ? 'underline font-semibold hover:opacity-80' : 'underline text-[var(--app-primary)] hover:text-[var(--app-primary-strong)]'} target="_blank" rel="noreferrer">{children}</a>
-                                      ),
-                                      code: ({ children }) => (
-                                        <code className={`rounded px-1.5 py-0.5 font-mono text-xs ${isMine ? 'bg-white/20 text-white' : 'bg-[var(--app-bg-soft)] text-[var(--app-text)]'}`}>{children}</code>
-                                      ),
-                                      pre: ({ children }) => (
-                                        <pre className={`my-2 overflow-x-auto rounded-lg p-3 text-xs ${isMine ? 'bg-[rgba(28,30,33,0.2)] text-white' : 'bg-[var(--app-bg-soft)] text-[var(--app-text)]'}`}>{children}</pre>
-                                      ),
-                                      blockquote: ({ children }) => (
-                                        <blockquote className={`my-2 border-l-4 pl-3 italic ${isMine ? 'border-white/30 text-white/80' : 'border-[var(--app-border)] text-[var(--app-muted)]'}`}>{children}</blockquote>
-                                      ),
-                                      hr: () => <hr className={`my-3 ${isMine ? 'border-white/20' : 'border-[var(--app-border)]'}`} />,
-                                    }}
-                                  >
-                                    {msg.content}
-                                  </ReactMarkdown>
+                                  <ChatMarkdown content={msg.content} isMine={isMine} />
                                 </div>
                             </div>
                             {msg.mediaUrl ? <img src={msg.mediaUrl} alt="" className="mt-2 max-h-60 rounded-lg object-cover" /> : null}
@@ -437,6 +411,7 @@ const MessagesPage: React.FC = () => {
                     ) : null}
                     <div ref={messagesEndRef} />
                   </div>
+                  </Suspense>
                 )}
               </div>
 
