@@ -93,6 +93,10 @@ $RECYCLE.BIN/
 .vscode-test
 .yarn/
 .pnp.*
+*.zip
+*.rar
+*.7z
+
 # ============= AGENTIC TOOLS (SKILLS & MCP) =============
 .gemini/
 .antigravity/
