@@ -109,7 +109,7 @@ const MessagesPage: React.FC = () => {
       setOnlineUsers((prev) => new Set([...prev, ...data.userIds]));
     });
     const unsub6 = chatSocketService.on('error', (data: { message?: string }) => {
-      toast.error(data?.message || 'KhÃ´ng thá»ƒ thá»±c hiá»‡n thao tÃ¡c chat.');
+      toast.error(data?.message || 'Không thể thực hiện thao tác chat.');
     });
     return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); };
   }, [loadConversations, selectedConversation, token]);
@@ -212,7 +212,7 @@ const MessagesPage: React.FC = () => {
         await loadConversations();
         return;
       } catch {
-        toast.error('Lá»—i gá»­i tin nháº¯n');
+        toast.error('Lỗi gửi tin nhắn');
       }
     }
     try {

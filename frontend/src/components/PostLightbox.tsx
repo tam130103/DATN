@@ -52,8 +52,6 @@ interface PostLightboxProps {
   onDeleted?: (postId: string) => void;
 }
 
-
-
 export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDeleted }) => {
   const { user } = useAuth();
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
@@ -101,7 +99,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
         }
       } catch {
         if (isActive) {
-          toast.error('KhÃ´ng thá»ƒ táº£i bÃ¬nh luáº­n.');
+          toast.error('Không thể tải bình luận.');
         }
       } finally {
         if (isActive) {
@@ -150,7 +148,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
     } catch {
       setLiked(originalLiked);
       setLikesCount(originalCount);
-      toast.error('KhÃ´ng thá»ƒ cáº­p nháº­t lÆ°á»£t thÃ­ch.');
+      toast.error('Không thể cập nhật lượt thích.');
     }
   };
 
@@ -158,15 +156,15 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
     try {
       await postService.togglePin(post.id);
       setLocalIsPinned(!localIsPinned);
-      toast.success(localIsPinned ? 'ÄÃ£ bá» ghim bÃ i viáº¿t.' : 'ÄÃ£ ghim bÃ i viáº¿t.');
+      toast.success(localIsPinned ? 'Đã bỏ ghim bài viết.' : 'Đã ghim bài viết.');
     } catch {
-      toast.error('KhÃ´ng thá»ƒ thao tÃ¡c ghim.');
+      toast.error('Không thể thao tác ghim.');
     }
   };
 
   const handleSaveEdit = async () => {
     if (!editCaptionText?.trim()) {
-      toast.error('Ná»™i dung khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng.');
+      toast.error('Nội dung không được để trống.');
       return;
     }
     if (editCaptionText.trim() === localCaption) {
@@ -180,9 +178,9 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
       setLocalCaption(updatedPost.caption);
       setLocalIsEdited(true);
       setIsEditing(false);
-      toast.success('ÄÃ£ cáº­p nháº­t bÃ i viáº¿t.');
+      toast.success('Đã cập nhật bài viết.');
     } catch (error) {
-      toast.error(getApiMessage(error, 'KhÃ´ng thá»ƒ sá»­a bÃ i viáº¿t.'));
+      toast.error(getApiMessage(error, 'Không thể sửa bài viết.'));
     } finally {
       setIsSavingEdit(false);
     }
@@ -204,7 +202,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
     event.preventDefault();
     if (!commentText.trim() || isSubmitting) return;
     if (replyTarget?.id.startsWith('temp-')) {
-      toast.error('Vui lÃ²ng Ä‘á»£i bÃ¬nh luáº­n Ä‘Æ°á»£c lÆ°u trÆ°á»›c khi tráº£ lá»i.');
+      toast.error('Vui lòng đợi bình luận được lưu trước khi trả lời.');
       return;
     }
 
@@ -238,7 +236,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
       setCommentText('');
       setReplyTarget(null);
     } catch {
-      toast.error('KhÃ´ng thá»ƒ thÃªm bÃ¬nh luáº­n.');
+      toast.error('Không thể thêm bình luận.');
     } finally {
       setIsSubmitting(false);
     }
@@ -253,18 +251,18 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
   const createdAt = new Date(post.createdAt).toLocaleDateString();
   const cover = media[currentMediaIndex];
   const isVideo = cover?.type === 'VIDEO';
-  const authorLabel = post.user?.username || post.user?.name || 'ThÃ nh viÃªn';
+  const authorLabel = post.user?.username || post.user?.name || 'Thành viên';
   const isOwner = user?.id === post.userId;
 
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
       await postService.deletePost(post.id);
-      toast.success('ÄÃ£ xÃ³a bÃ i viáº¿t.');
+      toast.success('Đã xóa bài viết.');
       onDeleted?.(post.id);
       onClose();
     } catch (error) {
-      toast.error(getApiMessage(error, 'KhÃ´ng thá»ƒ xÃ³a bÃ i viáº¿t.'));
+      toast.error(getApiMessage(error, 'Không thể xóa bài viết.'));
     } finally {
       setIsDeleting(false);
     }
@@ -282,7 +280,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
           type="button"
           onClick={onClose}
           className="absolute right-4 top-4 z-10 rounded-full bg-[rgba(28,30,33,0.72)] p-2 text-white transition hover:bg-[rgba(28,30,33,0.88)]"
-          aria-label="ÄÃ³ng"
+          aria-label="Đóng"
         >
           <CloseIcon className="h-5 w-5" />
         </button>
@@ -294,7 +292,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
               onClick={(e) => { e.stopPropagation(); setShowOptionsDropdown(!showOptionsDropdown); }}
               disabled={isDeleting}
               className="rounded-full bg-[rgba(28,30,33,0.72)] p-2 text-white transition hover:bg-[rgba(28,30,33,0.88)] disabled:opacity-50"
-              aria-label="TÃ¹y chá»n bÃ i viáº¿t"
+              aria-label="Tùy chọn bài viết"
             >
               <DotsIcon className="h-5 w-5" />
             </button>
@@ -320,8 +318,8 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
                         </div>
                         <div>
-                          <div className="font-semibold text-[var(--app-text)]">{localIsPinned ? 'Bá» ghim bÃ i viáº¿t' : 'Ghim bÃ i viáº¿t'}</div>
-                          <div className="text-xs text-[var(--app-muted)]">{localIsPinned ? 'Gá»¡ bÃ i nÃ y khá»i mÃ n hÃ¬nh Profile cá»§a báº¡n.' : 'ÄÆ°a bÃ i nÃ y lÃªn Ä‘áº§u trang cÃ¡ nhÃ¢n cá»§a báº¡n.'}</div>
+                          <div className="font-semibold text-[var(--app-text)]">{localIsPinned ? 'Bỏ ghim bài viết' : 'Ghim bài viết'}</div>
+                          <div className="text-xs text-[var(--app-muted)]">{localIsPinned ? 'Gỡ bài này khỏi màn hình Profile của bạn.' : 'Đưa bài này lên đầu trang cá nhân của bạn.'}</div>
                         </div>
                       </button>
                       <button
@@ -333,8 +331,8 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                         </div>
                         <div>
-                          <div className="font-semibold text-[var(--app-text)]">Chá»‰nh sá»­a bÃ i viáº¿t</div>
-                          <div className="text-xs text-[var(--app-muted)]">Cáº­p nháº­t ná»™i dung vÄƒn báº£n.</div>
+                          <div className="font-semibold text-[var(--app-text)]">Chỉnh sửa bài viết</div>
+                          <div className="text-xs text-[var(--app-muted)]">Cập nhật nội dung văn bản.</div>
                         </div>
                       </button>
                       <button
@@ -346,8 +344,8 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </div>
                         <div>
-                          <div className="font-semibold text-[var(--app-text)]">XÃ³a bÃ i viáº¿t</div>
-                          <div className="text-xs text-[var(--app-muted)]">Gá»¡ bÃ i viáº¿t nÃ y khá»i dÃ²ng thá»i gian.</div>
+                          <div className="font-semibold text-[var(--app-text)]">Xóa bài viết</div>
+                          <div className="text-xs text-[var(--app-muted)]">Gỡ bài viết này khỏi dòng thời gian.</div>
                         </div>
                       </button>
                     </>
@@ -362,8 +360,8 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                         </div>
                         <div>
-                          <div className="font-semibold text-[var(--app-text)]">BÃ¡o cÃ¡o bÃ i viáº¿t</div>
-                          <div className="text-xs text-[var(--app-muted)]">ChÃºng tÃ´i sáº½ khÃ´ng cho {authorLabel} biáº¿t ai Ä‘Ã£ bÃ¡o cÃ¡o.</div>
+                          <div className="font-semibold text-[var(--app-text)]">Báo cáo bài viết</div>
+                          <div className="text-xs text-[var(--app-muted)]">Chúng tôi sẽ không cho {authorLabel} biết ai đã báo cáo.</div>
                         </div>
                       </button>
                       <button
@@ -373,9 +371,9 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                           setShowOptionsDropdown(false);
                           try {
                             await userService.unfollowUser(post.userId);
-                            toast.success(`ÄÃ£ bá» theo dÃµi ${authorLabel}`);
+                            toast.success(`Đã bỏ theo dõi ${authorLabel}`);
                           } catch {
-                            toast.error('KhÃ´ng thá»ƒ bá» theo dÃµi lÃºc nÃ y.');
+                            toast.error('Không thể bỏ theo dõi lúc này.');
                           }
                         }}
                         className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left transition hover:bg-[var(--app-bg-soft)]"
@@ -384,8 +382,8 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </div>
                         <div>
-                          <div className="font-semibold text-[var(--app-text)]">Bá» theo dÃµi {authorLabel}</div>
-                          <div className="text-xs text-[var(--app-muted)]">KhÃ´ng nhÃ¬n tháº¥y bÃ i viáº¿t ná»¯a nhÆ°ng váº«n lÃ  báº¡n bÃ¨.</div>
+                          <div className="font-semibold text-[var(--app-text)]">Bỏ theo dõi {authorLabel}</div>
+                          <div className="text-xs text-[var(--app-muted)]">Không nhìn thấy bài viết nữa nhưng vẫn là bạn bè.</div>
                         </div>
                       </button>
                     </>
@@ -405,12 +403,12 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
             ) : (
               <img
                 src={cover.url}
-                alt={post.caption || 'PhÆ°Æ¡ng tiá»‡n bÃ i viáº¿t'}
+                alt={post.caption || 'Phương tiện bài viết'}
                 className="h-auto max-h-[60vh] w-full object-contain md:h-full md:max-h-full"
               />
             )
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-white/70">KhÃ´ng cÃ³ phÆ°Æ¡ng tiá»‡n kháº£ dá»¥ng</div>
+            <div className="flex h-full items-center justify-center text-sm text-white/70">Không có phương tiện khả dụng</div>
           )}
 
           {media.length > 1 ? (
@@ -420,7 +418,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                 onClick={() => setCurrentMediaIndex((prev) => Math.max(0, prev - 1))}
                 disabled={currentMediaIndex === 0}
                 className="absolute left-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/12 text-white backdrop-blur transition hover:bg-white/20 disabled:opacity-40"
-                aria-label="PhÆ°Æ¡ng tiá»‡n trÆ°á»›c"
+                aria-label="Phương tiện trước"
               >
                 <ChevronIcon direction="left" className="h-5 w-5" />
               </button>
@@ -429,7 +427,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                 onClick={() => setCurrentMediaIndex((prev) => Math.min(media.length - 1, prev + 1))}
                 disabled={currentMediaIndex === media.length - 1}
                 className="absolute right-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/12 text-white backdrop-blur transition hover:bg-white/20 disabled:opacity-40"
-                aria-label="PhÆ°Æ¡ng tiá»‡n sau"
+                aria-label="Phương tiện sau"
               >
                 <ChevronIcon direction="right" className="h-5 w-5" />
               </button>
@@ -443,10 +441,10 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                 <Avatar src={post.user?.avatarUrl} name={post.user?.name} username={post.user?.username} size="sm" ring />
               </Link>
               <div>
-                <Link to={`/${post.user?.username || post.user?.id}`} onClick={onClose} className="text-sm font-semibold text-[var(--app-text)] hover:underline">{post.user?.username || post.user?.name || 'ThÃ nh viÃªn'}</Link>
+                <Link to={`/${post.user?.username || post.user?.id}`} onClick={onClose} className="text-sm font-semibold text-[var(--app-text)] hover:underline">{post.user?.username || post.user?.name || 'Thành viên'}</Link>
                 <div className="text-xs text-[var(--app-muted)]">
                   {createdAt}
-                  {localIsEdited ? ' Â· ÄÃ£ chá»‰nh sá»­a' : ''}
+                  {localIsEdited ? ' · Đã chỉnh sửa' : ''}
                 </div>
               </div>
           </div>
@@ -466,7 +464,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                   value={editCaptionText}
                   onChange={(e) => setEditCaptionText(e.target.value)}
                   disabled={isSavingEdit}
-                  placeholder="Nháº­p ná»™i dung bÃ i viáº¿t..."
+                  placeholder="Nhập nội dung bài viết..."
                 />
                 <div className="mt-2 flex justify-end gap-2">
                   <button
@@ -475,7 +473,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                     onClick={() => setIsEditing(false)}
                     disabled={isSavingEdit}
                   >
-                    Há»§y
+                    Hủy
                   </button>
                   <button
                     type="button"
@@ -499,7 +497,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
             {isLoadingComments ? (
               <p className="text-xs font-semibold text-[var(--app-muted)]">Đang tải bình luận…</p>
             ) : comments.length === 0 ? (
-              <div className="rounded-lg bg-[var(--app-bg-soft)] px-4 py-4 text-xs font-semibold text-[var(--app-muted)]">ChÆ°a cÃ³ bÃ¬nh luáº­n nÃ o.</div>
+              <div className="rounded-lg bg-[var(--app-bg-soft)] px-4 py-4 text-xs font-semibold text-[var(--app-muted)]">Chưa có bình luận nào.</div>
             ) : (
               comments.map((comment) => (
                 <CommentItem
@@ -525,8 +523,8 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
                 <CommentIcon className="h-6 w-6 text-[var(--app-text)]" />
               </div>
               <div className="ml-auto text-right">
-                <p className="text-sm font-semibold text-[var(--app-text)]">{likesCount} lÆ°á»£t thÃ­ch</p>
-                <p className="text-xs text-[var(--app-muted)]">{comments.reduce((acc, c) => acc + 1 + (c.repliesCount || 0), 0)} bÃ¬nh luáº­n</p>
+                <p className="text-sm font-semibold text-[var(--app-text)]">{likesCount} lượt thích</p>
+                <p className="text-xs text-[var(--app-muted)]">{comments.reduce((acc, c) => acc + 1 + (c.repliesCount || 0), 0)} bình luận</p>
               </div>
             </div>
           </div>
@@ -534,7 +532,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
           <form onSubmit={handleSubmitComment} className="border-t border-[var(--app-border)] px-5 py-4">
             {replyTarget && (
               <div className="mb-2 flex items-center gap-2 text-xs text-[var(--app-muted)]">
-                <span>Tráº£ lá»i <strong>@{replyTarget.user?.username || replyTarget.user?.name}</strong></span>
+                <span>Trả lời <strong>@{replyTarget.user?.username || replyTarget.user?.name}</strong></span>
                 <button
                   type="button"
                   onClick={handleCancelReply}
@@ -551,7 +549,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
               type="text"
               value={commentText}
               onChange={(event) => setCommentText(event.target.value)}
-              placeholder={replyTarget ? `Tráº£ lá»i @${replyTarget.user?.username || replyTarget.user?.name}...` : 'ThÃªm bÃ¬nh luáº­n...'}
+              placeholder={replyTarget ? `Trả lời @${replyTarget.user?.username || replyTarget.user?.name}...` : 'Thêm bình luận...'}
               className="min-h-[44px] flex-1 bg-transparent text-sm text-[var(--app-text)] placeholder:text-[var(--app-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
               onKeyDown={(e) => {
                 if (e.key === 'Escape' && replyTarget) {
@@ -560,7 +558,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
               }}
             />
             <button type="submit" disabled={!commentText.trim() || isSubmitting} className="inline-flex min-h-[40px] items-center justify-center rounded-full bg-[var(--app-primary)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--app-primary-strong)] disabled:opacity-50">
-              ÄÄƒng
+              Đăng
             </button>
             </div>
           </form>

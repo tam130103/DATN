@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { DotsThree, Heart, PencilSimple, Trash, WarningCircle } from '@phosphor-icons/react';
@@ -61,7 +61,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
       setReplies(data);
       setShowReplies(true);
     } catch {
-      toast.error('KhÃ´ng thá»ƒ táº£i pháº£n há»“i.');
+      toast.error('Không thể tải phản hồi.');
     } finally {
       setIsLoadingReplies(false);
     }
@@ -118,7 +118,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   }, [comment.replies, comment.repliesCount, showReplies, localRepliesCount]);
 
   const isOwner = currentUserId === comment.userId;
-  const authorLabel = comment.user?.username || comment.user?.name || 'ThÃ nh viÃªn';
+  const authorLabel = comment.user?.username || comment.user?.name || 'Thành viên';
   const profileLink = `/${comment.user?.username || comment.user?.id}`;
 
   const handleNavigateClick = () => {
@@ -140,13 +140,13 @@ export const CommentItem: React.FC<CommentItemProps> = ({
     } catch {
       setLiked(prevLiked);
       setLikesCount(prevCount);
-      toast.error('KhÃ´ng thá»ƒ cáº­p nháº­t lÆ°á»£t thÃ­ch.');
+      toast.error('Không thể cập nhật lượt thích.');
     }
   };
 
   const handleSaveEdit = async () => {
     if (!editContent.trim()) {
-      toast.error('BÃ¬nh luáº­n khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng.');
+      toast.error('Bình luận không được để trống.');
       return;
     }
     if (editContent.trim() === localContent) {
@@ -159,9 +159,9 @@ export const CommentItem: React.FC<CommentItemProps> = ({
       const updated = await engagementService.updateComment(comment.id, editContent);
       setLocalContent(updated.content);
       setIsEditing(false);
-      toast.success('ÄÃ£ cáº­p nháº­t bÃ¬nh luáº­n.');
+      toast.success('Đã cập nhật bình luận.');
     } catch {
-      toast.error('KhÃ´ng thá»ƒ sá»­a bÃ¬nh luáº­n.');
+      toast.error('Không thể sửa bình luận.');
     } finally {
       setIsSavingEdit(false);
     }
@@ -171,10 +171,10 @@ export const CommentItem: React.FC<CommentItemProps> = ({
     setIsDeleting(true);
     try {
       await engagementService.deleteComment(comment.id);
-      toast.success('ÄÃ£ xÃ³a bÃ¬nh luáº­n.');
+      toast.success('Đã xóa bình luận.');
       onDeleted(comment.id);
     } catch {
-      toast.error('KhÃ´ng thá»ƒ xÃ³a bÃ¬nh luáº­n.');
+      toast.error('Không thể xóa bình luận.');
       setIsDeleting(false);
     }
   };
@@ -187,14 +187,14 @@ export const CommentItem: React.FC<CommentItemProps> = ({
     try {
       if (previouslyFollowing) {
         await userService.unfollowUser(comment.user.id);
-        toast.success(`ÄÃ£ bá» theo dÃµi ${authorLabel}`);
+        toast.success(`Đã bỏ theo dõi ${authorLabel}`);
       } else {
         await userService.followUser(comment.user.id);
-        toast.success(`ÄÃ£ theo dÃµi ${authorLabel}`);
+        toast.success(`Đã theo dõi ${authorLabel}`);
       }
     } catch {
       setIsFollowing(previouslyFollowing);
-      toast.error('CÃ³ lá»—i xáº£y ra, vui lÃ²ng thá»­ láº¡i.');
+      toast.error('Có lỗi xảy ra, vui lòng thử lại.');
     }
   };
 
@@ -250,7 +250,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                   onClick={() => setIsEditing(false)}
                   disabled={isSavingEdit || isDeleting}
                 >
-                  Há»§y
+                  Hủy
                 </button>
                 <button
                   type="button"
@@ -258,7 +258,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                   onClick={handleSaveEdit}
                   disabled={isSavingEdit || isDeleting}
                 >
-                  {isSavingEdit ? 'Äang lÆ°uâ€¦' : 'LÆ°u láº¡i'}
+                  {isSavingEdit ? 'Đang lưu…' : 'Lưu lại'}
                 </button>
               </div>
             </div>
@@ -278,14 +278,14 @@ export const CommentItem: React.FC<CommentItemProps> = ({
               </span>
               <div className="mt-1 flex items-center gap-3 text-xs font-semibold text-[var(--app-muted)]">
                 <span>{formatTimeAgo(comment.createdAt)}</span>
-                {likesCount > 0 ? <span>{likesCount} lÆ°á»£t thÃ­ch</span> : null}
+                {likesCount > 0 ? <span>{likesCount} lượt thích</span> : null}
                 {onReplyClick ? (
                   <button
                     type="button"
                     onClick={() => onReplyClick(comment)}
                     className="spring-ease hover:text-[var(--app-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
                   >
-                    Tráº£ lá»i
+                    Trả lời
                   </button>
                 ) : null}
               </div>
@@ -327,7 +327,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
               <>
                 <button
                   type="button"
-                  aria-label="ÄÃ³ng menu bÃ¬nh luáº­n"
+                  aria-label="Đóng menu bình luận"
                   className="fixed inset-0 z-[60] cursor-default"
                   onClick={(event) => {
                     event.stopPropagation();
@@ -348,7 +348,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                         className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm font-medium text-[var(--app-text)] hover:bg-[var(--app-bg-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
                       >
                         <PencilSimple size={16} aria-hidden="true" />
-                        Chá»‰nh sá»­a
+                        Chỉnh sửa
                       </button>
                       <button
                         type="button"
@@ -360,7 +360,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                         className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm font-medium text-[var(--app-danger)] hover:bg-[var(--app-bg-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
                       >
                         <Trash size={16} aria-hidden="true" />
-                        XÃ³a
+                        Xóa
                       </button>
                     </>
                   ) : (
@@ -374,7 +374,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                         }}
                         className="w-full px-4 py-2 text-left text-sm font-medium text-[var(--app-text)] hover:bg-[var(--app-bg-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
                       >
-                        {isFollowing ? `Bá» theo dÃµi ${authorLabel}` : `Theo dÃµi ${authorLabel}`}
+                        {isFollowing ? `Bỏ theo dõi ${authorLabel}` : `Theo dõi ${authorLabel}`}
                       </button>
                       <button
                         type="button"
@@ -386,7 +386,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                         className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm font-medium text-[var(--app-warning)] hover:bg-[var(--app-bg-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]"
                       >
                         <WarningCircle size={16} aria-hidden="true" />
-                        BÃ¡o cÃ¡o
+                        Báo cáo
                       </button>
                     </>
                   )}
@@ -407,10 +407,10 @@ export const CommentItem: React.FC<CommentItemProps> = ({
           >
             <span className="inline-block w-6 border-t border-[var(--app-muted)]" />
             {isLoadingReplies
-              ? 'Äang táº£iâ€¦'
+              ? 'Đang tải…'
               : showReplies
-                ? 'áº¨n pháº£n há»“i'
-                : `Xem ${localRepliesCount} pháº£n há»“i`}
+                ? 'Ẩn phản hồi'
+                : `Xem ${localRepliesCount} phản hồi`}
           </button>
 
           {showReplies ? (
@@ -437,9 +437,9 @@ export const CommentItem: React.FC<CommentItemProps> = ({
 
       <ConfirmDialog
         open={isDeleteOpen}
-        title="XÃ³a bÃ¬nh luáº­n?"
-        description="BÃ¬nh luáº­n nÃ y sáº½ bá»‹ gá»¡ khá»i bÃ i viáº¿t. HÃ nh Ä‘á»™ng nÃ y khÃ´ng thá»ƒ hoÃ n tÃ¡c."
-        confirmLabel="XÃ³a bÃ¬nh luáº­n"
+        title="Xóa bình luận?"
+        description="Bình luận này sẽ bị gỡ khỏi bài viết. Hành động này không thể hoàn tác."
+        confirmLabel="Xóa bình luận"
         variant="danger"
         isLoading={isDeleting}
         onCancel={() => setIsDeleteOpen(false)}
