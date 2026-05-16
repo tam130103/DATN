@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Article, ChatCircle, Eye, Warning } from '@phosphor-icons/react';
+import { Article, ChatCircle, CheckCircle, Eye, Warning, XCircle } from '@phosphor-icons/react';
 import { AdminStateView } from '../../components/admin/AdminStateView';
 import { adminService, AdminReport } from '../../services/admin.service';
 import { getApiMessage } from '../../utils/api-error';
@@ -78,6 +78,12 @@ const AdminReportsPage: React.FC = () => {
     setActionError('Không tìm thấy bài viết chứa bình luận này.');
   };
 
+  const handleNavigateToModeration = (report: AdminReport) => {
+    setActionError(null);
+    const path = report.targetType === 'post' ? 'posts' : 'comments';
+    navigate(`/admin/${path}?highlightId=${report.targetId}`);
+  };
+
   return (
     <div>
       <div className="admin-page-header">
@@ -148,24 +154,35 @@ const AdminReportsPage: React.FC = () => {
                   </td>
                   <td>{new Date(report.createdAt).toLocaleDateString('vi-VN')}</td>
                   <td>
-                    <button
-                      className="admin-action-btn view"
-                      type="button"
-                      onClick={() => handleViewContent(report)}
-                      title={report.targetType === 'post' ? 'Xem bài viết bị báo cáo' : 'Xem bình luận bị báo cáo'}
-                    >
-                      <Eye size={14} aria-hidden="true" /> Xem
-                    </button>
-                    {report.status === 'open' && (
-                      <>
-                        <button className="admin-action-btn resolve" type="button" onClick={() => void handleReview(report.id, 'resolved')}>
-                          Giải quyết
-                        </button>
-                        <button className="admin-action-btn reject" type="button" onClick={() => void handleReview(report.id, 'rejected')}>
-                          Từ chối
-                        </button>
-                      </>
-                    )}
+                    <div className="admin-report-actions">
+                      <button
+                        className="admin-action-btn view"
+                        type="button"
+                        onClick={() => handleViewContent(report)}
+                        title={report.targetType === 'post' ? 'Xem bài viết bị báo cáo' : 'Xem bình luận bị báo cáo'}
+                      >
+                        <Eye size={14} aria-hidden="true" /> Xem
+                      </button>
+                      {report.status === 'open' && (
+                        <>
+                          <button
+                            className="admin-action-btn resolve"
+                            type="button"
+                            onClick={() => handleNavigateToModeration(report)}
+                            title="Chuyển đến trang kiểm duyệt để xử lý"
+                          >
+                            <CheckCircle size={14} aria-hidden="true" /> Xử lý
+                          </button>
+                          <button
+                            className="admin-action-btn reject"
+                            type="button"
+                            onClick={() => void handleReview(report.id, 'rejected')}
+                          >
+                            <XCircle size={14} aria-hidden="true" /> Từ chối
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

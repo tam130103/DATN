@@ -323,6 +323,12 @@
   margin-right: 6px;
 }
 
+.admin-report-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .admin-action-btn.block { background: rgba(250,206,182,0.34); color: var(--app-muted-strong); }
 .admin-action-btn.block:hover { background: rgba(250,206,182,0.52); }
 .admin-action-btn.unblock { background: rgba(28,209,100,0.15); color: var(--app-success); }
@@ -339,6 +345,16 @@
 .admin-action-btn.reject:hover { background: rgba(100,116,139,0.25); }
 .admin-action-btn.view { background: var(--app-primary-soft); color: var(--app-primary); }
 .admin-action-btn.view:hover { background: rgba(65, 80, 247, 0.25); }
+
+/* Highlight row for navigation targets */
+.admin-table tr.admin-row-highlight td {
+  background-color: rgba(65, 80, 247, 0.08);
+  box-shadow: inset 3px 0 0 var(--app-primary);
+}
+
+.dark .admin-table tr.admin-row-highlight td {
+  background-color: rgba(99, 112, 255, 0.12);
+}
 
 /* User cell */
 .user-cell {

@@ -32,4 +32,4 @@ export class BoundedIntPipe implements PipeTransform<string | number | undefined
 
 export const pagePipe = () => new BoundedIntPipe({ defaultValue: 1, min: 1, max: 1000 });
 export const limitPipe = (defaultValue = 20) =>
-  new BoundedIntPipe({ defaultValue, min: 1, max: 50 });
+  new BoundedIntPipe({ defaultValue, min: 1, max: 100 });

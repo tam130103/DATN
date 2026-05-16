@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Article } from '@phosphor-icons/react';
 import { AdminStateView } from '../../components/admin/AdminStateView';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
@@ -32,6 +33,16 @@ const AdminPostsPage: React.FC = () => {
   const [actionError, setActionError] = useState<string | null>(null);
   const [pendingHidePost, setPendingHidePost] = useState<AdminPost | null>(null);
   const [pendingDeletePost, setPendingDeletePost] = useState<AdminPost | null>(null);
+
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get('highlightId');
+  const highlightedRef = useRef<HTMLTableRowElement>(null);
+
+  useEffect(() => {
+    if (highlightedRef.current) {
+      highlightedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightId, posts]);
 
   const fetchPosts = useCallback(async () => {
     setLoading(true);
@@ -115,7 +126,7 @@ const AdminPostsPage: React.FC = () => {
             </thead>
             <tbody>
               {posts.map((post) => (
-                <tr key={post.id}>
+                <tr key={post.id} ref={post.id === highlightId ? highlightedRef : null} className={post.id === highlightId ? 'admin-row-highlight' : ''}>
                   <td>
                     <div className="user-cell">
                       <img

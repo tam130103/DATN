@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ChatCircle } from '@phosphor-icons/react';
 import { AdminStateView } from '../../components/admin/AdminStateView';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
@@ -32,6 +33,16 @@ const AdminCommentsPage: React.FC = () => {
   const [actionError, setActionError] = useState<string | null>(null);
   const [pendingHideComment, setPendingHideComment] = useState<AdminComment | null>(null);
   const [pendingDeleteComment, setPendingDeleteComment] = useState<AdminComment | null>(null);
+
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get('highlightId');
+  const highlightedRef = useRef<HTMLTableRowElement>(null);
+
+  useEffect(() => {
+    if (highlightedRef.current) {
+      highlightedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightId, comments]);
 
   const fetchComments = useCallback(async () => {
     setLoading(true);
@@ -115,7 +126,7 @@ const AdminCommentsPage: React.FC = () => {
             </thead>
             <tbody>
               {comments.map((comment) => (
-                <tr key={comment.id}>
+                <tr key={comment.id} ref={comment.id === highlightId ? highlightedRef : null} className={comment.id === highlightId ? 'admin-row-highlight' : ''}>
                   <td>
                     <div className="user-cell">
                       <img
