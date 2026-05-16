@@ -93,7 +93,20 @@ $RECYCLE.BIN/
 .vscode-test
 .yarn/
 .pnp.*
-.aider*
+# ============= AGENTIC TOOLS (SKILLS & MCP) =============
+.gemini/
+.antigravity/
+.mcp/
+.agent/
+.agents/
 .claude/
+brain/
+knowledge/
+artifacts/
+scratch/
+mcp_servers/
 CLAUDE.md
+AGENTS.md
 plans/
+.aider*
+
