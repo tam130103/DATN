@@ -18,7 +18,7 @@ import { UserService } from './user.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CurrentUser, RequestUser } from '../auth/decorators/current-user.decorator';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationGateway } from '../notification/notification.gateway';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
@@ -38,7 +38,7 @@ export class UserController {
   ) {}
 
   @Get('me')
-  getMe(@CurrentUser() user: any) {
+  getMe(@CurrentUser() user: RequestUser) {
     return this.userService.findById(user.id);
   }
 
@@ -48,7 +48,7 @@ export class UserController {
       limits: { fileSize: 5 * 1024 * 1024 },
     }),
   )
-  async uploadAvatar(@UploadedFile() file: any) {
+  async uploadAvatar(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException('File is required');
     }
@@ -65,7 +65,7 @@ export class UserController {
   @Get(':id/followers')
   getFollowers(
     @Param('id') id: string,
-    @CurrentUser() currentUser: any,
+    @CurrentUser() currentUser: RequestUser,
     @Query('page', pagePipe()) page: number = 1,
     @Query('limit', limitPipe(20)) limit: number = 20,
   ) {
@@ -75,7 +75,7 @@ export class UserController {
   @Get(':id/following')
   getFollowing(
     @Param('id') id: string,
-    @CurrentUser() currentUser: any,
+    @CurrentUser() currentUser: RequestUser,
     @Query('page', pagePipe()) page: number = 1,
     @Query('limit', limitPipe(20)) limit: number = 20,
   ) {
@@ -83,7 +83,7 @@ export class UserController {
   }
 
   @Get(':username')
-  async getByUsername(@Param('username') username: string, @CurrentUser() currentUser: any) {
+  async getByUsername(@Param('username') username: string, @CurrentUser() currentUser: RequestUser) {
     let user = await this.userService.findByUsername(username);
 
     if (!user && isUuid(username)) {
@@ -103,17 +103,17 @@ export class UserController {
   }
 
   @Patch('me')
-  updateProfile(@CurrentUser() user: any, @Body() updateProfileDto: UpdateProfileDto) {
+  updateProfile(@CurrentUser() user: RequestUser, @Body() updateProfileDto: UpdateProfileDto) {
     return this.userService.update(user.id, updateProfileDto);
   }
 
   @Patch('me/notification')
-  updateNotificationSettings(@CurrentUser() user: any, @Body() dto: UpdateNotificationDto) {
+  updateNotificationSettings(@CurrentUser() user: RequestUser, @Body() dto: UpdateNotificationDto) {
     return this.userService.updateNotificationSettings(user.id, dto.notificationEnabled);
   }
 
   @Post(':id/follow')
-  async follow(@CurrentUser() user: any, @Param('id', ParseUUIDPipe) id: string) {
+  async follow(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string) {
     await this.userService.follow(user.id, id);
     const notification = await this.notificationService.createFollowNotification(user.id, id);
     if (notification) {
@@ -123,7 +123,7 @@ export class UserController {
   }
 
   @Delete(':id/follow')
-  unfollow(@CurrentUser() user: any, @Param('id', ParseUUIDPipe) id: string) {
+  unfollow(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.userService.unfollow(user.id, id);
   }
 }

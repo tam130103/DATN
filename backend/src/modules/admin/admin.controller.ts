@@ -13,6 +13,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { RequestUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '../user/entities/user.entity';
 import { AdminService } from './admin.service';
 import { AdminUserQueryDto } from './dto/admin-user-query.dto';
@@ -22,6 +23,10 @@ import { ModerateCommentDto } from './dto/moderate-comment.dto';
 import { CreateReportDto } from './dto/create-report.dto';
 import { ReviewReportDto, AdminContentQueryDto } from './dto/review-report.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+
+interface AuthenticatedRequest extends Request {
+  user: RequestUser;
+}
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -47,7 +52,7 @@ export class AdminController {
   updateUserStatus(
     @Param('id') id: string,
     @Body() dto: UpdateUserStatusDto,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.adminService.updateUserStatus(id, dto, req.user.id);
   }
@@ -56,7 +61,7 @@ export class AdminController {
   updateUserRole(
     @Param('id') id: string,
     @Body() dto: UpdateUserRoleDto,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.adminService.updateUserRole(id, dto, req.user.id);
   }
@@ -72,7 +77,7 @@ export class AdminController {
   moderatePost(
     @Param('id') id: string,
     @Body() dto: ModeratePostDto,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.adminService.moderatePost(id, dto, req.user.id);
   }
@@ -93,7 +98,7 @@ export class AdminController {
   moderateComment(
     @Param('id') id: string,
     @Body() dto: ModerateCommentDto,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.adminService.moderateComment(id, dto, req.user.id);
   }
@@ -114,7 +119,7 @@ export class AdminController {
   reviewReport(
     @Param('id') id: string,
     @Body() dto: ReviewReportDto,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.adminService.reviewReport(id, dto, req.user.id);
   }
@@ -135,7 +140,7 @@ export class ReportController {
   constructor(private readonly adminService: AdminService) {}
 
   @Post()
-  createReport(@Body() dto: CreateReportDto, @Request() req: any) {
+  createReport(@Body() dto: CreateReportDto, @Request() req: AuthenticatedRequest) {
     return this.adminService.createReport(req.user.id, dto);
   }
 }

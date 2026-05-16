@@ -562,20 +562,20 @@ export class PostService {
       commentsCountMap.set(comment.postId, (commentsCountMap.get(comment.postId) ?? 0) + 1);
     });
 
-    return posts.map(
-      (post) =>
-        ({
-          ...post,
-          createdAt: this.getEffectivePostDate(post),
-          user: userMap.get(post.userId) ?? (post.user as User),
-          media: mediaMap.get(post.id) ?? [],
-          postHashtags: hashtagMap.get(post.id) ?? [],
-          likesCount: likesCountMap.get(post.id) ?? 0,
-          commentsCount: commentsCountMap.get(post.id) ?? 0,
-          liked: viewerId ? likedPostIds.has(post.id) : false,
-          saved: viewerId ? savedPostIds.has(post.id) : false,
-        }) as Post,
-    );
+    return posts.map((post) => {
+      const { moderationReason: _mr, moderatedBy: _mb, moderatedAt: _ma, ...safePost } = post as any;
+      return {
+        ...safePost,
+        createdAt: this.getEffectivePostDate(post),
+        user: userMap.get(post.userId) ?? (post.user as User),
+        media: mediaMap.get(post.id) ?? [],
+        postHashtags: hashtagMap.get(post.id) ?? [],
+        likesCount: likesCountMap.get(post.id) ?? 0,
+        commentsCount: commentsCountMap.get(post.id) ?? 0,
+        liked: viewerId ? likedPostIds.has(post.id) : false,
+        saved: viewerId ? savedPostIds.has(post.id) : false,
+      } as Post;
+    });
   }
 
   async create(userId: string, createPostDto: CreatePostDto): Promise<Post> {

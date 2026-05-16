@@ -292,7 +292,15 @@ export class UserService {
     const followingSet = new Set(currentUserFollows.map((f) => f.followingId));
 
     return users.map((u) => ({
-      ...u,
+      id: u.id,
+      username: u.username,
+      name: u.name,
+      bio: u.bio,
+      avatarUrl: u.avatarUrl,
+      followersCount: u.followersCount,
+      followingCount: u.followingCount,
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
       isFollowing: followingSet.has(u.id),
     }));
   }
@@ -322,7 +330,15 @@ export class UserService {
     const followingSet = new Set(currentUserFollows.map((f) => f.followingId));
 
     return users.map((u) => ({
-      ...u,
+      id: u.id,
+      username: u.username,
+      name: u.name,
+      bio: u.bio,
+      avatarUrl: u.avatarUrl,
+      followersCount: u.followersCount,
+      followingCount: u.followingCount,
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt,
       isFollowing: followingSet.has(u.id),
     }));
   }

@@ -1,12 +1,12 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
-import { v2 as cloudinary } from 'cloudinary';
+import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import * as streamifier from 'streamifier';
 
 @Injectable()
 export class CloudinaryService {
   private readonly logger = new Logger(CloudinaryService.name);
 
-  uploadFile(file: any, folder = 'datn-social'): Promise<any> {
+  uploadFile(file: Express.Multer.File, folder = 'datn-social'): Promise<UploadApiResponse> {
     return new Promise((resolve, reject) => {
       if (!file || !file.buffer) {
         return reject(new BadRequestException('No file provided'));
@@ -16,7 +16,7 @@ export class CloudinaryService {
         { folder, resource_type: 'auto' },
         (error, result) => {
           if (error) return reject(error);
-          resolve(result);
+          resolve(result as UploadApiResponse);
         },
       );
 

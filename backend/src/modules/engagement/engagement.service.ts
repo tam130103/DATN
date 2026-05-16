@@ -229,11 +229,12 @@ export class EngagementService {
     }
 
     return comments.map(comment => {
+      const { moderationReason: _mr, moderatedBy: _mb, moderatedAt: _ma, ...safeComment } = comment as any;
       if (comment.user) {
         comment.user.isFollowing = followingSet.has(comment.user.id);
       }
       return {
-        ...comment,
+        ...safeComment,
         liked: userLikedSet.has(comment.id),
         likesCount: likesCountMap.get(comment.id) || 0,
         repliesCount: repliesCountMap.get(comment.id) || 0,
@@ -281,11 +282,14 @@ export class EngagementService {
       userLikedSet = new Set(userLikes.map(l => l.commentId));
     }
 
-    return replies.map(reply => ({
-      ...reply,
-      liked: userLikedSet.has(reply.id),
-      likesCount: likesCountMap.get(reply.id) || 0,
-    }));
+    return replies.map(reply => {
+      const { moderationReason: _mr, moderatedBy: _mb, moderatedAt: _ma, ...safeReply } = reply as any;
+      return {
+        ...safeReply,
+        liked: userLikedSet.has(reply.id),
+        likesCount: likesCountMap.get(reply.id) || 0,
+      };
+    });
   }
 
   async toggleCommentLike(

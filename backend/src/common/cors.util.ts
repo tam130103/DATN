@@ -18,7 +18,7 @@ const normalizeOrigins = (frontendUrl?: string | null): AllowedOrigin[] => {
   const origins = [...STATIC_ALLOWED_ORIGINS];
 
   if (frontendUrl) {
-    origins.unshift(frontendUrl);
+    origins.unshift(frontendUrl.replace(/\/$/, ''));
   }
 
   origins.unshift(...parseConfiguredOrigins(process.env.CORS_ORIGINS));

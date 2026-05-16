@@ -80,7 +80,9 @@ class ApiClient {
   private clearAuthAndRedirect() {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
-    window.location.href = '/login';
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
   }
 
   public getInstance(): AxiosInstance {

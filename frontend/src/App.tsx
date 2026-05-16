@@ -2,6 +2,7 @@ import React, { Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { StatePanel } from './components/common/StatePanel';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
@@ -43,6 +44,7 @@ function App() {
   return (
     <AuthProvider>
       <Suspense fallback={<RouteLoader />}>
+        <ErrorBoundary>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -139,6 +141,7 @@ function App() {
 
           <Route path="*" element={<Navigate to="/feed" replace />} />
         </Routes>
+        </ErrorBoundary>
       </Suspense>
     </AuthProvider>
   );

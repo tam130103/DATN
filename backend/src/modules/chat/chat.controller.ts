@@ -13,7 +13,7 @@ import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CurrentUser, RequestUser } from '../auth/decorators/current-user.decorator';
 import { limitPipe, pagePipe } from '../../common/pipes/bounded-int.pipe';
 
 @Controller('conversations')
@@ -25,7 +25,7 @@ export class ChatController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(@CurrentUser() user: any, @Body() dto: CreateConversationDto) {
+  create(@CurrentUser() user: RequestUser, @Body() dto: CreateConversationDto) {
     if (dto.isGroup) {
       if (dto.participantIds.length < 2) {
         throw new BadRequestException('Group conversations require at least two participants');
@@ -43,21 +43,21 @@ export class ChatController {
   /** Phase 2: Open or create a direct conversation with the AI bot */
   @Post('assistant')
   @UseGuards(JwtAuthGuard)
-  getAssistantConversation(@CurrentUser() user: any) {
+  getAssistantConversation(@CurrentUser() user: RequestUser) {
     return this.chatService.getAssistantConversation(user.id);
   }
 
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  getConversations(@CurrentUser() user: any) {
+  getConversations(@CurrentUser() user: RequestUser) {
     return this.chatService.getConversations(user.id);
   }
 
   @Get(':id/messages')
   @UseGuards(JwtAuthGuard)
   getMessages(
-    @CurrentUser() user: any,
+    @CurrentUser() user: RequestUser,
     @Param('id', ParseUUIDPipe) conversationId: string,
     @Query('page', pagePipe()) page = 1,
     @Query('limit', limitPipe(50)) limit = 50,
@@ -67,20 +67,20 @@ export class ChatController {
 
   @Get('unread-count')
   @UseGuards(JwtAuthGuard)
-  getUnreadCount(@CurrentUser() user: any) {
+  getUnreadCount(@CurrentUser() user: RequestUser) {
     return this.chatService.getUnreadCount(user.id);
   }
 
   @Post(':id/leave')
   @UseGuards(JwtAuthGuard)
-  leaveConversation(@CurrentUser() user: any, @Param('id', ParseUUIDPipe) conversationId: string) {
+  leaveConversation(@CurrentUser() user: RequestUser, @Param('id', ParseUUIDPipe) conversationId: string) {
     return this.chatService.leaveConversation(conversationId, user.id);
   }
 
   @Post(':id/messages')
   @UseGuards(JwtAuthGuard)
   async sendMessage(
-    @CurrentUser() user: any,
+    @CurrentUser() user: RequestUser,
     @Param('id', ParseUUIDPipe) conversationId: string,
     @Body() dto: { content: string; mediaUrl?: string },
   ) {

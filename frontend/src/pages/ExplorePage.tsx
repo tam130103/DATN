@@ -92,7 +92,7 @@ const ExplorePage: React.FC = () => {
 
   // Fetch trending hashtags once on mount.
   useEffect(() => {
-    searchService.getTrendingHashtags(8).then(setTrendingHashtags).catch(() => undefined);
+    searchService.getTrendingHashtags(8).then(setTrendingHashtags).catch(() => toast.error('Khong the tai xu huong.'));
   }, []);
 
   // Search effect: runs only when the committed query changes.

@@ -102,7 +102,7 @@ const FeedPage: React.FC = () => {
 
   useEffect(() => {
     void loadInitial();
-    searchService.getTrendingHashtags(6).then(setTrending).catch(() => undefined);
+    searchService.getTrendingHashtags(6).then(setTrending).catch(() => toast.error('Khong the tai xu huong.'));
   }, [loadInitial]);
 
   useEffect(() => {

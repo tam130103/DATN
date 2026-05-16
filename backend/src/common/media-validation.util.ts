@@ -28,8 +28,10 @@ export const assertAllowedUploadFile = async (
     throw new BadRequestException('Only supported image or video files are allowed');
   }
 
-  if (file.mimetype && !ALLOWED_UPLOAD_MIME_TYPES.has(file.mimetype)) {
-    throw new BadRequestException('Only supported image or video files are allowed');
+  if (file.mimetype && detectedMime && file.mimetype !== detectedMime) {
+    throw new BadRequestException(
+      `File MIME type mismatch: client sent "${file.mimetype}" but actual type is "${detectedMime}"`,
+    );
   }
 
   return detectedMime;

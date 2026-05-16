@@ -17,7 +17,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { PostService } from './post.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CurrentUser, RequestUser } from '../auth/decorators/current-user.decorator';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { AIService } from '../ai/ai.service';
 import { assertAllowedUploadFile } from '../../common/media-validation.util';
@@ -40,7 +40,7 @@ export class PostController {
       limits: { fileSize: 20 * 1024 * 1024 },
     }),
   )
-  async uploadMedia(@UploadedFile() file: any) {
+  async uploadMedia(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException('File is required');
     }
@@ -54,13 +54,13 @@ export class PostController {
   }
 
   @Post()
-  create(@CurrentUser() user: any, @Body() createPostDto: CreatePostDto) {
+  create(@CurrentUser() user: RequestUser, @Body() createPostDto: CreatePostDto) {
     return this.postService.create(user.id, createPostDto);
   }
 
   @Post('import/facebook')
   importFromFacebook(
-    @CurrentUser() user: any,
+    @CurrentUser() user: RequestUser,
     @Body() body: { pageId?: string; accessToken?: string; limit?: number },
   ) {
     return this.postService.importFromFacebookPage(user.id, body);
@@ -68,7 +68,7 @@ export class PostController {
 
   @Get('feed')
   getFeed(
-    @CurrentUser() user: any,
+    @CurrentUser() user: RequestUser,
     @Query('cursor', new OptionalCursorPipe()) cursor?: string,
     @Query('limit', limitPipe(20)) limit = 20,
   ) {
@@ -77,7 +77,7 @@ export class PostController {
 
   @Get('user/:id')
   getByUser(
-    @CurrentUser() user: any,
+    @CurrentUser() user: RequestUser,
     @Param('id') id: string,
     @Query('cursor', new OptionalCursorPipe()) cursor?: string,
     @Query('limit', limitPipe(24)) limit = 24,
@@ -87,7 +87,7 @@ export class PostController {
 
   @Get('user/:id/tagged')
   getTaggedPosts(
-    @CurrentUser() user: any,
+    @CurrentUser() user: RequestUser,
     @Param('id') id: string,
     @Query('cursor', new OptionalCursorPipe()) cursor?: string,
     @Query('limit', limitPipe(24)) limit = 24,
@@ -97,7 +97,7 @@ export class PostController {
 
   @Get('user/:id/saved')
   getSavedPosts(
-    @CurrentUser() user: any,
+    @CurrentUser() user: RequestUser,
     @Param('id') id: string,
     @Query('cursor', new OptionalCursorPipe()) cursor?: string,
     @Query('limit', limitPipe(24)) limit = 24,
@@ -110,22 +110,22 @@ export class PostController {
   }
 
   @Get(':id')
-  getById(@CurrentUser() user: any, @Param('id') id: string) {
+  getById(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.postService.findById(id, user.id);
   }
 
   @Patch(':id/pin')
-  togglePin(@CurrentUser() user: any, @Param('id') id: string) {
+  togglePin(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.postService.togglePin(id, user.id);
   }
 
   @Patch(':id')
-  update(@CurrentUser() user: any, @Param('id') id: string, @Body() body: { caption: string }) {
+  update(@CurrentUser() user: RequestUser, @Param('id') id: string, @Body() body: { caption: string }) {
     return this.postService.updateCaption(id, user.id, body.caption);
   }
 
   @Delete(':id')
-  delete(@CurrentUser() user: any, @Param('id') id: string) {
+  delete(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.postService.delete(id, user.id);
   }
 

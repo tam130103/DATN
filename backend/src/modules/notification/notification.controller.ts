@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Param, Query, UseGuards } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CurrentUser, RequestUser } from '../auth/decorators/current-user.decorator';
 import { limitPipe, pagePipe } from '../../common/pipes/bounded-int.pipe';
 
 @Controller('notifications')
@@ -11,7 +11,7 @@ export class NotificationController {
 
   @Get()
   getNotifications(
-    @CurrentUser() user: any,
+    @CurrentUser() user: RequestUser,
     @Query('page', pagePipe()) page: number = 1,
     @Query('limit', limitPipe(20)) limit: number = 20,
   ) {
@@ -19,17 +19,17 @@ export class NotificationController {
   }
 
   @Get('unread-count')
-  getUnreadCount(@CurrentUser() user: any) {
+  getUnreadCount(@CurrentUser() user: RequestUser) {
     return this.notificationService.getUnreadCount(user.id);
   }
 
   @Post(':id/read')
-  markAsRead(@CurrentUser() user: any, @Param('id') id: string) {
+  markAsRead(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.notificationService.markAsRead(id, user.id);
   }
 
   @Post('read-all')
-  markAllAsRead(@CurrentUser() user: any) {
+  markAllAsRead(@CurrentUser() user: RequestUser) {
     return this.notificationService.markAllAsRead(user.id);
   }
 }

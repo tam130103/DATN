@@ -67,10 +67,10 @@ export class AuthService {
     const accessToken = this.generateAccessToken(user.id, user.email);
     const refreshToken = this.generateRefreshToken(user.id);
 
-    // Remove password from response
-    const { password: _, ...userWithoutPassword } = user as any;
+    // Remove sensitive fields from response
+    const { password: _, googleId: _g, blockedReason: _br, blockedAt: _ba, ...safeUser } = user as any;
 
-    return { user: userWithoutPassword, accessToken, refreshToken };
+    return { user: safeUser, accessToken, refreshToken };
   }
 
   async login(loginDto: LoginDto) {
@@ -112,10 +112,10 @@ export class AuthService {
     const accessToken = this.generateAccessToken(user.id, user.email);
     const refreshToken = this.generateRefreshToken(user.id);
 
-    // Remove password from response
-    const { password: _, ...userWithoutPassword } = user as any;
+    // Remove sensitive fields from response
+    const { password: _, googleId: _g, blockedReason: _br, blockedAt: _ba, ...safeUser } = user as any;
 
-    return { user: userWithoutPassword, accessToken, refreshToken };
+    return { user: safeUser, accessToken, refreshToken };
   }
 
   async refreshTokens(refreshToken: string) {
