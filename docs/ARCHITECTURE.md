@@ -114,7 +114,7 @@
 │                          DATA LAYER                                  │
 │                                                                      │
 │  ┌───────────────────────────────────────────────────────────────┐  │
-│  │                    PostgreSQL (Supabase)                       │  │
+│  │                       PostgreSQL                               │  │
 │  │                                                                 │  │
 │  │  Tables: users | posts | media | likes | comments | follows   │  │
 │  │          conversations | conversation_members | messages       │  │
@@ -131,18 +131,21 @@
 ### Backend
 | Công nghệ | Mục đích |
 |------------|----------|
-| **NestJS 10** | Framework chính (Node.js) |
+| **NestJS 11** | Framework chính (Node.js) |
 | **TypeORM** | ORM cho PostgreSQL |
 | **PostgreSQL 14+** | Database |
-| **JWT** | Authentication (access tokens) |
+| **JWT + Passport** | Authentication (access tokens) |
 | **Google OAuth 2.0** | Đăng nhập bằng Google |
 | **Socket.IO** | WebSocket cho chat & notifications |
-| **class-validator** | Validation DTOs |
+| **class-validator / class-transformer** | Validation DTOs |
+| **Helmet** | Security headers |
+| **Throttler** | Rate limiting |
 | **Cloudinary** | Upload & lưu trữ media (ảnh, video) |
-| **Google Gemini API** | AI moderation, sentiment, hashtag suggestion |
 | **Dify.ai** | AI caption generation (workflow), chat assistant (agent) |
 | **Facebook Graph API** | Import bài viết từ Page |
 | **axios** | HTTP client cho external API calls |
+| **cron** | Scheduled tasks (Facebook sync) |
+| **Swagger (OpenAPI)** | API documentation tại `/api/docs` |
 
 ### Frontend
 | Công nghệ | Mục đích |
@@ -151,12 +154,18 @@
 | **TypeScript** | Type safety |
 | **Vite** | Build tool & dev server |
 | **React Router v6** | Client-side routing |
-| **React Context API** | State management (Auth, Socket, Theme) |
+| **Zustand** | State management |
+| **React Context API** | Auth, Socket, Theme contexts |
 | **Socket.IO Client** | Realtime chat & notifications |
 | **Axios** | HTTP client |
-| **Vanilla CSS** | Design tokens (colors, spacing, theming) |
-| **Tailwind CSS** | Layout utilities |
+| **TanStack React Query (v3)** | Server state & caching |
+| **Tailwind CSS** | Utility-first styling |
+| **Phosphor Icons** | Icon system |
+| **Framer Motion** | Animation library |
+| **react-hook-form** | Form management |
 | **react-hot-toast** | Toast notifications |
+| **recharts** | Admin dashboard charts |
+| **react-markdown** | Markdown rendering |
 
 ---
 
@@ -257,20 +266,24 @@ Admin manage users → PATCH /admin/users/:id/status (block/unblock)
 
 ---
 
-## Deployment Architecture
+## Deployment Architecture (Docker Compose)
 
 ```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Vercel     │     │   Fly.io     │     │  Supabase    │
-│  (Frontend)  │────▶│  (Backend)   │────▶│ (PostgreSQL) │
-│  React SPA   │     │  NestJS API  │     │  Managed DB  │
-│  CDN + Edge  │     │  Docker      │     │              │
-└──────────────┘     └──────────────┘     └──────────────┘
-                           │
-                     ┌─────┴─────┐
-                     ▼           ▼
-              ┌──────────┐ ┌──────────┐
-              │Cloudinary│ │  Dify.ai │
-              │  Media   │ │  AI APIs │
-              └──────────┘ └──────────┘
+┌────────────────────────────────────────────────────────┐
+│                   Docker Compose                        │
+│                                                         │
+│  ┌──────────────┐   ┌──────────────┐   ┌────────────┐ │
+│  │   Frontend   │──▶│   Backend    │──▶│ PostgreSQL │ │
+│  │  React SPA   │   │  NestJS API  │   │  Database  │ │
+│  │  Nginx :80   │   │  Docker      │   │  :5432     │ │
+│  └──────────────┘   └──────┬───────┘   └────────────┘ │
+└────────────────────────────┼───────────────────────────┘
+                             │
+                       ┌─────┴─────┐
+                       ▼           ▼
+                ┌──────────┐ ┌──────────┐
+                │Cloudinary│ │  Dify.ai │
+                │  Media   │ │  AI APIs │
+                └──────────┘ └──────────┘
+```
 ```

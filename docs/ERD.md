@@ -225,11 +225,15 @@ Tag/mention người dùng trong bài viết.
 | Column | Type | Constraints | Ghi chú |
 |--------|------|-------------|---------|
 | `id` | uuid | PK | |
-| `postId` | uuid | FK → posts | |
-| `userId` | uuid | FK → users | |
+| `postId` | uuid | FK → posts, INDEXED | |
+| `userId` | uuid | FK → users, INDEXED | |
 | `parentId` | uuid | FK → comments, NULLABLE | Reply (self-referential) |
+| `replyToUserId` | uuid | FK → users, NULLABLE | Người được reply |
 | `content` | text | NOT NULL | |
-| `status` | enum | DEFAULT 'visible' | `visible` / `hidden` |
+| `status` | enum | DEFAULT 'visible' | `visible` / `hidden` / `deleted` |
+| `moderationReason` | text | NULLABLE | Lý do kiểm duyệt |
+| `moderatedBy` | uuid | FK → users, NULLABLE | Admin kiểm duyệt |
+| `moderatedAt` | timestamptz | NULLABLE | Thời điểm kiểm duyệt |
 
 ### Saved Posts
 Bài viết đã lưu (bookmark).
@@ -259,7 +263,7 @@ Bài viết đã lưu (bookmark).
 | `id` | uuid | PK | |
 | `recipientId` | uuid | FK → users | Người nhận |
 | `senderId` | uuid | FK → users | Người gửi |
-| `type` | varchar | NOT NULL | `LIKE` / `COMMENT` / `FOLLOW` / `MENTION` |
+| `type` | enum | NOT NULL | `LIKE` / `COMMENT` / `FOLLOW` / `POST_TAG` / `COMMENT_LIKE` |
 | `data` | jsonb | NULLABLE | Metadata bổ sung |
 | `isRead` | boolean | DEFAULT false | |
 
@@ -277,9 +281,10 @@ Bài viết đã lưu (bookmark).
 | Column | Type | Constraints | Ghi chú |
 |--------|------|-------------|---------|
 | `id` | uuid | PK | |
-| `conversationId` | uuid | FK → conversations | |
-| `userId` | uuid | FK → users | |
+| `conversationId` | uuid | FK → conversations, INDEXED | |
+| `userId` | uuid | FK → users, INDEXED | |
 | `hasLeft` | boolean | DEFAULT false | Đã rời nhóm |
+| `createdAt` | timestamptz | AUTO | Thời gian tham gia |
 
 **Unique Constraint**: `(conversationId, userId)`.
 
@@ -295,18 +300,18 @@ Bài viết đã lưu (bookmark).
 | `isRead` | boolean | DEFAULT false | |
 
 ### Reports
-Báo cáo vi phạm từ người dùng.
+Báo cáo vi phạm từ người dùng (đa hình: có thể báo cáo bài viết hoặc bình luận).
 
 | Column | Type | Constraints | Ghi chú |
 |--------|------|-------------|---------|
 | `id` | uuid | PK | |
 | `reporterId` | uuid | FK → users | Người báo cáo |
-| `postId` | uuid | FK → posts | Bài viết bị báo cáo |
-| `reason` | varchar | NOT NULL | Loại vi phạm |
-| `description` | text | NULLABLE | Mô tả chi tiết |
-| `status` | enum | DEFAULT 'pending' | `pending` / `reviewed` / `dismissed` |
+| `targetType` | enum | NOT NULL, INDEXED | `post` / `comment` (đa hình) |
+| `targetId` | uuid | NOT NULL, INDEXED | ID của bài viết hoặc bình luận |
+| `reason` | text | NOT NULL | Lý do báo cáo |
+| `status` | enum | DEFAULT 'open' | `open` / `resolved` / `rejected` |
 | `reviewedBy` | uuid | FK → users, NULLABLE | Admin xử lý |
-| `reviewNote` | text | NULLABLE | Ghi chú xử lý |
+| `reviewedAt` | timestamptz | NULLABLE | Thời điểm xử lý |
 
 ---
 
@@ -331,7 +336,6 @@ Báo cáo vi phạm từ người dùng.
 | Posts | Hashtags | Many-to-Many (qua Post Hashtags) |
 | Posts | Post Mentions | One-to-Many |
 | Posts | Saved Posts | One-to-Many |
-| Posts | Reports | One-to-Many |
 | Comments | Comments | Self-Referential (replies) |
 | Conversations | Conv Members | One-to-Many |
 | Conversations | Messages | One-to-Many |
@@ -357,6 +361,7 @@ CREATE UNIQUE INDEX idx_likes_post_user ON likes("postId", "userId");
 -- Comments
 CREATE INDEX idx_comments_post_id ON comments("postId");
 CREATE INDEX idx_comments_parent_id ON comments("parentId");
+CREATE INDEX idx_comments_user_id ON comments("userId");
 
 -- Follows
 CREATE UNIQUE INDEX idx_follows_pair ON follows("followerId", "followingId");
@@ -370,7 +375,8 @@ CREATE INDEX idx_post_hashtags_post ON post_hashtags("postId");
 
 -- Notifications
 CREATE INDEX idx_notifications_recipient ON notifications("recipientId");
-CREATE INDEX idx_notifications_read ON notifications("isRead");
+CREATE INDEX idx_notifications_read ON notifications("recipientId", "isRead");
+CREATE INDEX idx_notifications_recipient_created ON notifications("recipientId", "createdAt");
 
 -- Messages
 CREATE INDEX idx_messages_conversation ON messages("conversationId");
@@ -378,10 +384,11 @@ CREATE INDEX idx_messages_created ON messages("createdAt" DESC);
 
 -- Conversation Members
 CREATE UNIQUE INDEX idx_conv_members ON conversation_members("conversationId", "userId");
+CREATE INDEX idx_conv_members_user ON conversation_members("userId");
 
 -- Reports
 CREATE INDEX idx_reports_status ON reports(status);
-CREATE INDEX idx_reports_post ON reports("postId");
+CREATE INDEX idx_reports_target ON reports("targetType", "targetId");
 ```
 
 ---

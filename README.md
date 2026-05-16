@@ -29,12 +29,13 @@
 
 | Layer | Công nghệ |
 |-------|-----------|
-| **Backend** | NestJS 10, TypeORM, PostgreSQL |
-| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS |
+| **Backend** | NestJS 11, TypeORM, PostgreSQL, Helmet, Throttler |
+| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Phosphor Icons, Framer Motion |
 | **Realtime** | Socket.IO (Chat & Notifications) |
-| **AI Engine** | Google Gemini API, Dify.ai (Agent & Workflow) |
-| **Cloud** | Cloudinary (Media), Fly.io (Backend), Vercel (Frontend), Supabase (DB) |
+| **AI Engine** | Dify.ai (Agent & Workflow) |
+| **Cloud** | Cloudinary (Media) |
 | **DevOps** | Docker, Docker Compose |
+| **API Docs** | Swagger (OpenAPI) tại `/api/docs` |
 
 ---
 
@@ -64,7 +65,7 @@ Dự án yêu cầu các file `.env` tại 3 vị trí để hoạt động chí
 docker compose up --build
 
 # Chạy migrations (chỉ cần ở lần đầu tiên hoặc khi có thay đổi DB)
-docker exec datn_backend node ./node_modules/typeorm/cli.js migration:run -d ./dist/config/data-source.js
+docker exec datn_backend npm run migration:run
 ```
 
 ---
@@ -75,10 +76,10 @@ docker exec datn_backend node ./node_modules/typeorm/cli.js migration:run -d ./d
 datn-social/
 ├── backend/            # NestJS Server & API logic
 ├── frontend/           # React SPA & UI Components
-├── dify/               # Cấu hình AI Agent & Workflows
+├── dify/               # Cấu hình AI Agent & Workflows (Dify Cloud)
 ├── docs/               # Tài liệu kỹ thuật chi tiết (Architecture, ERD, Flow)
 ├── screenshots/        # Hình ảnh minh họa tính năng
-└── docker-compose.yml  # Cấu hình triển khai container
+└── docker-compose.yml  # Cấu hình triển khai container (PostgreSQL + Backend + Frontend)
 ```
 
 ---

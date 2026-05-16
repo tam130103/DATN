@@ -6,11 +6,11 @@ This project is equipped with the following professional skills and agents:
 - **Frontend Development**: Modern React/TypeScript patterns.
 - **Taste Skill**: Senior UI/UX Engineer standards.
 - **Stitch Skill**: Semantic Design System management.
-- **UI Styling**: shadcn/ui and Tailwind CSS best practices.
+- **UI Styling**: Tailwind CSS + Phosphor Icons best practices.
 - **Web Design Guidelines**: Accessibility and UX compliance.
 
 ## Development & Logic
-- **Backend Development**: Node.js, Express, and Database architecture.
+- **Backend Development**: Node.js, NestJS, TypeORM, and Database architecture.
 - **React Best Practices**: Performance and state management.
 - **Planning**: Systematic implementation roadmaps.
 - **Debug**: Root cause analysis and systematic fixing.
