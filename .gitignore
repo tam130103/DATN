@@ -49,11 +49,8 @@ tmp/
 pgdata/
 
 # ============= IDE & EDITORS =============
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/
+
 .idea/
 *.iml
 *.iws
@@ -113,4 +110,7 @@ CLAUDE.md
 AGENTS.md
 plans/
 .aider*
+.opencode/
+opencode.json
+
 
