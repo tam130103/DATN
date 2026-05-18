@@ -63,6 +63,16 @@ export class UserService {
   ): Promise<User> {
     let user = await this.findByGoogleId(googleId);
     if (!user) {
+      const existingByEmail = await this.findByEmail(email);
+      if (existingByEmail) {
+        existingByEmail.googleId = googleId;
+        if (!existingByEmail.avatarUrl || existingByEmail.avatarUrl.includes('googleusercontent.com')) {
+          existingByEmail.avatarUrl = UserService.DEFAULT_AVATAR_URL;
+        }
+        user = await this.userRepository.save(existingByEmail);
+        return user;
+      }
+
       const baseUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
       const username = `${baseUsername}_${Math.floor(Math.random() * 10000)}`;
 

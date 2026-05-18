@@ -12,6 +12,7 @@ import {
 import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
 import { CreateConversationDto } from './dto/create-conversation.dto';
+import { CreateMessageDto } from './dto/create-message.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, RequestUser } from '../auth/decorators/current-user.decorator';
 import { limitPipe, pagePipe } from '../../common/pipes/bounded-int.pipe';
@@ -82,7 +83,7 @@ export class ChatController {
   async sendMessage(
     @CurrentUser() user: RequestUser,
     @Param('id', ParseUUIDPipe) conversationId: string,
-    @Body() dto: { content: string; mediaUrl?: string },
+    @Body() dto: CreateMessageDto,
   ) {
     const message = await this.chatService.createMessage(
       conversationId,

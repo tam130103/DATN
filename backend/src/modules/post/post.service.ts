@@ -450,6 +450,19 @@ export class PostService {
     return post.sourceCreatedAt ?? post.createdAt;
   }
 
+  private encodeCursor(pinBucket: number, effectiveDate: Date, id: string): string {
+    return Buffer.from(JSON.stringify({ p: pinBucket, d: effectiveDate.toISOString(), i: id })).toString('base64');
+  }
+
+  private decodeCursor(cursor: string): { pinBucket: number; effectiveDate: Date; id: string } {
+    try {
+      const data = JSON.parse(Buffer.from(cursor, 'base64').toString());
+      return { pinBucket: data.p, effectiveDate: new Date(data.d), id: data.i };
+    } catch {
+      return { pinBucket: 0, effectiveDate: new Date(cursor), id: '' };
+    }
+  }
+
   /**
    * Re-upload Facebook CDN media to Cloudinary for permanent URLs.
    * Uses a deterministic publicId derived from sourceId to avoid duplicate uploads.
@@ -657,7 +670,12 @@ export class PostService {
       .limit(limit + 1);
 
     if (cursor) {
-      query = query.andWhere(`${sortExpression} < :cursor`, { cursor: new Date(cursor) });
+      const { pinBucket, effectiveDate, id } = this.decodeCursor(cursor);
+      const pinExpr = `CASE WHEN "post"."user_id" = :currentUserId AND "post"."isPinned" = true THEN 1 ELSE 0 END`;
+      query = query.andWhere(
+        `(${pinExpr} < :cursorPin OR (${pinExpr} = :cursorPin AND (${sortExpression} < :cursorDate OR (${sortExpression} = :cursorDate AND "post"."id" < :cursorId))))`,
+        { cursorPin: pinBucket, cursorDate: effectiveDate, cursorId: id },
+      );
     }
 
     const rawPosts = await query.getMany();
@@ -665,7 +683,11 @@ export class PostService {
     const visiblePosts = hasMore ? rawPosts.slice(0, limit) : rawPosts;
     const posts = await this.enrichPosts(visiblePosts, userId);
     const nextCursor = hasMore
-      ? this.getEffectivePostDate(visiblePosts[visiblePosts.length - 1]).toISOString()
+      ? (() => {
+          const lastPost = visiblePosts[visiblePosts.length - 1];
+          const pinBucket = lastPost.userId === userId && lastPost.isPinned ? 1 : 0;
+          return this.encodeCursor(pinBucket, this.getEffectivePostDate(lastPost), lastPost.id);
+        })()
       : null;
 
     return { posts, nextCursor };
@@ -688,7 +710,11 @@ export class PostService {
       .limit(limit + 1);
 
     if (cursor) {
-      query = query.andWhere(`${sortExpression} < :cursor`, { cursor: new Date(cursor) });
+      const { pinBucket, effectiveDate, id } = this.decodeCursor(cursor);
+      query = query.andWhere(
+        `("post"."isPinned"::int < :cursorPin OR ("post"."isPinned"::int = :cursorPin AND (${sortExpression} < :cursorDate OR (${sortExpression} = :cursorDate AND "post"."id" < :cursorId))))`,
+        { cursorPin: pinBucket, cursorDate: effectiveDate, cursorId: id },
+      );
     }
 
     const rawPosts = await query.getMany();
@@ -696,7 +722,11 @@ export class PostService {
     const visiblePosts = hasMore ? rawPosts.slice(0, limit) : rawPosts;
     const posts = await this.enrichPosts(visiblePosts, viewerId);
     const nextCursor = hasMore
-      ? this.getEffectivePostDate(visiblePosts[visiblePosts.length - 1]).toISOString()
+      ? (() => {
+          const lastPost = visiblePosts[visiblePosts.length - 1];
+          const pinBucket = lastPost.isPinned ? 1 : 0;
+          return this.encodeCursor(pinBucket, this.getEffectivePostDate(lastPost), lastPost.id);
+        })()
       : null;
 
     return { posts, nextCursor };

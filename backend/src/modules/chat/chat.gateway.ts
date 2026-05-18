@@ -191,9 +191,14 @@ export class ChatGateway
     const userId = await this.ensureActiveSocketUser(client);
     if (!userId) return;
 
-    try {
-      // Save to DB first
-      const message = await this.chatService.createMessage(
+      if (!data.content?.trim()) {
+        client.emit('error', { message: 'Nội dung tin nhắn không được để trống.' });
+        return;
+      }
+
+      try {
+        // Save to DB first
+        const message = await this.chatService.createMessage(
         data.conversationId,
         userId,
         data.content,

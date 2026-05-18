@@ -288,4 +288,15 @@ export const PostCard: React.FC<PostCardProps> = memo(({ post, highlightCommentI
       />
     </article>
   );
-}, (prev, next) => prev.post.id === next.post.id);
+}, (prev, next) =>
+  prev.post.id === next.post.id &&
+  prev.post.caption === next.post.caption &&
+  prev.post.likesCount === next.post.likesCount &&
+  prev.post.commentsCount === next.post.commentsCount &&
+  prev.post.liked === next.post.liked &&
+  prev.post.saved === next.post.saved &&
+  prev.post.isPinned === next.post.isPinned &&
+  prev.post.isEdited === next.post.isEdited &&
+  prev.post.media?.length === next.post.media?.length &&
+  prev.highlightCommentId === next.highlightCommentId,
+);

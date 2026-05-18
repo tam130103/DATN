@@ -1,14 +1,11 @@
-import { IsString, IsOptional, IsUrl } from 'class-validator';
+import { IsString, IsOptional, IsNotEmpty } from 'class-validator';
 
 export class CreateMessageDto {
   @IsString()
-  @IsOptional()
-  conversationId?: string;
-
-  @IsString()
+  @IsNotEmpty({ message: 'Nội dung tin nhắn không được để trống.' })
   content: string;
 
-  @IsUrl()
+  @IsString()
   @IsOptional()
   mediaUrl?: string;
 }

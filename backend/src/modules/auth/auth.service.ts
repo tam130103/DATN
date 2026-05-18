@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException, ConflictException, BadRequestExcepti
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user/user.service';
-import { User, UserProvider } from '../user/entities/user.entity';
+import { User, UserProvider, UserStatus } from '../user/entities/user.entity';
 import axios from 'axios';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
@@ -30,6 +30,10 @@ export class AuthService {
       googleUser.name,
       googleUser.picture,
     );
+
+    if (user.status === UserStatus.BLOCKED) {
+      throw new UnauthorizedException('Tài khoản của bạn đã bị khóa.');
+    }
 
     // Generate tokens
     const accessToken = this.generateAccessToken(user.id, user.email);
@@ -108,6 +112,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (user.status === UserStatus.BLOCKED) {
+      throw new UnauthorizedException('Tài khoản của bạn đã bị khóa.');
+    }
+
     // Generate tokens
     const accessToken = this.generateAccessToken(user.id, user.email);
     const refreshToken = this.generateRefreshToken(user.id);
@@ -124,6 +132,9 @@ export class AuthService {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET') || this.configService.get<string>('JWT_SECRET'),
       });
       const user = await this.userService.findById(payload.sub);
+      if (user.status === UserStatus.BLOCKED) {
+        throw new UnauthorizedException('Tài khoản của bạn đã bị khóa.');
+      }
       const accessToken = this.generateAccessToken(user.id, user.email);
       return { accessToken };
     } catch {

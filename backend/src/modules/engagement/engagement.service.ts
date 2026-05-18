@@ -298,7 +298,7 @@ export class EngagementService {
   ): Promise<{ liked: boolean; likesCount: number }> {
     const comment = await this.commentRepository.findOne({
       where: { id: commentId, status: CommentStatus.VISIBLE },
-      select: ['id', 'userId', 'postId'],
+      select: ['id', 'userId', 'postId', 'parentId'],
     });
 
     if (!comment) {
