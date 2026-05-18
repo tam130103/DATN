@@ -137,7 +137,8 @@ export class AuthService {
       }
       const accessToken = this.generateAccessToken(user.id, user.email);
       return { accessToken };
-    } catch {
+    } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
