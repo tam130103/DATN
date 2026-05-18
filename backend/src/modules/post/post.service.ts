@@ -476,15 +476,47 @@ export class PostService {
     for (let i = 0; i < media.length; i++) {
       const item = media[i];
       const publicId = sourceId ? `${sourceId.replace(/[^a-zA-Z0-9_-]/g, '_')}_${i}` : undefined;
-      const permanentUrl = await this.cloudinaryService.uploadFromUrl(
+      const permanentUrl = await this.retryUploadFromUrl(
         item.url,
         FB_FOLDER,
         item.type === MediaType.VIDEO ? 'video' : 'image',
         publicId,
+        sourceId,
+        i,
       );
       results.push({ url: permanentUrl, type: item.type });
     }
     return results;
+  }
+
+  private async retryUploadFromUrl(
+    url: string,
+    folder: string,
+    resourceType: 'image' | 'video' | 'auto',
+    publicId: string | undefined,
+    sourceId: string | undefined,
+    index: number,
+  ): Promise<string> {
+    const MAX_RETRIES = 3;
+    const DELAY_MS = 1000;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        return await this.cloudinaryService.uploadFromUrl(url, folder, resourceType, publicId);
+      } catch (error) {
+        if (attempt < MAX_RETRIES) {
+          this.logger.warn(
+            `Upload attempt ${attempt}/${MAX_RETRIES} failed for ${sourceId || '?'}[${index}]: ${(error as any)?.message || error}. Retrying in ${DELAY_MS}ms...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+        } else {
+          this.logger.warn(
+            `All ${MAX_RETRIES} upload attempts failed for ${sourceId || '?'}[${index}] (${url.substring(0, 80)}...)`,
+          );
+          throw error;
+        }
+      }
+    }
+    throw new Error('Unreachable');
   }
 
   private async createExternalPost(
@@ -1102,5 +1134,63 @@ export class PostService {
     );
 
     return { imported: created, skipped: false };
+  }
+
+  /**
+   * Scan all Facebook-sourced posts for media still pointing to fbcdn.net URLs
+   * and re-upload them to Cloudinary. Silently skips on failure.
+   */
+  async retryFailedFacebookMediaForUser(userId: string, batchSize = 50): Promise<number> {
+    const posts = await this.postRepository.find({
+      where: {
+        userId,
+        source: 'facebook',
+        status: PostStatus.VISIBLE,
+      },
+      relations: ['media'],
+      take: batchSize,
+      order: { createdAt: 'DESC' },
+    });
+
+    let fixedCount = 0;
+
+    for (const post of posts) {
+      if (!post.sourceId || !post.media?.length) continue;
+
+      const fbcdnMedia = post.media.filter((m) =>
+        m.url.toLowerCase().includes('fbcdn.net'),
+      );
+      if (fbcdnMedia.length === 0) continue;
+
+      for (const mediaItem of fbcdnMedia) {
+        try {
+          const idx = post.media.indexOf(mediaItem);
+          const publicId = `${post.sourceId.replace(/[^a-zA-Z0-9_-]/g, '_')}_${idx}`;
+          const permanentUrl = await this.retryUploadFromUrl(
+            mediaItem.url,
+            'datn-social/facebook',
+            mediaItem.type === MediaType.VIDEO ? 'video' : 'image',
+            publicId,
+            post.sourceId,
+            idx,
+          );
+
+          if (permanentUrl !== mediaItem.url) {
+            await this.mediaRepository.update(mediaItem.id, { url: permanentUrl });
+            fixedCount += 1;
+          }
+        } catch (error) {
+          this.logger.warn(
+            `Skipping fbcdn media ${mediaItem.id} for post ${post.sourceId}: ${(error as any)?.message || error}`,
+          );
+        }
+      }
+    }
+
+    if (fixedCount > 0) {
+      this.logger.log(`Fixed ${fixedCount} expired Facebook media URLs for user ${userId}`);
+    }
+
+    return fixedCount;
   }
 }

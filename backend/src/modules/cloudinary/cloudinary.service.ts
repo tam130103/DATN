@@ -49,8 +49,9 @@ export class CloudinaryService {
           (error as any)?.message || error
         }`,
       );
-      // Fallback: return original URL so the post is still created
-      return remoteUrl;
+      throw new BadRequestException(
+        `Cloudinary upload failed: ${(error as any)?.message || error}`,
+      );
     }
   }
 }

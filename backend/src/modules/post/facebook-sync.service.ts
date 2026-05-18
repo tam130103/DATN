@@ -30,7 +30,20 @@ export class FacebookSyncService implements OnModuleInit, OnModuleDestroy {
     await this.ensureAppWebhookSubscription();
     await this.ensureWebhookSubscription();
     await this.syncNow();
+    await this.retryFailedFacebookMedia();
     this.startInterval();
+  }
+
+  private async retryFailedFacebookMedia() {
+    try {
+      const bot = await this.userService.ensureFacebookBotUser();
+      const fixed = await this.postService.retryFailedFacebookMediaForUser(bot.id);
+      if (fixed > 0) {
+        this.logger.log(`Retry Facebook media cleanup: fixed ${fixed} URLs`);
+      }
+    } catch (error) {
+      this.logger.warn(`Retry Facebook media cleanup failed: ${error?.message || error}`);
+    }
   }
 
   onModuleDestroy() {
