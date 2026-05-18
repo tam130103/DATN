@@ -65,6 +65,7 @@ export class FacebookSyncService implements OnModuleInit, OnModuleDestroy {
     if (!this.isEnabled()) return;
     await this.ensureBotAndFollowers();
     await this.syncNow();
+    await this.retryFailedFacebookMedia();
   }
 
   verifyWebhook(mode?: string, verifyToken?: string, challenge?: string): string {

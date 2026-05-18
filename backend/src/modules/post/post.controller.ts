@@ -17,6 +17,9 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { PostService } from './post.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '../user/entities/user.entity';
 import { CurrentUser, RequestUser } from '../auth/decorators/current-user.decorator';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { AIService } from '../ai/ai.service';
@@ -58,7 +61,9 @@ export class PostController {
     return this.postService.create(user.id, createPostDto);
   }
 
-  @Post('import/facebook')
+@Post('import/facebook')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
   importFromFacebook(
     @CurrentUser() user: RequestUser,
     @Body() body: { pageId?: string; accessToken?: string; limit?: number },

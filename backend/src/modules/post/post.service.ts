@@ -241,13 +241,12 @@ export class PostService {
       if (!item) return;
       const mediaType = (item.media_type || '').toLowerCase();
       const type = mediaType.includes('video') ? MediaType.VIDEO : MediaType.IMAGE;
-      const url =
-        item.media?.source ||
-        item.media?.image?.src ||
-        item.media?.image?.source ||
-        item.media?.image?.url ||
-        item.media?.image ||
-        undefined;
+      const rawUrl =
+        item.media?.source ??
+        item.media?.image?.src ??
+        item.media?.image?.source ??
+        item.media?.image?.url;
+      const url = typeof rawUrl === 'string' ? rawUrl : undefined;
       if (url) {
         media.push({ url, type });
       }
@@ -505,24 +504,21 @@ export class PostService {
   ): Promise<string> {
     const MAX_RETRIES = 3;
     const DELAY_MS = 1000;
+    let lastError: unknown;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         return await this.cloudinaryService.uploadFromUrl(url, folder, resourceType, publicId);
       } catch (error) {
+        lastError = error;
         if (attempt < MAX_RETRIES) {
           this.logger.warn(
             `Upload attempt ${attempt}/${MAX_RETRIES} failed for ${sourceId || '?'}[${index}]: ${(error as any)?.message || error}. Retrying in ${DELAY_MS}ms...`,
           );
           await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
-        } else {
-          this.logger.warn(
-            `All ${MAX_RETRIES} upload attempts failed for ${sourceId || '?'}[${index}] (${url.substring(0, 80)}...)`,
-          );
-          throw error;
         }
       }
     }
-    throw new Error('Unreachable');
+    throw lastError;
   }
 
   private async createExternalPost(
@@ -1142,29 +1138,6 @@ export class PostService {
     return { imported: created, skipped: false };
   }
 
-  async deleteBrokenFacebookMedia(userId: string): Promise<number> {
-    const brokenIds = [
-      '058a73e8-86f5-44a0-b79d-1acd1c656759',
-      '65c4e6a2-50f3-49db-a8a0-76e63f1479c0',
-      '3693612d-be82-4cf8-8224-eb86d0ee3f62',
-    ];
-    const posts = await this.postRepository.find({
-      where: { userId, source: 'facebook' },
-      relations: ['media'],
-    });
-    let deleted = 0;
-    for (const post of posts) {
-      for (const mediaItem of post.media ?? []) {
-        if (brokenIds.includes(mediaItem.id)) {
-          await this.mediaRepository.delete(mediaItem.id);
-          this.logger.warn(`Deleted broken media ${mediaItem.id} from post ${post.id}`);
-          deleted += 1;
-        }
-      }
-    }
-    return deleted;
-  }
-
   /**
    * Scan all Facebook-sourced posts for media still pointing to fbcdn.net URLs
    * and re-upload them to Cloudinary. Deletes unrecoverable media after max retries.
@@ -1193,7 +1166,7 @@ export class PostService {
 
       for (const mediaItem of fbcdnMedia) {
         try {
-          const idx = post.media.indexOf(mediaItem);
+          const idx = post.media.findIndex((m) => m.id === mediaItem.id);
           const publicId = `${post.sourceId.replace(/[^a-zA-Z0-9_-]/g, '_')}_${idx}`;
           const permanentUrl = await this.retryUploadFromUrl(
             mediaItem.url,
