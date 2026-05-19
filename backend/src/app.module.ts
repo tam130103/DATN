@@ -37,6 +37,7 @@ import { getRateLimitTracker } from './common/rate-limit.util';
         username: configService.get('DB_USERNAME', 'postgres'),
         password: configService.get('DB_PASSWORD', 'postgres'),
         database: configService.get('DB_DATABASE', 'datn_social'),
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: false, // Disable auto-sync for safety in production
         logging: configService.get('DATABASE_LOGGING') === 'true',
