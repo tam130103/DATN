@@ -16,6 +16,7 @@ import { CreateMessageDto } from './dto/create-message.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, RequestUser } from '../auth/decorators/current-user.decorator';
 import { limitPipe, pagePipe } from '../../common/pipes/bounded-int.pipe';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('conversations')
 export class ChatController {
@@ -26,6 +27,7 @@ export class ChatController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   create(@CurrentUser() user: RequestUser, @Body() dto: CreateConversationDto) {
     if (dto.isGroup) {
       if (dto.participantIds.length < 2) {
@@ -80,6 +82,7 @@ export class ChatController {
 
   @Post(':id/messages')
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   async sendMessage(
     @CurrentUser() user: RequestUser,
     @Param('id', ParseUUIDPipe) conversationId: string,

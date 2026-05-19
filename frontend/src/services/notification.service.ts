@@ -1,25 +1,23 @@
 import { io, Socket } from 'socket.io-client';
 import { apiClient } from './api';
+import { tokenService } from './token.service';
 import { Notification } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3000');
 
 async function silentRefresh(): Promise<string | null> {
-  const refreshToken = localStorage.getItem('refreshToken');
-  if (!refreshToken) return null;
-
   try {
     const res = await fetch(`${API_URL}/api/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      credentials: 'include',
     });
 
     if (!res.ok) return null;
 
     const data = await res.json();
     if (data?.accessToken) {
-      localStorage.setItem('token', data.accessToken);
+      tokenService.setAccessToken(data.accessToken);
       return data.accessToken;
     }
 
@@ -37,7 +35,7 @@ class NotificationService {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   connect(passedToken?: string) {
-    const token = localStorage.getItem('token') || passedToken;
+    const token = tokenService.getAccessToken() || passedToken;
     if (!token) return;
 
     if (this.socket && this.token && this.token !== token) {
@@ -193,8 +191,7 @@ class NotificationService {
   private handleAccountBlocked() {
     console.warn('[Notifications] Account blocked, clearing session');
     this.disconnect();
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
+    tokenService.clearAccessToken();
     if (window.location.pathname !== '/login') {
       window.location.href = '/login';
     }

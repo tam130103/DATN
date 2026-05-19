@@ -629,6 +629,10 @@ export class PostService {
     const normalizedCaption = (createPostDto.caption ?? '').trim();
     const mediaDto = createPostDto.media ?? [];
 
+    if (!normalizedCaption && mediaDto.length === 0) {
+      throw new BadRequestException('Post must include a caption or at least one media item');
+    }
+
     if (normalizedCaption) {
       const moderation = await this.aiService.moderateContent(normalizedCaption);
       if (!moderation.isSafe) {

@@ -14,6 +14,7 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser, RequestUser } from '../auth/decorators/current-user.decorator';
 import { limitPipe, pagePipe } from '../../common/pipes/bounded-int.pipe';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('posts')
 @UseGuards(JwtAuthGuard)
@@ -21,6 +22,7 @@ export class EngagementController {
   constructor(private readonly engagementService: EngagementService) {}
 
   @Post(':id/like')
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   toggleLike(@CurrentUser() user: RequestUser, @Param('id') postId: string) {
     return this.engagementService.toggleLike(user.id, postId);
   }
@@ -31,6 +33,7 @@ export class EngagementController {
   }
 
   @Post(':id/save')
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   toggleSave(@CurrentUser() user: RequestUser, @Param('id') postId: string) {
     return this.engagementService.toggleSave(user.id, postId);
   }
@@ -41,6 +44,7 @@ export class EngagementController {
   }
 
   @Post(':id/comments')
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   createComment(
     @CurrentUser() user: RequestUser,
     @Param('id') postId: string,
@@ -70,6 +74,7 @@ export class EngagementController {
   }
 
   @Post('comments/:commentId/like')
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   likeComment(@CurrentUser() user: RequestUser, @Param('commentId') commentId: string) {
     return this.engagementService.toggleCommentLike(user.id, commentId);
   }

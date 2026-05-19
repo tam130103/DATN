@@ -91,6 +91,11 @@ export class EngagementService {
   }
 
   async createComment(userId: string, postId: string, createCommentDto: CreateCommentDto): Promise<Comment> {
+    const normalizedContent = createCommentDto.content?.trim();
+    if (!normalizedContent) {
+      throw new BadRequestException('Comment content is required');
+    }
+
     // Check if user is commenting on their own post AND post is visible
     const post = await this.postRepository.findOne({
       where: { id: postId, status: PostStatus.VISIBLE },
@@ -122,7 +127,7 @@ export class EngagementService {
     const comment = this.commentRepository.create({
       userId,
       postId,
-      content: createCommentDto.content,
+      content: normalizedContent,
       parentId: resolvedParentId,
       replyToUserId: createCommentDto.replyToUserId,
     });

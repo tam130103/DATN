@@ -154,6 +154,10 @@ export class AdminService {
   }
 
   async updateUserStatus(id: string, dto: UpdateUserStatusDto, adminId: string) {
+    if (id === adminId && dto.status === UserStatus.BLOCKED) {
+      throw new ForbiddenException('KhÃ´ng thá»ƒ khÃ³a tÃ i khoáº£n cá»§a chÃ­nh mÃ¬nh');
+    }
+
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
 

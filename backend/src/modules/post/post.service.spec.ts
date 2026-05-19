@@ -62,6 +62,13 @@ const createServiceSetup = () => {
   const commentRepository = createRepositoryMock<Comment>();
   const savedPostRepository = createRepositoryMock<SavedPost>();
 
+  userRepository.find.mockResolvedValue([]);
+  mediaRepository.find.mockResolvedValue([]);
+  postHashtagRepository.find.mockResolvedValue([]);
+  likeRepository.find.mockResolvedValue([]);
+  commentRepository.find.mockResolvedValue([]);
+  savedPostRepository.find.mockResolvedValue([]);
+
   const hashtagQueryBuilder = createQueryBuilderMock();
 
   const manager = {
@@ -138,6 +145,17 @@ const createServiceSetup = () => {
 };
 
 describe('PostService.create', () => {
+  it('rejects posts without caption and media', async () => {
+    const { service, dataSource, aiService } = createServiceSetup();
+
+    await expect(service.create('user-1', { caption: '   ', media: [] })).rejects.toThrow(
+      BadRequestException,
+    );
+
+    expect(aiService.moderateContent).not.toHaveBeenCalled();
+    expect(dataSource.transaction).not.toHaveBeenCalled();
+  });
+
   it('blocks toxic content and never starts a transaction', async () => {
     const { service, dataSource, aiService } = createServiceSetup();
 

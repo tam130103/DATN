@@ -32,6 +32,7 @@ export class Comment {
   postId: string;
 
   @Column({ type: 'uuid', name: 'parent_id', nullable: true })
+  @Index()
   parentId: string;
 
   @Column({ type: 'uuid', name: 'reply_to_user_id', nullable: true })

@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { authService } from '../services/auth.service';
 import { chatSocketService } from '../services/chat-socket.service';
 import { notificationService } from '../services/notification.service';
+import { tokenService } from '../services/token.service';
 import { User } from '../types';
 
 interface AuthContextType {
@@ -23,7 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [token, setToken] = useState<string | null>(tokenService.getAccessToken());
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = async () => {
@@ -33,54 +34,46 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const initAuth = async () => {
-      const storedToken = localStorage.getItem('token');
-      if (storedToken) {
-        try {
-          await refreshUser();
-          setToken(storedToken);
-        } catch {
-          localStorage.removeItem('token');
-          localStorage.removeItem('refreshToken');
-          setToken(null);
-          setUser(null);
-        }
+      try {
+        const { accessToken } = await authService.refreshToken();
+        tokenService.setAccessToken(accessToken);
+        await refreshUser();
+      } catch {
+        tokenService.clearAccessToken();
+        setUser(null);
       }
       setIsLoading(false);
     };
 
+    const unsubscribe = tokenService.subscribe(setToken);
     initAuth();
+
+    return unsubscribe;
   }, []);
 
   const loginWithGoogle = async (idToken: string) => {
     const response = await authService.googleLogin(idToken);
-    localStorage.setItem('token', response.accessToken);
-    localStorage.setItem('refreshToken', response.refreshToken);
-    setToken(response.accessToken);
+    tokenService.setAccessToken(response.accessToken);
     setUser(response.user);
   };
 
   const login = async (email: string, password: string) => {
     const response = await authService.login({ email, password });
-    localStorage.setItem('token', response.accessToken);
-    localStorage.setItem('refreshToken', response.refreshToken);
-    setToken(response.accessToken);
+    tokenService.setAccessToken(response.accessToken);
     setUser(response.user);
   };
 
   const register = async (email: string, password: string, name?: string) => {
     const response = await authService.register({ email, password, name });
-    localStorage.setItem('token', response.accessToken);
-    localStorage.setItem('refreshToken', response.refreshToken);
-    setToken(response.accessToken);
+    tokenService.setAccessToken(response.accessToken);
     setUser(response.user);
   };
 
   const logout = () => {
     chatSocketService.disconnect();
     notificationService.disconnect();
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    setToken(null);
+    void authService.logout().catch(() => undefined);
+    tokenService.clearAccessToken();
     setUser(null);
   };
 

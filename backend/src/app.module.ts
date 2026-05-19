@@ -14,6 +14,7 @@ import { CloudinaryModule } from './modules/cloudinary/cloudinary.module';
 import { AIModule } from './modules/ai/ai.module';
 import { AiToolsModule } from './modules/ai-tools/ai-tools.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { getRateLimitTracker } from './common/rate-limit.util';
 
 @Module({
   imports: [
@@ -23,7 +24,8 @@ import { AdminModule } from './modules/admin/admin.module';
     }),
     ThrottlerModule.forRoot([{
       ttl: 60000,
-      limit: 100, // Throttling: 100 req per minute globally
+      limit: 100, // Default: 100 req per minute per authenticated user, fallback per IP
+      getTracker: getRateLimitTracker,
     }]),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],

@@ -22,10 +22,14 @@ export class UserService {
   static readonly DEFAULT_AVATAR_URL =
     'https://res.cloudinary.com/dctovnwlk/image/upload/v1775806448/datn-social/defaults/default-avatar.jpg';
 
+  private getDefaultAvatarUrl(): string {
+    return this.configService.get<string>('DEFAULT_AVATAR_URL') || UserService.DEFAULT_AVATAR_URL;
+  }
+
   async create(data: Partial<User>, options?: { skipAutoFollow?: boolean }): Promise<User> {
     // Set default avatar if not provided
     if (!data.avatarUrl) {
-      data.avatarUrl = UserService.DEFAULT_AVATAR_URL;
+      data.avatarUrl = this.getDefaultAvatarUrl();
     }
     const user = this.userRepository.create(data);
     const saved = await this.userRepository.save(user);
@@ -67,7 +71,7 @@ export class UserService {
       if (existingByEmail) {
         existingByEmail.googleId = googleId;
         if (!existingByEmail.avatarUrl || existingByEmail.avatarUrl.includes('googleusercontent.com')) {
-          existingByEmail.avatarUrl = UserService.DEFAULT_AVATAR_URL;
+          existingByEmail.avatarUrl = this.getDefaultAvatarUrl();
         }
         user = await this.userRepository.save(existingByEmail);
         return user;
@@ -89,7 +93,7 @@ export class UserService {
       user.avatarUrl.includes('googleusercontent.com')
     ) {
       // Migrate existing Google users to default avatar
-      user.avatarUrl = UserService.DEFAULT_AVATAR_URL;
+      user.avatarUrl = this.getDefaultAvatarUrl();
       user = await this.userRepository.save(user);
     }
     return user;

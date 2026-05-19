@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { tokenService } from './token.service';
 
-const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3000');
+export const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3000');
 
 class ApiClient {
   private client: AxiosInstance;
@@ -9,6 +10,7 @@ class ApiClient {
   constructor() {
     this.client = axios.create({
       baseURL: `${API_URL}/api/v1`,
+      withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -16,7 +18,7 @@ class ApiClient {
 
     this.client.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
-        const token = localStorage.getItem('token');
+        const token = tokenService.getAccessToken();
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -33,14 +35,8 @@ class ApiClient {
         if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
           originalRequest._retry = true;
 
-          const refreshToken = localStorage.getItem('refreshToken');
-          if (!refreshToken) {
-            this.clearAuthAndRedirect();
-            return Promise.reject(error);
-          }
-
           try {
-            const accessToken = await this.refreshAccessToken(refreshToken);
+            const accessToken = await this.refreshAccessToken();
             if (accessToken) {
               originalRequest.headers.Authorization = `Bearer ${accessToken}`;
               return this.client.request(originalRequest);
@@ -57,14 +53,18 @@ class ApiClient {
     );
   }
 
-  private async refreshAccessToken(refreshToken: string): Promise<string | null> {
+  private async refreshAccessToken(): Promise<string | null> {
     // Coalesce concurrent refresh calls into a single request
     if (!this.refreshPromise) {
       this.refreshPromise = (async () => {
         try {
-          const response = await axios.post(`${API_URL}/api/v1/auth/refresh`, { refreshToken });
+          const response = await axios.post(
+            `${API_URL}/api/v1/auth/refresh`,
+            undefined,
+            { withCredentials: true },
+          );
           const { accessToken } = response.data;
-          localStorage.setItem('token', accessToken);
+          tokenService.setAccessToken(accessToken);
           return accessToken as string;
         } catch {
           return null;
@@ -78,8 +78,7 @@ class ApiClient {
   }
 
   private clearAuthAndRedirect() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
+    tokenService.clearAccessToken();
     if (window.location.pathname !== '/login') {
       window.location.href = '/login';
     }

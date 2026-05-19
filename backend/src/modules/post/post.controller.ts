@@ -14,6 +14,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { PostService } from './post.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -38,6 +39,7 @@ export class PostController {
   ) {}
 
   @Post('upload')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @UseInterceptors(
     FileInterceptor('file', {
       limits: { fileSize: 20 * 1024 * 1024 },
@@ -57,6 +59,7 @@ export class PostController {
   }
 
   @Post()
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   create(@CurrentUser() user: RequestUser, @Body() createPostDto: CreatePostDto) {
     return this.postService.create(user.id, createPostDto);
   }
@@ -135,6 +138,7 @@ export class PostController {
   }
 
   @Post('ai/generate-caption')
+  @Throttle({ default: { limit: 12, ttl: 60000 } })
   async generateCaption(@Body() body: { prompt: string; tone?: string }) {
     const prompt = body.prompt?.trim();
     if (!prompt) {
@@ -144,6 +148,7 @@ export class PostController {
   }
 
   @Post('ai/suggest-hashtags')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   async suggestHashtags(@Body() body: { text: string }) {
     const text = body.text?.trim();
     if (!text) {

@@ -1,22 +1,21 @@
 import { io, Socket } from 'socket.io-client';
 import { Message } from '../types';
+import { tokenService } from './token.service';
 
 const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3000');
 
 /** Attempt a silent token refresh. Returns the new access token or null on failure. */
 async function silentRefresh(): Promise<string | null> {
-  const refreshToken = localStorage.getItem('refreshToken');
-  if (!refreshToken) return null;
   try {
     const res = await fetch(`${API_URL}/api/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      credentials: 'include',
     });
     if (!res.ok) return null;
     const data = await res.json();
     if (data?.accessToken) {
-      localStorage.setItem('token', data.accessToken);
+      tokenService.setAccessToken(data.accessToken);
       return data.accessToken;
     }
     return null;
@@ -35,9 +34,7 @@ class ChatSocketService {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   connect(passedToken?: string) {
-    // React's AuthContext might be stale because it doesn't auto-update when
-    // intercepts refresh the token. Always prefer the freshest token from localStorage.
-    const token = localStorage.getItem('token') || passedToken;
+    const token = tokenService.getAccessToken() || passedToken;
     
     if (!token) return;
 
@@ -153,8 +150,7 @@ class ChatSocketService {
   private _handleAccountBlocked() {
     console.warn('[Chat] Account blocked, clearing session');
     this.disconnect();
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
+    tokenService.clearAccessToken();
     if (window.location.pathname !== '/login') {
       window.location.href = '/login';
     }

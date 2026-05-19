@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -37,6 +38,12 @@ export class ChatService {
     userId: string,
     otherUserId: string,
   ): Promise<Conversation> {
+    if (userId === otherUserId) {
+      throw new BadRequestException('Direct conversations require another participant');
+    }
+
+    await this.validateActiveParticipants([userId, otherUserId]);
+
     const existing = await this.conversationRepository
       .createQueryBuilder('conversation')
       .leftJoinAndSelect('conversation.members', 'member')
@@ -93,8 +100,14 @@ export class ChatService {
     userId: string,
     dto: CreateConversationDto,
   ): Promise<Conversation> {
+    const participantIds = Array.from(new Set([userId, ...dto.participantIds]));
+    if (participantIds.length < 3) {
+      throw new BadRequestException('Group conversations require at least two other participants');
+    }
+
+    await this.validateActiveParticipants(participantIds);
+
     const conversationId = await this.dataSource.transaction(async (manager) => {
-      const participantIds = Array.from(new Set([userId, ...dto.participantIds]));
       const conversation = manager.create(Conversation, {
         isGroup: true,
         name: dto.name,
@@ -203,6 +216,10 @@ export class ChatService {
     if (!isMember) {
       throw new ForbiddenException('You are not a member of this conversation');
     }
+    const normalizedContent = content?.trim();
+    if (!normalizedContent) {
+      throw new BadRequestException('Ná»™i dung tin nháº¯n khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng.');
+    }
     if (mediaUrl) {
       assertAllowedCloudinaryUrl(mediaUrl, 'media URL');
     }
@@ -211,7 +228,7 @@ export class ChatService {
       const message = manager.create(Message, {
         conversationId,
         senderId,
-        content,
+        content: normalizedContent,
         mediaUrl,
       });
       const saved = await manager.save(message);
@@ -302,6 +319,22 @@ export class ChatService {
    * If this conversation includes the AI bot, call Dify and create a reply message.
    * Returns the reply Message, or null if not applicable.
    */
+  private async validateActiveParticipants(participantIds: string[]): Promise<void> {
+    const uniqueIds = Array.from(new Set(participantIds));
+    const users = await this.userRepository.find({
+      where: { id: In(uniqueIds) },
+      select: ['id', 'status'],
+    });
+
+    if (users.length !== uniqueIds.length) {
+      throw new NotFoundException('One or more participants were not found');
+    }
+
+    if (users.some((user) => user.status !== 'active')) {
+      throw new BadRequestException('Cannot create conversations with inactive users');
+    }
+  }
+
   async sendAssistantReplyIfNeeded(
     conversationId: string,
     senderId: string,

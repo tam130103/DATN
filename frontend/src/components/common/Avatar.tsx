@@ -18,6 +18,7 @@ const sizeMap = {
 };
 
 const DEFAULT_AVATAR =
+  import.meta.env.VITE_DEFAULT_AVATAR_URL ||
   'https://res.cloudinary.com/dctovnwlk/image/upload/v1775806448/datn-social/defaults/default-avatar.jpg';
 
 export const Avatar: React.FC<AvatarProps> = ({

@@ -38,8 +38,9 @@ export class AuthService {
     // Generate tokens
     const accessToken = this.generateAccessToken(user.id, user.email);
     const refreshToken = this.generateRefreshToken(user.id);
+    const safeUser = this.sanitizeUser(user);
 
-    return { user, accessToken, refreshToken };
+    return { user: safeUser, accessToken, refreshToken };
   }
 
   async register(registerDto: RegisterDto) {
@@ -71,8 +72,7 @@ export class AuthService {
     const accessToken = this.generateAccessToken(user.id, user.email);
     const refreshToken = this.generateRefreshToken(user.id);
 
-    // Remove sensitive fields from response
-    const { password: _, googleId: _g, blockedReason: _br, blockedAt: _ba, ...safeUser } = user as any;
+    const safeUser = this.sanitizeUser(user);
 
     return { user: safeUser, accessToken, refreshToken };
   }
@@ -120,8 +120,7 @@ export class AuthService {
     const accessToken = this.generateAccessToken(user.id, user.email);
     const refreshToken = this.generateRefreshToken(user.id);
 
-    // Remove sensitive fields from response
-    const { password: _, googleId: _g, blockedReason: _br, blockedAt: _ba, ...safeUser } = user as any;
+    const safeUser = this.sanitizeUser(user);
 
     return { user: safeUser, accessToken, refreshToken };
   }
@@ -172,5 +171,16 @@ export class AuthService {
   private generateRefreshToken(userId: string): string {
     const secret = this.configService.get<string>('JWT_REFRESH_SECRET') || this.configService.get<string>('JWT_SECRET');
     return this.jwtService.sign({ sub: userId }, { secret, expiresIn: '7d' });
+  }
+
+  private sanitizeUser(user: User) {
+    const {
+      password: _password,
+      googleId: _googleId,
+      blockedReason: _blockedReason,
+      blockedAt: _blockedAt,
+      ...safeUser
+    } = user as any;
+    return safeUser;
   }
 }

@@ -7,6 +7,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import {
+  extractDifyErrorSnapshot,
+  isTransientDifyError,
+  summarizeDifyError,
+} from './dify-error.util';
 
 type ViolationCategory = 'harassment' | 'hate_speech' | 'violence' | 'sexual' | 'self_harm' | 'spam';
 
@@ -44,19 +49,6 @@ export type HashtagSuggestionResult = {
   meta: AIResultMeta;
 };
 
-type DifyErrorKind =
-  | 'dify_timeout'
-  | 'dify_5xx'
-  | 'dify_413'
-  | 'workflow_mismatch';
-
-type DifyErrorSnapshot = {
-  status: number | null;
-  kind: DifyErrorKind;
-  reqId: string | null;
-  detail: string;
-};
-
 @Injectable()
 export class AIService implements OnModuleInit {
   private readonly logger = new Logger(AIService.name);
@@ -66,9 +58,6 @@ export class AIService implements OnModuleInit {
   private static readonly HASHTAG_INPUT_LIMIT = 520;
   private static readonly CAPTION_WORKFLOW_TIMEOUT_MS = 18_000;
   private static readonly HASHTAG_CHAT_TIMEOUT_MS = 18_000;
-  private static readonly TRANSIENT_DIFY_STATUS_CODES = new Set([
-    408, 429, 500, 502, 503, 504,
-  ]);
   private static readonly HIGH_SEVERITY_CONTENT_PATTERN =
     /\b(dit me|dit may|dmm|vai lon|vcl|con cho|thang cho|mat day|do ngu|may ngu|chet di|giet|kill you|rape|terrorist|nazi)\b/i;
   private static readonly NON_HARMFUL_REASON_PATTERN =
@@ -303,7 +292,7 @@ export class AIService implements OnModuleInit {
         tone?.trim() || 'tự nhiên',
       );
     } catch (error: any) {
-      const errorSummary = this.summarizeDifyError(error);
+      const errorSummary = summarizeDifyError(error);
       this.logger.error(`Caption generation failed: ${errorSummary}`);
       throw new ServiceUnavailableException('Loi may chu AI Dify, vui long thu lai sau.');
     }
@@ -508,7 +497,7 @@ Trả về DUY NHẤT JSON, không thêm markdown hay giải thích.`,
     try {
       return await this.runHashtagSuggestionWithRetry(normalizedText);
     } catch (error) {
-      this.logger.warn(`Hashtag suggestion failed: ${this.summarizeDifyError(error)}`);
+      this.logger.warn(`Hashtag suggestion failed: ${summarizeDifyError(error)}`);
       return this.buildLocalHashtagFallback(normalizedText);
     }
   }
@@ -539,7 +528,7 @@ Trả về DUY NHẤT JSON, không thêm markdown hay giải thích.`,
     try {
       return await this.runHashtagSuggestionDetailedWithRetry(normalizedText);
     } catch (error) {
-      const snapshot = this.extractDifyErrorSnapshot(error);
+      const snapshot = extractDifyErrorSnapshot(error);
       this.logger.warn(
         `context=hashtags kind=fallback_used upstream_kind=${snapshot.kind} status=${snapshot.status ?? 'unknown'} req_id=${snapshot.reqId ?? 'n/a'} degraded=true source=fallback detail=${snapshot.detail}`,
       );
@@ -726,7 +715,7 @@ Trả về DUY NHẤT JSON, không thêm markdown hay giải thích.`,
       } catch (error) {
         lastError = error;
         const attemptNumber = attempt + 1;
-        const isTransient = this.isTransientDifyError(error);
+        const isTransient = isTransientDifyError(error);
 
         if (
           isTransient &&
@@ -734,7 +723,7 @@ Trả về DUY NHẤT JSON, không thêm markdown hay giải thích.`,
         ) {
           const delayMs = AIService.CAPTION_RETRY_DELAYS_MS[attempt];
           this.logger.warn(
-            `Caption workflow transient failure on attempt ${attemptNumber}. Retrying in ${delayMs}ms. ${this.summarizeDifyError(error)}`,
+            `Caption workflow transient failure on attempt ${attemptNumber}. Retrying in ${delayMs}ms. ${summarizeDifyError(error)}`,
           );
           await this.sleep(delayMs);
           continue;
@@ -742,14 +731,14 @@ Trả về DUY NHẤT JSON, không thêm markdown hay giải thích.`,
 
         const reason = isTransient ? 'upstream-unavailable' : 'workflow-error';
         this.logger.warn(
-          `Caption workflow fallback activated (${reason}) after ${attemptNumber} attempt(s). ${this.summarizeDifyError(error)}`,
+          `Caption workflow fallback activated (${reason}) after ${attemptNumber} attempt(s). ${summarizeDifyError(error)}`,
         );
         return this.buildLocalCaptionFallback(topic, tone);
       }
     }
 
     this.logger.warn(
-      `Caption workflow fallback activated after exhausting retries. ${this.summarizeDifyError(lastError)}`,
+      `Caption workflow fallback activated after exhausting retries. ${summarizeDifyError(lastError)}`,
     );
     return this.buildLocalCaptionFallback(topic, tone);
   }
@@ -774,8 +763,8 @@ Trả về DUY NHẤT JSON, không thêm markdown hay giải thích.`,
       } catch (error) {
         lastError = error;
         const attemptNumber = attempt + 1;
-        const isTransient = this.isTransientDifyError(error);
-        const snapshot = this.extractDifyErrorSnapshot(error);
+        const isTransient = isTransientDifyError(error);
+        const snapshot = extractDifyErrorSnapshot(error);
 
         if (
           isTransient &&
@@ -802,7 +791,7 @@ Trả về DUY NHẤT JSON, không thêm markdown hay giải thích.`,
       }
     }
 
-    const snapshot = this.extractDifyErrorSnapshot(lastError);
+    const snapshot = extractDifyErrorSnapshot(lastError);
     this.logger.warn(
       `context=caption kind=fallback_used upstream_kind=${snapshot.kind} status=${snapshot.status ?? 'unknown'} req_id=${snapshot.reqId ?? 'n/a'} degraded=true source=fallback detail=${snapshot.detail}`,
     );
@@ -834,7 +823,7 @@ Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu
       } catch (error) {
         lastError = error;
         const attemptNumber = attempt + 1;
-        const isTransient = this.isTransientDifyError(error);
+        const isTransient = isTransientDifyError(error);
 
         if (
           isTransient &&
@@ -842,7 +831,7 @@ Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu
         ) {
           const delayMs = AIService.HASHTAG_RETRY_DELAYS_MS[attempt];
           this.logger.warn(
-            `Hashtag suggestion transient failure on attempt ${attemptNumber}. Retrying in ${delayMs}ms. ${this.summarizeDifyError(error)}`,
+            `Hashtag suggestion transient failure on attempt ${attemptNumber}. Retrying in ${delayMs}ms. ${summarizeDifyError(error)}`,
           );
           await this.sleep(delayMs);
           continue;
@@ -850,11 +839,11 @@ Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu
 
         if (!isTransient) {
           this.logger.warn(
-            `Hashtag suggestion falling back due to non-standard model output after ${attemptNumber} attempt(s). ${this.summarizeDifyError(error)}`,
+            `Hashtag suggestion falling back due to non-standard model output after ${attemptNumber} attempt(s). ${summarizeDifyError(error)}`,
           );
         } else {
           this.logger.warn(
-            `Hashtag suggestion fallback activated after ${attemptNumber} attempt(s). ${this.summarizeDifyError(error)}`,
+            `Hashtag suggestion fallback activated after ${attemptNumber} attempt(s). ${summarizeDifyError(error)}`,
           );
         }
 
@@ -863,7 +852,7 @@ Tra ve JSON duy nhat theo schema: {"hashtags":["#tag1","#tag2"]}. Khong them chu
     }
 
     this.logger.warn(
-      `Hashtag suggestion fallback activated after exhausting retries. ${this.summarizeDifyError(lastError)}`,
+      `Hashtag suggestion fallback activated after exhausting retries. ${summarizeDifyError(lastError)}`,
     );
     return this.buildLocalHashtagFallback(text);
   }
@@ -901,8 +890,8 @@ Khong them giai thich, khong markdown, khong lap lai noi dung.`,
       } catch (error) {
         lastError = error;
         const attemptNumber = attempt + 1;
-        const isTransient = this.isTransientDifyError(error);
-        const snapshot = this.extractDifyErrorSnapshot(error);
+        const isTransient = isTransientDifyError(error);
+        const snapshot = extractDifyErrorSnapshot(error);
 
         if (
           isTransient &&
@@ -929,7 +918,7 @@ Khong them giai thich, khong markdown, khong lap lai noi dung.`,
       }
     }
 
-    const snapshot = this.extractDifyErrorSnapshot(lastError);
+    const snapshot = extractDifyErrorSnapshot(lastError);
     this.logger.warn(
       `context=hashtags kind=fallback_used upstream_kind=${snapshot.kind} status=${snapshot.status ?? 'unknown'} req_id=${snapshot.reqId ?? 'n/a'} degraded=true source=fallback detail=${snapshot.detail}`,
     );
@@ -1039,133 +1028,6 @@ Khong them giai thich, khong markdown, khong lap lai noi dung.`,
           .map((tag) => [tag.toLowerCase(), tag] as const),
       ).values(),
     ).slice(0, 8);
-  }
-
-  private isTransientDifyError(error: unknown): boolean {
-    const axiosError = error as {
-      response?: { status?: number; data?: unknown };
-      message?: string;
-    };
-    const status = axiosError?.response?.status;
-    const dataText =
-      typeof axiosError?.response?.data === 'string'
-        ? axiosError.response.data
-        : axiosError?.response?.data
-          ? JSON.stringify(axiosError.response.data)
-          : '';
-    const haystack = `${axiosError?.message || ''} ${dataText}`.toLowerCase();
-
-    if (
-      typeof status === 'number' &&
-      AIService.TRANSIENT_DIFY_STATUS_CODES.has(status)
-    ) {
-      return true;
-    }
-
-    return (
-      haystack.includes('503 unavailable') ||
-      haystack.includes('504') ||
-      haystack.includes('gateway time-out') ||
-      haystack.includes('gateway timeout') ||
-      haystack.includes('temporar') ||
-      haystack.includes('timed out') ||
-      haystack.includes('timeout') ||
-      haystack.includes('socket hang up') ||
-      haystack.includes('econnreset') ||
-      haystack.includes('etimedout')
-    );
-  }
-
-  private summarizeDifyError(error: unknown): string {
-    const snapshot = this.extractDifyErrorSnapshot(error);
-    return `status=${snapshot.status ?? 'unknown'} kind=${snapshot.kind} req_id=${snapshot.reqId ?? 'n/a'} detail=${snapshot.detail}`;
-  }
-
-  private summarizeErrorPayload(payload: unknown): string {
-    if (typeof payload === 'string') {
-      const compact = payload.replace(/\s+/g, ' ').trim();
-      if (!compact) {
-        return 'empty';
-      }
-      if (compact.includes('<title>dify.ai | 504: Gateway time-out</title>')) {
-        return 'Cloudflare 504 Gateway time-out from api.dify.ai';
-      }
-      if (compact.includes('503 UNAVAILABLE')) {
-        return compact.slice(0, 240);
-      }
-      return compact.slice(0, 240);
-    }
-
-    if (payload && typeof payload === 'object') {
-      return JSON.stringify(payload).slice(0, 240);
-    }
-
-    return String(payload ?? 'unknown');
-  }
-
-  private extractDifyErrorSnapshot(
-    error: unknown,
-    fallbackKind: DifyErrorKind = 'workflow_mismatch',
-  ): DifyErrorSnapshot {
-    const axiosError = error as {
-      response?: { status?: number; data?: unknown };
-      message?: string;
-    };
-    const status =
-      typeof axiosError?.response?.status === 'number'
-        ? axiosError.response.status
-        : null;
-    const rawPayload =
-      typeof axiosError?.response?.data === 'undefined'
-        ? axiosError?.message
-        : axiosError.response.data;
-    const rawText =
-      typeof rawPayload === 'string'
-        ? rawPayload
-        : rawPayload && typeof rawPayload === 'object'
-          ? JSON.stringify(rawPayload)
-          : String(rawPayload ?? '');
-    const detail = this.summarizeErrorPayload(rawPayload);
-    const haystack = `${axiosError?.message || ''} ${rawText}`.toLowerCase();
-    let kind: DifyErrorKind = fallbackKind;
-
-    if (
-      status === 413 ||
-      haystack.includes('request too large') ||
-      haystack.includes('status code 413')
-    ) {
-      kind = 'dify_413';
-    } else if (
-      haystack.includes('timeout') ||
-      haystack.includes('timed out') ||
-      haystack.includes('gateway time-out') ||
-      haystack.includes('gateway timeout') ||
-      haystack.includes('etimedout') ||
-      haystack.includes('econnreset') ||
-      haystack.includes('socket hang up')
-    ) {
-      kind = 'dify_timeout';
-    } else if (
-      (typeof status === 'number' && status >= 500) ||
-      haystack.includes('503 unavailable') ||
-      haystack.includes('temporar')
-    ) {
-      kind = 'dify_5xx';
-    } else if (
-      haystack.includes('workflow failed') ||
-      haystack.includes('caption output') ||
-      haystack.includes('thieu data') ||
-      haystack.includes('parseable hashtags')
-    ) {
-      kind = 'workflow_mismatch';
-    }
-
-    return {
-      status,
-      kind,
-      reqId: rawText.match(/req[_-]?id[:=\s]+([a-z0-9-]+)/i)?.[1] || null,
-      detail,
-    };
   }
 
   private async sleep(ms: number): Promise<void> {
