@@ -6,6 +6,7 @@ import { User, UserProvider, UserStatus } from './entities/user.entity';
 import { Follow } from './entities/follow.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'node:crypto';
 import { assertAllowedCloudinaryUrl } from '../../common/media-validation.util';
 
 @Injectable()
@@ -21,6 +22,23 @@ export class UserService {
 
   static readonly DEFAULT_AVATAR_URL =
     'https://res.cloudinary.com/dctovnwlk/image/upload/v1775806448/datn-social/defaults/default-avatar.jpg';
+
+  async generateUniqueUsername(
+    baseUsername: string,
+    repo?: Repository<User>,
+  ): Promise<string> {
+    const repository = repo ?? this.userRepository;
+    const MAX_RETRIES = 5;
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      const suffix = crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+      const candidate = `${baseUsername}_${suffix}`;
+      const existing = await repository.findOne({ where: { username: candidate }, select: ['id'] });
+      if (!existing) {
+        return candidate;
+      }
+    }
+    throw new ConflictException('Unable to generate a unique username. Please try again.');
+  }
 
   private getDefaultAvatarUrl(): string {
     return this.configService.get<string>('DEFAULT_AVATAR_URL') || UserService.DEFAULT_AVATAR_URL;
@@ -65,38 +83,47 @@ export class UserService {
     name: string,
     _avatarUrl?: string,
   ): Promise<User> {
-    let user = await this.findByGoogleId(googleId);
-    if (!user) {
-      const existingByEmail = await this.findByEmail(email);
-      if (existingByEmail) {
-        existingByEmail.googleId = googleId;
-        if (!existingByEmail.avatarUrl || existingByEmail.avatarUrl.includes('googleusercontent.com')) {
-          existingByEmail.avatarUrl = this.getDefaultAvatarUrl();
+    const existing = await this.findByGoogleId(googleId);
+    if (existing) {
+      if (!existing.avatarUrl || existing.avatarUrl.includes('googleusercontent.com')) {
+        existing.avatarUrl = this.getDefaultAvatarUrl();
+        await this.userRepository.save(existing);
+      }
+      return existing;
+    }
+
+    return this.dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(User);
+
+      const byEmail = await repo.findOne({ where: { email } });
+      if (byEmail) {
+        byEmail.googleId = googleId;
+        if (!byEmail.avatarUrl || byEmail.avatarUrl.includes('googleusercontent.com')) {
+          byEmail.avatarUrl = this.getDefaultAvatarUrl();
         }
-        user = await this.userRepository.save(existingByEmail);
-        return user;
+        return repo.save(byEmail);
       }
 
       const baseUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
-      const username = `${baseUsername}_${Math.floor(Math.random() * 10000)}`;
+      const username = await this.generateUniqueUsername(baseUsername, repo);
 
-      // Always use our default avatar, ignore Google's profile picture
-      user = await this.create({
+      const newUser = repo.create({
         googleId,
         email,
         username,
         name,
         provider: UserProvider.GOOGLE,
+        avatarUrl: this.getDefaultAvatarUrl(),
       });
-    } else if (
-      !user.avatarUrl ||
-      user.avatarUrl.includes('googleusercontent.com')
-    ) {
-      // Migrate existing Google users to default avatar
-      user.avatarUrl = this.getDefaultAvatarUrl();
-      user = await this.userRepository.save(user);
-    }
-    return user;
+      return repo.save(newUser);
+    }).catch(async (error) => {
+      if (error?.code !== '23505') throw error;
+      const byGoogleId = await this.findByGoogleId(googleId);
+      if (byGoogleId) return byGoogleId;
+      const byEmail = await this.findByEmail(email);
+      if (byEmail) return byEmail;
+      throw error;
+    });
   }
 
   async ensureFacebookBotUser(): Promise<User> {

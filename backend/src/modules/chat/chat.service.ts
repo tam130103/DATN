@@ -8,7 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { AIService } from '../ai/ai.service';
-import { User } from '../user/entities/user.entity';
+import { User, UserStatus } from '../user/entities/user.entity';
 import { UserService } from '../user/user.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { ConversationMember } from './entities/conversation-member.entity';
@@ -330,7 +330,7 @@ export class ChatService {
       throw new NotFoundException('One or more participants were not found');
     }
 
-    if (users.some((user) => user.status !== 'active')) {
+    if (users.some((user) => user.status !== UserStatus.ACTIVE)) {
       throw new BadRequestException('Cannot create conversations with inactive users');
     }
   }

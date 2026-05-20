@@ -6,6 +6,7 @@ import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { PromptDialog } from '../../components/common/PromptDialog';
 import { adminService, AdminPost } from '../../services/admin.service';
 import { getApiMessage } from '../../utils/api-error';
+import { getPageRange } from '../../utils/pagination';
 
 const AdminTableSkeleton = React.memo(() => (
   <div className="p-5">
@@ -170,8 +171,8 @@ const AdminPostsPage: React.FC = () => {
         {totalPages > 1 && (
           <div className="admin-pagination">
             <button className="admin-page-btn" type="button" disabled={page <= 1} onClick={() => setPage((prev) => prev - 1)}>Trước</button>
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, index) => index + 1).map((nextPage) => (
-              <button key={nextPage} className={`admin-page-btn ${nextPage === page ? 'active' : ''}`} type="button" onClick={() => setPage(nextPage)}>{nextPage}</button>
+            {getPageRange(page, totalPages).map((p) => (
+              <button key={p} className={`admin-page-btn ${p === page ? 'active' : ''}`} type="button" onClick={() => setPage(p)}>{p}</button>
             ))}
             <button className="admin-page-btn" type="button" disabled={page >= totalPages} onClick={() => setPage((prev) => prev + 1)}>Sau</button>
           </div>

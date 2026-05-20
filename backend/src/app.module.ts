@@ -40,7 +40,9 @@ import { envValidationSchema } from './config/env.validation';
         username: configService.get('DB_USERNAME', 'postgres'),
         password: configService.get('DB_PASSWORD', 'postgres'),
         database: configService.get('DB_DATABASE', 'datn_social'),
-        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+        ssl: process.env.NODE_ENV === 'production'
+          ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' }
+          : false,
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: false, // Disable auto-sync for safety in production
         logging: configService.get('DATABASE_LOGGING') === 'true',

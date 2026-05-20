@@ -4,7 +4,7 @@ export class UpdateProfileDto {
   @IsString()
   @IsOptional()
   @MaxLength(30)
-  @Matches(/^[a-zA-Z0-9_.]+$/, { message: 'Tên người dùng chỉ được chứa chữ cái, số, dấu chấm và dấu gạch dưới, không có khoảng trắng.' })
+  @Matches(/^[a-zA-Z0-9]([a-zA-Z0-9._]*[a-zA-Z0-9])?$/, { message: 'Tên người dùng phải bắt đầu và kết thúc bằng chữ cái hoặc số, chỉ chứa chữ cái, số, dấu chấm và dấu gạch dưới, không có khoảng trắng.' })
   username?: string;
 
   @IsString()

@@ -87,10 +87,14 @@ const FeedPage: React.FC = () => {
       if (generation !== refreshGenerationRef.current) return;
 
       setPosts((prev) => {
+        if (generation !== refreshGenerationRef.current) return prev;
         const incomingIds = new Set(response.posts.map((post) => post.id));
         return [...response.posts, ...prev.filter((post) => !incomingIds.has(post.id))];
       });
-      setNextCursor((previousCursor) => previousCursor ?? response.nextCursor);
+      setNextCursor((previousCursor) => {
+        if (generation !== refreshGenerationRef.current) return previousCursor;
+        return previousCursor ?? response.nextCursor;
+      });
     } catch {
       // Silent refresh should not interrupt the reader.
     } finally {

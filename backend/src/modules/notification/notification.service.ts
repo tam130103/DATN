@@ -4,6 +4,12 @@ import { In, Repository } from 'typeorm';
 import { Notification, NotificationType } from './entities/notification.entity';
 import { User } from '../user/entities/user.entity';
 import { UserService } from '../user/user.service';
+import { toSafeUser, SafeUserProfile } from '../user/user-response.mapper';
+
+export type SafeNotification = Omit<Notification, 'sender' | 'recipient'> & {
+  sender: SafeUserProfile;
+  recipient?: User;
+};
 
 @Injectable()
 export class NotificationService {
@@ -20,7 +26,7 @@ export class NotificationService {
     senderId: string,
     type: NotificationType,
     data?: Record<string, any>,
-  ): Promise<Notification | null> {
+  ): Promise<SafeNotification | null> {
     if (recipientId === senderId) {
       return null;
     }
@@ -36,14 +42,14 @@ export class NotificationService {
       type,
       data,
     });
-    
+
     const savedNotification = await this.notificationRepository.save(notification);
-    savedNotification.sender = await this.userService.findById(senderId);
-    
-    return savedNotification;
+    const sender = toSafeUser(await this.userService.findById(senderId));
+
+    return { ...savedNotification, sender };
   }
 
-  async findByUser(userId: string, page = 1, limit = 20): Promise<Notification[]> {
+  async findByUser(userId: string, page = 1, limit = 20): Promise<SafeNotification[]> {
     const notifications = await this.notificationRepository.find({
       where: { recipientId: userId },
       order: { createdAt: 'DESC' },
@@ -61,7 +67,7 @@ export class NotificationService {
 
     return notifications.map((notification) => ({
       ...notification,
-      sender: senderMap.get(notification.senderId),
+      sender: toSafeUser(senderMap.get(notification.senderId)!),
     }));
   }
 
@@ -89,7 +95,7 @@ export class NotificationService {
     });
   }
 
-  async createLikeNotification(likerId: string, postAuthorId: string, postId: string): Promise<Notification | null> {
+  async createLikeNotification(likerId: string, postAuthorId: string, postId: string): Promise<SafeNotification | null> {
     return this.create(postAuthorId, likerId, 'LIKE', { postId });
   }
 
@@ -98,11 +104,11 @@ export class NotificationService {
     postAuthorId: string,
     postId: string,
     commentId: string,
-  ): Promise<Notification | null> {
+  ): Promise<SafeNotification | null> {
     return this.create(postAuthorId, commenterId, 'COMMENT', { postId, commentId });
   }
 
-  async createFollowNotification(followerId: string, followingId: string): Promise<Notification | null> {
+  async createFollowNotification(followerId: string, followingId: string): Promise<SafeNotification | null> {
     return this.create(followingId, followerId, 'FOLLOW');
   }
 
@@ -110,7 +116,7 @@ export class NotificationService {
     taggerId: string,
     taggedUserId: string,
     postId: string,
-  ): Promise<Notification | null> {
+  ): Promise<SafeNotification | null> {
     return this.create(taggedUserId, taggerId, 'POST_TAG', { postId });
   }
 
@@ -120,7 +126,7 @@ export class NotificationService {
     postId: string,
     commentId: string,
     parentId?: string,
-  ): Promise<Notification | null> {
+  ): Promise<SafeNotification | null> {
     return this.create(commentAuthorId, likerId, 'COMMENT_LIKE', { postId, commentId, parentId });
   }
 
@@ -130,7 +136,7 @@ export class NotificationService {
     postId: string,
     commentId: string,
     parentId: string,
-  ): Promise<Notification | null> {
+  ): Promise<SafeNotification | null> {
     return this.create(parentCommentAuthorId, replierId, 'COMMENT', {
       postId,
       commentId,

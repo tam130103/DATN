@@ -17,7 +17,6 @@ import { createSocketCorsOptions } from '../../common/cors.util';
 import { UserService } from '../user/user.service';
 import { UserStatus } from '../user/entities/user.entity';
 
-// Online users map: userId -> Set of socket ids
 const onlineUsers = new Map<string, Set<string>>();
 
 @WebSocketGateway({
@@ -38,9 +37,6 @@ export class ChatGateway
   ) {}
 
   afterInit(server: Server) {
-    // Auth middleware: runs BEFORE the connection is established.
-    // Rejecting via next(error) fires 'connect_error' on the client
-    // (vs client.disconnect() which fires 'disconnect' and suppresses auto-reconnect).
     server.use(async (socket: Socket, next: (err?: Error) => void) => {
       const token =
         socket.handshake.auth?.token ||
@@ -63,7 +59,6 @@ export class ChatGateway
         socket.data.userId = payload.sub;
         return next();
       } catch (err: any) {
-        // Use a specific code so the frontend can detect token expiry
         const code =
           err?.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN';
         console.warn(`[ChatGateway] Auth rejected (${code}): ${err?.message}`);
@@ -97,26 +92,20 @@ export class ChatGateway
   }
 
   async handleConnection(client: Socket) {
-    // userId is already validated and set by the middleware above
     const userId = await this.ensureActiveSocketUser(client);
     if (!userId) {
-      // Shouldn't happen — middleware would have rejected already
       return;
     }
 
-    // Add to online users
     if (!onlineUsers.has(userId)) {
       onlineUsers.set(userId, new Set());
     }
     onlineUsers.get(userId)!.add(client.id);
 
-    // Join user's personal room for direct messages
     client.join(`user:${userId}`);
 
-    // Notify others that user is online
     client.broadcast.emit('userOnline', { userId });
 
-    // Send unread count (non-blocking)
     try {
       const unreadCount = await this.chatService.getUnreadCount(userId);
       client.emit('unreadCount', unreadCount);
@@ -133,7 +122,6 @@ export class ChatGateway
     if (userId && onlineUsers.has(userId)) {
       onlineUsers.get(userId)!.delete(client.id);
 
-      // If no more sockets for this user, they're offline
       if (onlineUsers.get(userId)!.size === 0) {
         onlineUsers.delete(userId);
         this.server.emit('userOffline', { userId });
@@ -160,7 +148,6 @@ export class ChatGateway
 
     client.join(data.conversationId);
 
-    // Get other online members
     const conversation = await this.chatService.findById(data.conversationId);
     const onlineMemberIds = conversation.members
       .filter((m) => m.userId !== userId && !m.hasLeft && onlineUsers.has(m.userId))
@@ -197,7 +184,6 @@ export class ChatGateway
     }
 
     try {
-      // Save to DB first
       const message = await this.chatService.createMessage(
         data.conversationId,
         userId,
@@ -205,18 +191,8 @@ export class ChatGateway
         data.mediaUrl,
       );
 
-      // Broadcast to all conversation members' personal rooms so they get the event globally (for badges)
-      const conversation = await this.chatService.findById(data.conversationId);
-      for (const member of conversation.members) {
-        if (!member.hasLeft) {
-          this.server.to(`user:${member.userId}`).emit('newMessage', message);
-        }
-      }
-
-      // We still emit to the conversation room just in case
       this.server.to(data.conversationId).emit('newMessage', message);
 
-      // Phase 2: Trigger AI assistant reply (non-blocking)
       void this.triggerAssistantReply(data.conversationId, userId, data.content);
       client.emit('messageSent', { ok: true, clientRequestId: data.clientRequestId, message });
 
@@ -242,7 +218,6 @@ export class ChatGateway
       return;
     }
 
-    // Notify others in conversation
     client.to(data.conversationId).emit('conversationRead', {
       conversationId: data.conversationId,
       userId,
@@ -270,12 +245,10 @@ export class ChatGateway
     });
   }
 
-  // Helper method to check if user is online
   isUserOnline(userId: string): boolean {
     return onlineUsers.has(userId);
   }
 
-  // Helper to get online count for conversation
   async getOnlineMemberCount(conversationId: string): Promise<number> {
     const conversation = await this.chatService.findById(conversationId);
     return conversation.members.filter(
@@ -283,22 +256,17 @@ export class ChatGateway
     ).length;
   }
 
-  // ─── Phase 2: AI Chatbot Companion ────────────────────────────────
-
-  /**
-   * Ask ChatService to check if this conversation has the AI bot.
-   * If yes, call Dify and broadcast the reply via socket.
-   */
   private async triggerAssistantReply(
     conversationId: string,
     senderId: string,
     content: string,
   ): Promise<void> {
     try {
-      // Emit "bot is typing" indicator
+      const botUserId = await this.userService.getAssistantBotUserId();
+
       this.server.to(conversationId).emit('userTyping', {
         conversationId,
-        userId: 'ai-bot',
+        userId: botUserId,
         isTyping: true,
       });
 
@@ -308,28 +276,28 @@ export class ChatGateway
         content,
       );
 
-      // Stop typing indicator
       this.server.to(conversationId).emit('userTyping', {
         conversationId,
-        userId: 'ai-bot',
+        userId: botUserId,
         isTyping: false,
       });
 
       if (reply) {
-        // Broadcast to personal rooms so we get badge update globally
         const conversationInfo = await this.chatService.findById(conversationId);
         for (const member of conversationInfo.members) {
           if (!member.hasLeft) {
-            this.server.to(`user:${member.userId}`).emit('newMessage', reply);
+            this.server.to(`user:${member.userId}`).emit('conversationUpdated', {
+              conversationId,
+              lastMessage: reply,
+            });
           }
         }
-        // Emit to conversation room too
         this.server.to(conversationId).emit('newMessage', reply);
       }
     } catch (err) {
       this.server.to(conversationId).emit('userTyping', {
         conversationId,
-        userId: 'ai-bot',
+        userId: await this.userService.getAssistantBotUserId(),
         isTyping: false,
       });
       console.error('AI assistant reply error:', err);

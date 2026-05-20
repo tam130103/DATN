@@ -31,6 +31,16 @@ class ApiClient {
       (response) => response,
       async (error: AxiosError) => {
         const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+        const requestPath = originalRequest?.url ?? '';
+        const baseURL = this.client.defaults.baseURL ?? '';
+        const resolvedPath = requestPath.startsWith('/')
+          ? requestPath
+          : requestPath.replace(baseURL, '').replace(/^\//, '/');
+        const isRefreshRequest = resolvedPath === '/auth/refresh' || resolvedPath === '/api/v1/auth/refresh';
+
+        if (isRefreshRequest) {
+          return Promise.reject(error);
+        }
 
         if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
           originalRequest._retry = true;
@@ -66,8 +76,11 @@ class ApiClient {
           const { accessToken } = response.data;
           tokenService.setAccessToken(accessToken);
           return accessToken as string;
-        } catch {
-          return null;
+        } catch (error) {
+          if (axios.isAxiosError(error) && error.response?.status === 401) {
+            return null;
+          }
+          throw error;
         } finally {
           this.refreshPromise = null;
         }

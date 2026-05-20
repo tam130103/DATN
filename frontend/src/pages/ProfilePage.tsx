@@ -143,18 +143,27 @@ const ProfilePage: React.FC = () => {
 
   const handleFollowToggle = async () => {
     if (!profile || isOwnProfile) return;
-    const original = profile;
     const next = !isFollowing;
-    setProfile({
-      ...profile,
-      isFollowing: next,
-      followersCount: next ? profile.followersCount + 1 : Math.max(0, profile.followersCount - 1),
+    setProfile((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        isFollowing: next,
+        followersCount: next ? prev.followersCount + 1 : Math.max(0, prev.followersCount - 1),
+      };
     });
     try {
       if (!next) await userService.unfollowUser(profile.id);
       else await userService.followUser(profile.id);
     } catch {
-      setProfile(original);
+      setProfile((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          isFollowing: !next,
+          followersCount: !next ? prev.followersCount + 1 : Math.max(0, prev.followersCount - 1),
+        };
+      });
       toast.error('Không thể cập nhật trạng thái theo dõi.');
     }
   };

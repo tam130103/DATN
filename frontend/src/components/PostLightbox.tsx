@@ -248,7 +248,7 @@ export const PostLightbox: React.FC<PostLightboxProps> = ({ post, onClose, onDel
     }
   };
 
-  const createdAt = new Date(post.createdAt).toLocaleDateString();
+  const createdAt = new Date((post as any).displayCreatedAt ?? post.createdAt).toLocaleDateString();
   const cover = media[currentMediaIndex];
   const isVideo = cover?.type === 'VIDEO';
   const authorLabel = post.user?.username || post.user?.name || 'Thành viên';

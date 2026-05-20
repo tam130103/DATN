@@ -39,6 +39,7 @@ export interface Post {
   userId: string;
   caption: string;
   createdAt: string;
+  displayCreatedAt?: string;
   user: User;
   media: PostMedia[];
   postHashtags: PostHashtag[];

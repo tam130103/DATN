@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 const ChatMarkdown = lazy(() => import('./ChatMarkdown'));
 import { useNavigate, useParams } from 'react-router-dom';
@@ -35,6 +35,7 @@ const MessagesPage: React.FC = () => {
   const { user, token } = useAuth();
   const { conversationId } = useParams();
   const navigate = useNavigate();
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -92,6 +93,8 @@ const MessagesPage: React.FC = () => {
       if (message.conversationId === selectedConversation) {
         setMessages((prev) => prev.some((m) => m.id === message.id) ? prev : [...prev, message]);
       }
+    });
+    const unsub1b = chatSocketService.on('conversationUpdated', () => {
       loadConversations();
     });
     const unsub2 = chatSocketService.on('userTyping', (data: any) => {
@@ -111,7 +114,7 @@ const MessagesPage: React.FC = () => {
     const unsub6 = chatSocketService.on('error', (data: { message?: string }) => {
       toast.error(data?.message || 'Không thể thực hiện thao tác chat.');
     });
-    return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); };
+    return () => { unsub1(); unsub1b(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); };
   }, [loadConversations, selectedConversation, token]);
 
   useEffect(() => {
@@ -162,7 +165,34 @@ const MessagesPage: React.FC = () => {
     };
   }, [selectedConversation, user?.id]);
 
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, typingUsers]);
+  useEffect(() => {
+    return () => {
+      if (selectedConversation) {
+        chatSocketService.sendTyping(selectedConversation, false);
+      }
+    };
+  }, [selectedConversation]);
+
+  const scrollToLatestMessage = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    window.requestAnimationFrame(() => {
+      const container = messagesContainerRef.current;
+      if (container) {
+        container.scrollTo({ top: container.scrollHeight, behavior });
+        return;
+      }
+      messagesEndRef.current?.scrollIntoView({ behavior });
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (isLoadingMessages || messagesError || messages.length === 0) return;
+    scrollToLatestMessage('auto');
+  }, [isLoadingMessages, messages.length, messagesError, scrollToLatestMessage]);
+
+  useEffect(() => {
+    if (isLoadingMessages || messagesError || messages.length === 0) return;
+    scrollToLatestMessage('smooth');
+  }, [messages, typingUsers, isLoadingMessages, messagesError, scrollToLatestMessage]);
 
   const selectedConv = useMemo(() => conversations.find((c) => c.id === selectedConversation), [conversations, selectedConversation]);
   const typingSummary = selectedConv?.members.filter((m) => typingUsers.has(m.id)).map((m) => m.username || m.name || 'Ai đó').join(', ');
@@ -212,7 +242,7 @@ const MessagesPage: React.FC = () => {
         await loadConversations();
         return;
       } catch {
-        toast.error('Lỗi gửi tin nhắn');
+        // Silent fallthrough to HTTP — don't show error toast for socket send failure
       }
     }
     try {
@@ -344,7 +374,7 @@ const MessagesPage: React.FC = () => {
                 </div>
               ) : null}
 
-              <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+              <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
                 {isLoadingMessages ? (
                   <div className="flex h-full items-center justify-center">
                     <div className="flex flex-col items-center gap-3">
@@ -370,7 +400,6 @@ const MessagesPage: React.FC = () => {
                     <p className="mt-3 max-w-md text-sm leading-6 text-[var(--app-muted)]">Hãy nhắn tin để bắt đầu cuộc trò chuyện.</p>
                   </div>
                 ) : (
-                  <Suspense fallback={<PageSkeleton type="messages" />}>
                   <div className="space-y-3">
                     {messages.map((msg, idx) => {
                       const isMine = msg.senderId === user?.id;
@@ -385,7 +414,9 @@ const MessagesPage: React.FC = () => {
                           <div className="group max-w-[82%] sm:max-w-[70%]">
                             <div className={`rounded-[22px] px-4 py-3 text-sm leading-6 ${isMine ? 'rounded-br-[8px] bg-[var(--app-primary)] text-white selection:bg-white/30 selection:text-white' : 'rounded-bl-[8px] border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] selection:bg-[var(--app-primary)] selection:text-white'}`}>
                                 <div className={`chat-markdown-body ${isMine ? 'chat-markdown-mine text-white' : ''}`}>
-                                  <ChatMarkdown content={msg.content} isMine={isMine} />
+                                  <Suspense fallback={<span className="whitespace-pre-wrap">{msg.content}</span>}>
+                                    <ChatMarkdown content={msg.content} isMine={isMine} />
+                                  </Suspense>
                                 </div>
                             </div>
                             {msg.mediaUrl ? <img src={msg.mediaUrl} alt="" className="mt-2 max-h-60 rounded-lg object-cover" /> : null}
@@ -411,7 +442,6 @@ const MessagesPage: React.FC = () => {
                     ) : null}
                     <div ref={messagesEndRef} />
                   </div>
-                  </Suspense>
                 )}
               </div>
 

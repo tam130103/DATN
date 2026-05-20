@@ -62,7 +62,7 @@ export class AuthService {
 
     // Generate a default username if not provided (Local auth usually doesn't provide one initially)
     const baseUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
-    const username = `${baseUsername}_${Math.floor(Math.random() * 10000)}`;
+    const username = await this.userService.generateUniqueUsername(baseUsername);
 
     // Create user with provider='local'
     const user = await this.userService.create({

@@ -167,7 +167,7 @@ export const PostCard: React.FC<PostCardProps> = memo(({ post, highlightCommentI
     <article className="cursor-pointer spring-ease border-b border-[var(--app-border)] bg-[var(--app-surface)] hover:bg-[var(--app-bg-soft)] last:border-b-0">
       <PostHeader
         user={post.user}
-        createdAt={post.createdAt}
+        createdAt={(post as any).displayCreatedAt ?? post.createdAt}
         isEdited={localIsEdited}
         isPinned={localIsPinned}
         isOwner={isOwner}

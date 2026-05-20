@@ -57,7 +57,7 @@ const PostDetailPage: React.FC = () => {
         <p className="text-base font-semibold text-[var(--app-text)]">Thông tin bài viết</p>
         <div className="mt-4 space-y-3 text-sm text-[var(--app-muted-strong)]">
           <p>
-            Đã đăng <span className="font-semibold text-[var(--app-text)]">{new Date(post.createdAt).toLocaleDateString()}</span>
+            Đã đăng <span className="font-semibold text-[var(--app-text)]">{new Date((post as any).displayCreatedAt ?? post.createdAt).toLocaleDateString()}</span>
           </p>
           <p>
             {post.likesCount ?? 0} lượt thích | {post.commentsCount ?? 0} bình luận

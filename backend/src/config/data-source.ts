@@ -10,7 +10,9 @@ export const dataSourceOptions: DataSourceOptions = {
   username: process.env.DB_USERNAME || 'postgres',
   password: process.env.DB_PASSWORD || 'postgres',
   database: process.env.DB_DATABASE || 'datn_social',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: process.env.NODE_ENV === 'production'
+    ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' }
+    : false,
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/../migrations/*{.ts,.js}'],
   synchronize: false,

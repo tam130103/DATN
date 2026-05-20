@@ -24,6 +24,7 @@ import { NotificationGateway } from '../notification/notification.gateway';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { assertAllowedUploadFile } from '../../common/media-validation.util';
 import { limitPipe, pagePipe } from '../../common/pipes/bounded-int.pipe';
+import { toSafeUser, toSafeUserWithFollowing } from './user-response.mapper';
 
 const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
@@ -38,8 +39,9 @@ export class UserController {
   ) {}
 
   @Get('me')
-  getMe(@CurrentUser() user: RequestUser) {
-    return this.userService.findById(user.id);
+  async getMe(@CurrentUser() user: RequestUser) {
+    const me = await this.userService.findById(user.id);
+    return toSafeUser(me);
   }
 
   @Post('me/avatar')
@@ -103,12 +105,13 @@ export class UserController {
     }
 
     const isFollowing = await this.userService.isFollowing(currentUser.id, user.id);
-    return { ...user, isFollowing };
+    return toSafeUserWithFollowing(user, isFollowing);
   }
 
   @Patch('me')
-  updateProfile(@CurrentUser() user: RequestUser, @Body() updateProfileDto: UpdateProfileDto) {
-    return this.userService.update(user.id, updateProfileDto);
+  async updateProfile(@CurrentUser() user: RequestUser, @Body() updateProfileDto: UpdateProfileDto) {
+    const updated = await this.userService.update(user.id, updateProfileDto);
+    return toSafeUser(updated);
   }
 
   @Patch('me/notification')

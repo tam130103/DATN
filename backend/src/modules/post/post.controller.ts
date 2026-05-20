@@ -27,6 +27,7 @@ import { AIService } from '../ai/ai.service';
 import { assertAllowedUploadFile } from '../../common/media-validation.util';
 import { limitPipe } from '../../common/pipes/bounded-int.pipe';
 import { OptionalCursorPipe } from '../../common/pipes/optional-cursor.pipe';
+import { OptionalBase64CursorPipe } from '../../common/pipes/optional-base64-cursor.pipe';
 
 
 @Controller('posts')
@@ -77,7 +78,7 @@ export class PostController {
   @Get('feed')
   getFeed(
     @CurrentUser() user: RequestUser,
-    @Query('cursor', new OptionalCursorPipe()) cursor?: string,
+    @Query('cursor', new OptionalBase64CursorPipe()) cursor?: string,
     @Query('limit', limitPipe(20)) limit = 20,
   ) {
     return this.postService.getFeed(user.id, cursor, limit);
@@ -87,7 +88,7 @@ export class PostController {
   getByUser(
     @CurrentUser() user: RequestUser,
     @Param('id') id: string,
-    @Query('cursor', new OptionalCursorPipe()) cursor?: string,
+    @Query('cursor', new OptionalBase64CursorPipe()) cursor?: string,
     @Query('limit', limitPipe(24)) limit = 24,
   ) {
     return this.postService.getPostsByUser(id, user.id, cursor, limit);

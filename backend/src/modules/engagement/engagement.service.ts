@@ -10,6 +10,7 @@ import { Follow } from '../user/entities/follow.entity';
 import { NotificationService } from '../notification/notification.service';
 import { NotificationGateway } from '../notification/notification.gateway';
 import { Post, PostStatus } from '../post/entities/post.entity';
+import { toSafeUser, SafeUserProfile } from '../user/user-response.mapper';
 
 @Injectable()
 export class EngagementService {
@@ -101,7 +102,11 @@ export class EngagementService {
     });
   }
 
-  async createComment(userId: string, postId: string, createCommentDto: CreateCommentDto): Promise<Comment> {
+  async createComment(
+    userId: string,
+    postId: string,
+    createCommentDto: CreateCommentDto,
+  ): Promise<Omit<Comment, 'user' | 'replyToUser'> & { user: SafeUserProfile; replyToUser?: SafeUserProfile }> {
     const normalizedContent = createCommentDto.content?.trim();
     if (!normalizedContent) {
       throw new BadRequestException('Comment content is required');
@@ -182,7 +187,13 @@ export class EngagementService {
       relations: ['user', 'replyToUser'],
     });
 
-    return fullComment || savedComment;
+    if (!fullComment) return savedComment;
+
+    return {
+      ...fullComment,
+      user: toSafeUser(fullComment.user),
+      replyToUser: fullComment.replyToUser ? toSafeUser(fullComment.replyToUser) : undefined,
+    };
   }
 
   async getPostComments(postId: string, userId: string, page = 1, limit = 20): Promise<any[]> {
@@ -246,11 +257,10 @@ export class EngagementService {
 
     return comments.map(comment => {
       const { moderationReason: _mr, moderatedBy: _mb, moderatedAt: _ma, ...safeComment } = comment;
-      if (comment.user) {
-        comment.user.isFollowing = followingSet.has(comment.user.id);
-      }
       return {
         ...safeComment,
+        user: toSafeUser(comment.user!),
+        replyToUser: comment.replyToUser ? toSafeUser(comment.replyToUser) : undefined,
         liked: userLikedSet.has(comment.id),
         likesCount: likesCountMap.get(comment.id) || 0,
         repliesCount: repliesCountMap.get(comment.id) || 0,
@@ -302,6 +312,8 @@ export class EngagementService {
       const { moderationReason: _mr, moderatedBy: _mb, moderatedAt: _ma, ...safeReply } = reply;
       return {
         ...safeReply,
+        user: toSafeUser(reply.user!),
+        replyToUser: reply.replyToUser ? toSafeUser(reply.replyToUser) : undefined,
         liked: userLikedSet.has(reply.id),
         likesCount: likesCountMap.get(reply.id) || 0,
       };
@@ -399,7 +411,7 @@ export class EngagementService {
     await this.commentRepository.remove(comment);
   }
 
-  async updateComment(commentId: string, userId: string, content: string): Promise<Comment> {
+  async updateComment(commentId: string, userId: string, content: string): Promise<Omit<Comment, 'user'> & { user: SafeUserProfile }> {
     const comment = await this.commentRepository.findOne({
       where: { id: commentId },
       relations: ['user'],
@@ -414,7 +426,11 @@ export class EngagementService {
     }
 
     comment.content = content;
-    return this.commentRepository.save(comment);
+    const saved = await this.commentRepository.save(comment);
+    return {
+      ...saved,
+      user: toSafeUser(saved.user),
+    };
   }
 
   async toggleSave(userId: string, postId: string): Promise<{ saved: boolean }> {

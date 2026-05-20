@@ -11,6 +11,7 @@ import { PostMention } from './entities/post-mention.entity';
 import { CreatePostDto } from './dto/create-post.dto';
 import { Follow } from '../user/entities/follow.entity';
 import { User } from '../user/entities/user.entity';
+import { toSafeUser } from '../user/user-response.mapper';
 import { Like } from '../engagement/entities/like.entity';
 import { Comment, CommentStatus } from '../engagement/entities/comment.entity';
 import { SavedPost } from '../engagement/entities/saved-post.entity';
@@ -33,6 +34,7 @@ export type PublicEnrichedPost = Omit<
   commentsCount: number;
   liked: boolean;
   saved: boolean;
+  displayCreatedAt: Date;
 };
 
 @Injectable()
@@ -469,9 +471,22 @@ export class PostService {
   private decodeCursor(cursor: string): { pinBucket: number; effectiveDate: Date; id: string } {
     try {
       const data = JSON.parse(Buffer.from(cursor, 'base64').toString());
-      return { pinBucket: data.p, effectiveDate: new Date(data.d), id: data.i };
-    } catch {
-      return { pinBucket: 0, effectiveDate: new Date(cursor), id: '' };
+      if (
+        typeof data.p !== 'number' ||
+        typeof data.d !== 'string' ||
+        typeof data.i !== 'string' ||
+        !data.i.length
+      ) {
+        throw new BadRequestException('Invalid cursor format');
+      }
+      const effectiveDate = new Date(data.d);
+      if (Number.isNaN(effectiveDate.getTime())) {
+        throw new BadRequestException('Invalid cursor format');
+      }
+      return { pinBucket: data.p, effectiveDate, id: data.i };
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      throw new BadRequestException('Invalid cursor format');
     }
   }
 
@@ -626,14 +641,14 @@ export class PostService {
       const { moderationReason: _mr, moderatedBy: _mb, moderatedAt: _ma, ...safePost } = post;
       return {
         ...safePost,
-        createdAt: this.getEffectivePostDate(post),
-        user: userMap.get(post.userId) ?? (post.user as User),
+        user: toSafeUser(userMap.get(post.userId)!),
         media: mediaMap.get(post.id) ?? [],
         postHashtags: hashtagMap.get(post.id) ?? [],
         likesCount: likesCountMap.get(post.id) ?? 0,
         commentsCount: commentsCountMap.get(post.id) ?? 0,
         liked: viewerId ? likedPostIds.has(post.id) : false,
         saved: viewerId ? savedPostIds.has(post.id) : false,
+        displayCreatedAt: this.getEffectivePostDate(post),
       } as PublicEnrichedPost;
     });
   }
@@ -797,26 +812,33 @@ export class PostService {
   }
 
   async togglePin(postId: string, userId: string): Promise<boolean> {
-    const post = await this.postRepository.findOne({
-      where: { id: postId, userId },
-      select: ['id', 'isPinned'],
+    return await this.dataSource.transaction(async (manager) => {
+      await manager
+        .createQueryBuilder()
+        .select([])
+        .from('users', 'u')
+        .where('u.id = :userId', { userId })
+        .setLock('pessimistic_write')
+        .getOne();
+
+      const post = await manager.findOne(Post, {
+        where: { id: postId, userId },
+        select: ['id', 'isPinned'],
+      });
+
+      if (!post) {
+        throw new NotFoundException('Post not found or unauthorized');
+      }
+
+      const newPinnedStatus = !post.isPinned;
+
+      if (newPinnedStatus) {
+        await manager.update(Post, { userId, isPinned: true }, { isPinned: false });
+      }
+
+      await manager.update(Post, post.id, { isPinned: newPinnedStatus });
+      return newPinnedStatus;
     });
-
-    if (!post) {
-      throw new NotFoundException('Post not found or unauthorized');
-    }
-
-    const newPinnedStatus = !post.isPinned;
-
-    if (newPinnedStatus) {
-      await this.postRepository.update(
-        { userId, isPinned: true },
-        { isPinned: false },
-      );
-    }
-
-    await this.postRepository.update(post.id, { isPinned: newPinnedStatus });
-    return newPinnedStatus;
   }
 
   async updateCaption(postId: string, userId: string, caption: string): Promise<PublicEnrichedPost> {

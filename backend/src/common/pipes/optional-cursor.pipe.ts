@@ -8,7 +8,7 @@ export class OptionalCursorPipe implements PipeTransform<string | undefined, str
 
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) {
-      throw new BadRequestException('Query parameter "cursor" must be a valid date');
+      throw new BadRequestException('Query parameter "cursor" must be a valid ISO date');
     }
 
     return value;

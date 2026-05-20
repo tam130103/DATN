@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { AppShell } from '../components/layout/AppShell';
 import { Avatar } from '../components/common/Avatar';
@@ -54,8 +54,9 @@ const iconForType = (type: string) => {
   return <FollowIcon />;
 };
 
-const NotificationsPage: React.FC = () => {
+  const NotificationsPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -95,7 +96,7 @@ const NotificationsPage: React.FC = () => {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, location.key]);
 
   const handleMarkAllAsRead = async () => {
     try {
@@ -129,10 +130,11 @@ const NotificationsPage: React.FC = () => {
           n.id === id ? { ...n, isRead: true } : n,
         ),
       );
-      if (targetUrl) navigate(targetUrl);
     } catch {
-      if (targetUrl) navigate(targetUrl);
+      toast.error('Không thể đánh dấu thông báo.');
+      return;
     }
+    if (targetUrl) navigate(targetUrl);
   };
 
   const notificationText = (notification: Notification) => {

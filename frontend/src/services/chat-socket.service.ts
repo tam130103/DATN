@@ -117,6 +117,10 @@ class ChatSocketService {
       this.emit('newMessage', message);
     });
 
+    this.socket.on('conversationUpdated', (data: { conversationId: string; lastMessage: Message }) => {
+      this.emit('conversationUpdated', data);
+    });
+
     this.socket.on('userTyping', (data: any) => {
       this.emit('userTyping', data);
     });
