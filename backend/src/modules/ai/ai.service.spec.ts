@@ -223,7 +223,7 @@ describe('AIService', () => {
             return 'fake-gemini-key';
           }
           if (key === 'GEMINI_MODEL') {
-            return 'gemini-2.0-flash';
+            return 'gemini-2.5-flash';
           }
           return 'fake-key';
         }),
@@ -258,7 +258,7 @@ describe('AIService', () => {
       });
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        expect.stringContaining('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'),
+        expect.stringContaining('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'),
         expect.objectContaining({
           contents: [
             {

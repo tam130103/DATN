@@ -1335,7 +1335,7 @@ Khong them giai thich, khong markdown, khong lap lai noi dung.`,
 
   private async generateWithGemini(prompt: string, maxTokens = 1024): Promise<string> {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
-    const model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash';
+    const model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.5-flash';
 
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY is not configured.');
