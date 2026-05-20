@@ -317,7 +317,7 @@ export class AIService implements OnModuleInit {
       try {
         this.logger.log(`[AI] Generating caption directly via Gemini API using topic: "${normalizedPrompt}"`);
         const geminiPrompt = this.buildGeminiCaptionPrompt(normalizedPrompt, normalizedTone);
-        const text = await this.generateWithGemini(geminiPrompt, 1024);
+        const text = await this.generateWithGemini(geminiPrompt, 4096);
         return {
           text,
           meta: { source: 'gemini', degraded: false },
@@ -514,7 +514,7 @@ Trả về DUY NHẤT JSON, không thêm markdown hay giải thích.`,
 Nội dung bài đăng: "${normalizedText}"
 
 Trả về định dạng JSON duy nhất theo schema: {"hashtags":["#tag1","#tag2"]}. Không thêm chữ thừa hay giải thích.`;
-        const raw = await this.generateWithGemini(geminiPrompt, 256);
+        const raw = await this.generateWithGemini(geminiPrompt, 4096);
         const tags = this.extractHashtagsFromRawText(raw);
         if (tags.length > 0) {
           return tags;
@@ -558,7 +558,7 @@ Nội dung bài đăng: "${normalizedText}"
 
 Trả về định dạng JSON duy nhất theo schema: {"hashtags":["#tag1","#tag2"]}. Không thêm chữ thừa hay giải thích.`;
         
-        const raw = await this.generateWithGemini(geminiPrompt, 256);
+        const raw = await this.generateWithGemini(geminiPrompt, 4096);
         const tags = this.extractHashtagsFromRawText(raw);
         if (tags.length > 0) {
           return {
@@ -1344,7 +1344,7 @@ Khong them giai thich, khong markdown, khong lap lai noi dung.`,
       .trim();
   }
 
-  private async generateWithGemini(prompt: string, maxTokens = 1024): Promise<string> {
+  private async generateWithGemini(prompt: string, maxTokens = 4096): Promise<string> {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
     const model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.5-flash';
 
