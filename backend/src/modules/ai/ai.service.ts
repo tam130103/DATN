@@ -337,20 +337,15 @@ export class AIService implements OnModuleInit {
       };
     }
 
-    const apiUrl = this.normalizeDifyApiUrl(
-      this.configService.get<string>('DIFY_API_URL'),
-    );
-
     try {
-      return await this.runCaptionWorkflowDetailedWithRetry(
-        apiUrl,
+      return await this.runCaptionChatDetailedWithRetry(
         captionKey,
         normalizedPrompt,
         normalizedTone,
       );
     } catch (error) {
       this.logger.error(
-        `Caption via Dify Workflow failed: ${(error as Error).message ?? error}`,
+        `Caption via Dify Chat failed: ${(error as Error).message ?? error}`,
       );
       return {
         text: this.buildLocalCaptionFallback(normalizedPrompt, normalizedTone),
@@ -366,16 +361,27 @@ export class AIService implements OnModuleInit {
    */
   private buildCaptionChatPrompt(topic: string, tone: string): string {
     return [
-      'Ban la nguoi tre Viet Nam dang viet status dang Facebook.',
-      'Viet tieng Viet, 100-200 tu. Dung 2-4 emoji. Ket bang 1 cau hoi tuong tac.',
-      'KHONG nhac den: do an, luan van, bai tap, truong hoc, deadline, sinh vien (tru khi chu de yeu cau).',
-      'KHONG viet tieu de. KHONG ghi "Caption:". KHONG dung markdown. KHONG them hashtag.',
-      'Xuat ra DUY NHAT noi dung status.',
+      'Bạn là Content Creator chuyên nghiệp tại Việt Nam.',
+      'Hãy viết một status mạng xã hội bằng tiếng Việt dựa trên chủ đề và giọng điệu được yêu cầu.',
       '',
-      `Chu de can viet: "${topic}"`,
-      `Giong dieu: ${tone}`,
+      '## Quy tắc bắt buộc:',
+      '1. Caption phải xoay quanh ĐÚNG chủ đề được cung cấp.',
+      '2. Độ dài: 100-200 từ.',
+      '3. Câu đầu tiên phải liên quan trực tiếp đến chủ đề.',
+      '4. Triển khai 2-3 ý liên quan, kết bằng 1 câu hỏi tương tác.',
+      '5. Dùng 2-4 emoji tự nhiên.',
+      '6. Đính kèm 3-5 hashtag liên quan ở cuối bài đăng.',
       '',
-      'Viet ngay status, khong giai thich.',
+      '## Quy tắc định dạng:',
+      '- KHÔNG viết tiêu đề, nhãn "Caption:", "Bài đăng:", "Dưới đây là status".',
+      '- KHÔNG dùng markdown (**, ##, ```).',
+      '- KHÔNG giải thích hay nhắc đến hệ thống AI.',
+      '- Chỉ trả về văn bản thuần túy của bài đăng để người dùng copy trực tiếp.',
+      '',
+      `Chủ đề cần viết: "${topic}"`,
+      `Giọng điệu: ${tone}`,
+      '',
+      'Viết ngay status, không giải thích dài dòng.',
     ].join('\n');
   }
 
@@ -798,23 +804,27 @@ Trả về định dạng JSON duy nhất theo schema: {"hashtags":["#tag1","#ta
     return this.buildLocalCaptionFallback(topic, tone);
   }
 
-  private async runCaptionWorkflowDetailedWithRetry(
-    apiUrl: string,
+  private async runCaptionChatDetailedWithRetry(
     apiKey: string,
     topic: string,
     tone: string,
   ): Promise<CaptionGenerationResult> {
     let lastError: unknown;
+    const query = this.buildCaptionChatPrompt(topic, tone);
 
     for (let attempt = 0; attempt <= AIService.CAPTION_RETRY_DELAYS_MS.length; attempt += 1) {
       try {
-        return {
-          text: await this.invokeCaptionWorkflow(apiUrl, apiKey, topic, tone),
-          meta: {
-            source: 'dify',
-            degraded: false,
-          },
-        };
+        const text = await this.generateCaptionChat(apiKey, query);
+        if (text && text.trim().length > 0) {
+          return {
+            text,
+            meta: {
+              source: 'dify',
+              degraded: false,
+            },
+          };
+        }
+        throw new Error('Dify caption response was empty.');
       } catch (error) {
         lastError = error;
         const attemptNumber = attempt + 1;
@@ -833,6 +843,7 @@ Trả về định dạng JSON duy nhất theo schema: {"hashtags":["#tag1","#ta
           continue;
         }
 
+        const reason = isTransient ? 'upstream-unavailable' : 'chat-error';
         this.logger.warn(
           `context=caption kind=fallback_used upstream_kind=${snapshot.kind} status=${snapshot.status ?? 'unknown'} req_id=${snapshot.reqId ?? 'n/a'} degraded=true source=fallback attempt=${attemptNumber} detail=${snapshot.detail}`,
         );

@@ -37,15 +37,10 @@ describe('AIService', () => {
     service = new AIService(configService);
   });
 
-  it('returns caption text and meta from workflow output', async () => {
+  it('returns caption text and meta from chat output', async () => {
     mockedAxios.post.mockResolvedValue({
       data: {
-        data: {
-          status: 'succeeded',
-          outputs: {
-            text: 'Caption thu nghiem',
-          },
-        },
+        answer: 'Caption thu nghiem',
       },
     } as any);
 
@@ -66,12 +61,7 @@ describe('AIService', () => {
       .mockRejectedValueOnce(new Error('503 UNAVAILABLE'))
       .mockResolvedValueOnce({
         data: {
-          data: {
-            status: 'succeeded',
-            outputs: {
-              text: 'Caption sau retry',
-            },
-          },
+          answer: 'Caption sau retry',
         },
       } as any);
 
