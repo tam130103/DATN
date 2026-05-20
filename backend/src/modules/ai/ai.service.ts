@@ -319,28 +319,20 @@ export class AIService implements OnModuleInit {
       };
     }
 
-    // Build the full prompt as raw text — bypasses Dify Workflow variable bugs
-    const chatPrompt = this.buildCaptionChatPrompt(normalizedPrompt, normalizedTone);
+    const apiUrl = this.normalizeDifyApiUrl(
+      this.configService.get<string>('DIFY_API_URL'),
+    );
 
     try {
-      const raw = await this.generateCaptionChat(captionKey, chatPrompt, 25_000);
-      const cleaned = this.cleanPlainTextResponse(raw);
-
-      if (!cleaned || cleaned.length < 20) {
-        this.logger.warn('Caption from Chatbot API was too short, using fallback.');
-        return {
-          text: this.buildLocalCaptionFallback(normalizedPrompt, normalizedTone),
-          meta: { source: 'fallback', degraded: true },
-        };
-      }
-
-      return {
-        text: cleaned,
-        meta: { source: 'dify', degraded: false },
-      };
+      return await this.runCaptionWorkflowDetailedWithRetry(
+        apiUrl,
+        captionKey,
+        normalizedPrompt,
+        normalizedTone,
+      );
     } catch (error) {
       this.logger.error(
-        `Caption via Chatbot API failed: ${(error as Error).message ?? error}`,
+        `Caption via Dify Workflow failed: ${(error as Error).message ?? error}`,
       );
       return {
         text: this.buildLocalCaptionFallback(normalizedPrompt, normalizedTone),

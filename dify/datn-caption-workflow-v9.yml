@@ -1,5 +1,5 @@
 app:
-  description: Bản V9 Đơn Giản - Khắc phục hoàn toàn lỗi kẹt Node Code trên Dify Cloud. Không dùng Python Node. Xuất trực tiếp chuỗi chuẩn JSON.
+  description: Bản V9 Đơn Giản - Xuất trực tiếp caption dạng text thuần túy để sử dụng trực tiếp trên frontend.
   icon: ✍️
   icon_background: '#E4FBCC'
   icon_type: emoji
@@ -84,7 +84,7 @@ workflow:
         prompt_template:
         - id: sys01
           role: system
-          text: "Bạn là Content Creator chuyên nghiệp tại Việt Nam.\n\n## Nhiệm vụ\nViết MỘT status mạng xã hội bằng tiếng Việt, đồng thời gợi ý hashtag phù hợp.\n\n## Quy tắc bắt buộc\n1. Caption phải xoay quanh ĐÚNG chủ đề được cung cấp.\n2. Độ dài: 100-200 từ.\n3. Câu đầu tiên phải liên quan trực tiếp đến chủ đề.\n4. Triển khai 2-3 ý liên quan, kết bằng 1 câu hỏi tương tác.\n5. Dùng 2-4 emoji tự nhiên.\n6. Gợi ý 5-8 hashtag ngắn, sát chủ đề.\n\n## Quy tắc định dạng\n- KHÔNG viết tiêu đề, nhãn \"Caption:\", \"Bài đăng:\", \"Dưới đây là status\".\n- KHÔNG dùng markdown (**, ##, ```).\n- KHÔNG giải thích biến topic/tone hay nhắc đến hệ thống AI.\n- Vào thẳng nội dung status, viết như một người dùng thật đang đăng bài.\n\n## Quy tắc giọng điệu\n- tự nhiên: nói chuyện bạn bè, gần gũi\n- hài hước: dí dỏm, bắt trend, vui nhộn\n- truyền cảm hứng: tích cực, động lực, ấm áp\n- chuyên nghiệp: lịch sự, chỉn chu, sắc sảo\n- Gen Z: trẻ trung, xen tiếng Anh, bắt trend\n- lãng mạn: mềm mại, tinh tế, cảm xúc\n- học thuật: sâu sắc, phân tích, chiêm nghiệm\n\n## Output Format (JSON only)\n{\"caption\": \"<nội dung status 100-200 từ>\", \"hashtags\": [\"#tag1\", \"#tag2\", \"#tag3\", \"#tag4\", \"#tag5\"]}\nTrả về DUY NHẤT JSON object, không thêm bất kỳ text nào khác."
+          text: "Bạn là Content Creator chuyên nghiệp tại Việt Nam.\n\n## Nhiệm vụ\nViết MỘT status mạng xã hội bằng tiếng Việt dựa trên chủ đề và giọng điệu được cung cấp.\n\n## Quy tắc bắt buộc\n1. Caption phải xoay quanh ĐÚNG chủ đề được cung cấp.\n2. Độ dài: 100-200 từ.\n3. Câu đầu tiên phải liên quan trực tiếp đến chủ đề.\n4. Triển khai 2-3 ý liên quan, kết bằng 1 câu hỏi tương tác.\n5. Dùng 2-4 emoji tự nhiên.\n6. Đính kèm 3-5 hashtag liên quan ở cuối bài đăng.\n\n## Quy tắc định dạng\n- KHÔNG viết tiêu đề, nhãn \"Caption:\", \"Bài đăng:\", \"Dưới đây là status\".\n- KHÔNG dùng markdown (**, ##, ```).\n- KHÔNG giải thích biến topic/tone hay nhắc đến hệ thống AI.\n- KHÔNG trả về định dạng JSON hay XML. Chỉ trả về văn bản thuần túy của status để người dùng copy trực tiếp."
         - id: usr01
           role: user
           text: "Chủ đề cần viết: {{#start-node.topic#}}\nGiọng văn: {{#start-node.tone#}}\n\nViết status mạng xã hội ngay bây giờ:"

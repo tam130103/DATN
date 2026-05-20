@@ -34,8 +34,17 @@ describe('AIService', () => {
     service = new AIService(configService);
   });
 
-  it.skip('returns caption text and meta from workflow output', async () => {
-    mockedAxios.post.mockResolvedValue(createMockStreamResponse('Caption thu nghiem') as any);
+  it('returns caption text and meta from workflow output', async () => {
+    mockedAxios.post.mockResolvedValue({
+      data: {
+        data: {
+          status: 'succeeded',
+          outputs: {
+            text: 'Caption thu nghiem',
+          },
+        },
+      },
+    } as any);
 
     await expect(
       service.generateCaptionResult('du lich Da Lat', 'vui ve'),
@@ -48,18 +57,28 @@ describe('AIService', () => {
     });
   });
 
-  it.skip('retries transient caption failures before succeeding', async () => {
+  it('retries transient caption failures before succeeding', async () => {
     jest.spyOn(service as any, 'sleep').mockResolvedValue(undefined);
     mockedAxios.post
       .mockRejectedValueOnce(new Error('503 UNAVAILABLE'))
-      .mockResolvedValueOnce(createMockStreamResponse('Caption sau retry') as any);
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            status: 'succeeded',
+            outputs: {
+              text: 'Caption sau retry',
+            },
+          },
+        },
+      } as any);
 
     await expect(
       service.generateCaptionResult('di hoc muon', 'tu nhien'),
-    ).resolves.toMatchObject({
+    ).resolves.toEqual({
+      text: 'Caption sau retry',
       meta: {
-        source: 'fallback',
-        degraded: true,
+        source: 'dify',
+        degraded: false,
       },
     });
 
