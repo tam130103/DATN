@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ReportStatus } from '../admin/entities/report.entity';
+import { timingSafeEqual } from 'crypto';
 import { AiToolsService } from './ai-tools.service';
 
 @Controller('ai-tools')
@@ -21,7 +22,14 @@ export class AiToolsController {
   private verifyKey(key?: string) {
     const toolKey = this.configService.get<string>('AI_TOOL_KEY');
 
-    if (!toolKey || key !== toolKey) {
+    if (!toolKey || !key) {
+      throw new UnauthorizedException('Invalid or missing X-Datn-Tool-Key header');
+    }
+
+    const keyBuf = Buffer.from(key);
+    const toolKeyBuf = Buffer.from(toolKey);
+
+    if (keyBuf.length !== toolKeyBuf.length || !timingSafeEqual(keyBuf, toolKeyBuf)) {
       throw new UnauthorizedException('Invalid or missing X-Datn-Tool-Key header');
     }
   }

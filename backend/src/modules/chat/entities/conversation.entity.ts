@@ -21,7 +21,7 @@ export class Conversation {
   name: string;
 
   @Column({ nullable: true })
-  difyConversationId: string;
+  difyConversationId: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

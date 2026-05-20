@@ -16,11 +16,14 @@ import { AiToolsModule } from './modules/ai-tools/ai-tools.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { getRateLimitTracker } from './common/rate-limit.util';
 
+import { envValidationSchema } from './config/env.validation';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      validationSchema: envValidationSchema,
     }),
     ThrottlerModule.forRoot([{
       ttl: 60000,

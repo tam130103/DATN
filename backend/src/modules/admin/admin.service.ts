@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, DataSource, MoreThanOrEqual } from 'typeorm';
-import { User, UserStatus } from '../user/entities/user.entity';
+import { User, UserRole, UserStatus } from '../user/entities/user.entity';
 import { Post, PostStatus } from '../post/entities/post.entity';
 import { Comment, CommentStatus } from '../engagement/entities/comment.entity';
 import { Like } from '../engagement/entities/like.entity';
@@ -155,7 +155,7 @@ export class AdminService {
 
   async updateUserStatus(id: string, dto: UpdateUserStatusDto, adminId: string) {
     if (id === adminId && dto.status === UserStatus.BLOCKED) {
-      throw new ForbiddenException('KhÃ´ng thá»ƒ khÃ³a tÃ i khoáº£n cá»§a chÃ­nh mÃ¬nh');
+      throw new ForbiddenException('Không thể khóa tài khoản của chính mình');
     }
 
     const user = await this.userRepository.findOne({ where: { id } });
@@ -179,10 +179,10 @@ export class AdminService {
     }
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
-    if (user.role === 'system') {
+    if (user.role === UserRole.SYSTEM) {
       throw new ForbiddenException('Không thể thay đổi vai trò của tài khoản hệ thống');
     }
-    user.role = dto.role as any;
+    user.role = dto.role;
     return this.userRepository.save(user);
   }
 

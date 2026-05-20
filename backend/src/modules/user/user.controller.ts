@@ -48,7 +48,10 @@ export class UserController {
       limits: { fileSize: 5 * 1024 * 1024 },
     }),
   )
-  async uploadAvatar(@UploadedFile() file: Express.Multer.File) {
+  async uploadAvatar(
+    @CurrentUser() user: RequestUser,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
     if (!file) {
       throw new BadRequestException('File is required');
     }
@@ -59,6 +62,7 @@ export class UserController {
     }
 
     const result = await this.cloudinaryService.uploadFile(file, 'datn-social/avatars');
+    await this.userService.update(user.id, { avatarUrl: result.secure_url });
     return { url: result.secure_url };
   }
 

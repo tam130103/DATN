@@ -23,7 +23,16 @@ const AdminReportsPage = React.lazy(() => import('./pages/admin/AdminReportsPage
 
 const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
-  if (isLoading) return null;
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center px-4">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--app-primary)] border-t-transparent" />
+          <p className="text-sm text-[var(--app-muted)]">Đang tải...</p>
+        </div>
+      </div>
+    );
+  }
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!isAdmin) return <Navigate to="/feed" replace />;
   return <>{children}</>;
@@ -43,8 +52,8 @@ const RouteLoader: React.FC = () => (
 function App() {
   return (
     <AuthProvider>
-      <Suspense fallback={<RouteLoader />}>
-        <ErrorBoundary>
+      <ErrorBoundary>
+        <Suspense fallback={<RouteLoader />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -141,8 +150,8 @@ function App() {
 
           <Route path="*" element={<Navigate to="/feed" replace />} />
         </Routes>
-        </ErrorBoundary>
-      </Suspense>
+        </Suspense>
+      </ErrorBoundary>
     </AuthProvider>
   );
 }

@@ -70,7 +70,7 @@ export const postService = {
     return response.data;
   },
 
-  getSavedPosts: async (userId: string, cursor?: string, limit = 24): Promise<{ posts: any[]; nextCursor: string | null }> => {
+  getSavedPosts: async (userId: string, cursor?: string, limit = 24): Promise<{ posts: Post[]; nextCursor: string | null }> => {
     const params: Record<string, string | number> = { limit };
     if (cursor) params.cursor = cursor;
     const response = await apiClient.get(`/posts/user/${userId}/saved`, { params });

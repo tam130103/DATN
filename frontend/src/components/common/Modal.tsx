@@ -29,15 +29,59 @@ export const Modal: React.FC<ModalProps> = ({
   const generatedTitleId = React.useId();
   const titleId = externalTitleId || `${generatedTitleId}-title`;
   const panelRef = useRef<HTMLDivElement>(null);
+  const previousActiveRef = useRef<Element | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
+    previousActiveRef.current = document.activeElement;
     panelRef.current?.focus();
-    return () => window.removeEventListener('keydown', handleKeyDown);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab' || !panelRef.current) return;
+
+      const focusableSelectors = [
+        'a[href]',
+        'button:not([disabled])',
+        'input:not([disabled])',
+        'textarea:not([disabled])',
+        'select:not([disabled])',
+        '[tabindex]:not([tabindex="-1"])',
+      ].join(', ');
+
+      const focusableElements = panelRef.current.querySelectorAll<HTMLElement>(focusableSelectors);
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusableElements[0];
+      const last = focusableElements[focusableElements.length - 1];
+
+      if (event.shiftKey) {
+        if (document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      // Restore focus to the previously active element when modal closes
+      if (previousActiveRef.current instanceof HTMLElement) {
+        previousActiveRef.current.focus();
+      }
+    };
   }, [onClose, open]);
 
   if (!open) return null;

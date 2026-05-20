@@ -3,18 +3,23 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user/user.service';
 import { User, UserProvider, UserStatus } from '../user/entities/user.entity';
-import axios from 'axios';
+import { OAuth2Client } from 'google-auth-library';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { getJwtRefreshSecret } from '../../config/jwt-config.helper';
 
 @Injectable()
 export class AuthService {
+  private readonly googleClient: OAuth2Client;
+
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    this.googleClient = new OAuth2Client();
+  }
 
   async googleLogin(idToken: string) {
     // Verify Google token
@@ -26,7 +31,7 @@ export class AuthService {
     // Find or create user
     const user = await this.userService.findOrCreateByGoogle(
       googleUser.sub,
-      googleUser.email,
+      googleUser.email!,
       googleUser.name,
       googleUser.picture,
     );
@@ -127,9 +132,8 @@ export class AuthService {
 
   async refreshTokens(refreshToken: string) {
     try {
-      const payload = this.jwtService.verify(refreshToken, {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET') || this.configService.get<string>('JWT_SECRET'),
-      });
+      const secret = getJwtRefreshSecret(this.configService);
+      const payload = this.jwtService.verify(refreshToken, { secret });
       const user = await this.userService.findById(payload.sub);
       if (user.status === UserStatus.BLOCKED) {
         throw new UnauthorizedException('Tài khoản của bạn đã bị khóa.');
@@ -147,18 +151,24 @@ export class AuthService {
   }
 
   private async verifyGoogleToken(idToken: string) {
-    try {
-      const response = await axios.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
-      const googleClientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
-      const tokenInfo = response.data;
-      const emailVerified =
-        tokenInfo?.email_verified === true || tokenInfo?.email_verified === 'true';
+    const googleClientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
+    if (!googleClientId) {
+      if (this.configService.get('NODE_ENV') === 'production') {
+        throw new Error('GOOGLE_CLIENT_ID is required in production');
+      }
+      return null;
+    }
 
-      if (!googleClientId || tokenInfo?.aud !== googleClientId || !emailVerified) {
+    try {
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken,
+        audience: googleClientId,
+      });
+      const payload = ticket.getPayload();
+      if (!payload || !payload.sub || !payload.email || payload.email_verified !== true) {
         return null;
       }
-
-      return tokenInfo;
+      return payload;
     } catch {
       return null;
     }
@@ -169,18 +179,18 @@ export class AuthService {
   }
 
   private generateRefreshToken(userId: string): string {
-    const secret = this.configService.get<string>('JWT_REFRESH_SECRET') || this.configService.get<string>('JWT_SECRET');
+    const secret = getJwtRefreshSecret(this.configService);
     return this.jwtService.sign({ sub: userId }, { secret, expiresIn: '7d' });
   }
 
-  private sanitizeUser(user: User) {
+  private sanitizeUser(user: User): Omit<User, 'password' | 'googleId' | 'blockedReason' | 'blockedAt' | 'toJSON'> {
     const {
       password: _password,
       googleId: _googleId,
       blockedReason: _blockedReason,
       blockedAt: _blockedAt,
       ...safeUser
-    } = user as any;
+    } = user;
     return safeUser;
   }
 }

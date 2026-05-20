@@ -30,6 +30,10 @@ export class EngagementService {
     private readonly notificationGateway: NotificationGateway,
   ) {}
 
+  private isUniqueViolation(error: any): boolean {
+    return error?.code === '23505';
+  }
+
   async toggleLike(userId: string, postId: string): Promise<{ liked: boolean; likesCount: number }> {
     const existingLike = await this.likeRepository.findOne({
       where: { userId, postId },
@@ -41,7 +45,6 @@ export class EngagementService {
       return { liked: false, likesCount };
     }
 
-    // Check if user is liking their own post AND post is visible
     const post = await this.postRepository.findOne({
       where: { id: postId, status: PostStatus.VISIBLE },
       select: ['id', 'userId'],
@@ -51,20 +54,28 @@ export class EngagementService {
       throw new NotFoundException('Post not found or unavailable');
     }
 
-    if (post.userId !== userId) {
-      // Create notification
-      const notification = await this.notificationService.createLikeNotification(
-        userId,
-        post.userId,
-        postId,
-      );
+    try {
+      const like = this.likeRepository.create({ userId, postId });
+      await this.likeRepository.save(like);
 
-      // Emit realtime notification
-      this.notificationGateway.emitToUser(post.userId, 'notification', notification);
+      if (post.userId !== userId) {
+        const notification = await this.notificationService.createLikeNotification(
+          userId,
+          post.userId,
+          postId,
+        );
+        if (notification) {
+          this.notificationGateway.emitToUser(post.userId, 'notification', notification);
+        }
+      }
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        const likesCount = await this.likeRepository.count({ where: { postId } });
+        return { liked: true, likesCount };
+      }
+      throw error;
     }
 
-    const like = this.likeRepository.create({ userId, postId });
-    await this.likeRepository.save(like);
     const likesCount = await this.likeRepository.count({ where: { postId } });
     return { liked: true, likesCount };
   }
@@ -234,7 +245,7 @@ export class EngagementService {
     }
 
     return comments.map(comment => {
-      const { moderationReason: _mr, moderatedBy: _mb, moderatedAt: _ma, ...safeComment } = comment as any;
+      const { moderationReason: _mr, moderatedBy: _mb, moderatedAt: _ma, ...safeComment } = comment;
       if (comment.user) {
         comment.user.isFollowing = followingSet.has(comment.user.id);
       }
@@ -288,7 +299,7 @@ export class EngagementService {
     }
 
     return replies.map(reply => {
-      const { moderationReason: _mr, moderatedBy: _mb, moderatedAt: _ma, ...safeReply } = reply as any;
+      const { moderationReason: _mr, moderatedBy: _mb, moderatedAt: _ma, ...safeReply } = reply;
       return {
         ...safeReply,
         liked: userLikedSet.has(reply.id),
@@ -320,31 +331,39 @@ export class EngagementService {
       return { liked: false, likesCount };
     }
 
-    const newLike = this.commentLikeRepository.create({ userId, commentId });
-    await this.commentLikeRepository.save(newLike);
-    const likesCount = await this.commentLikeRepository.count({ where: { commentId } });
+    try {
+      const newLike = this.commentLikeRepository.create({ userId, commentId });
+      await this.commentLikeRepository.save(newLike);
 
-    // Notify comment author
-    if (comment.userId !== userId) {
-      const notification = comment.parentId
-        ? await this.notificationService.createCommentLikeNotification(
-            userId,
-            comment.userId,
-            comment.postId,
-            commentId,
-            comment.parentId,
-          )
-        : await this.notificationService.createCommentLikeNotification(
-            userId,
-            comment.userId,
-            comment.postId,
-            commentId,
-          );
-      if (notification) {
-        this.notificationGateway.emitToUser(comment.userId, 'notification', notification);
+      // Notify comment author
+      if (comment.userId !== userId) {
+        const notification = comment.parentId
+          ? await this.notificationService.createCommentLikeNotification(
+              userId,
+              comment.userId,
+              comment.postId,
+              commentId,
+              comment.parentId,
+            )
+          : await this.notificationService.createCommentLikeNotification(
+              userId,
+              comment.userId,
+              comment.postId,
+              commentId,
+            );
+        if (notification) {
+          this.notificationGateway.emitToUser(comment.userId, 'notification', notification);
+        }
       }
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        const likesCount = await this.commentLikeRepository.count({ where: { commentId } });
+        return { liked: true, likesCount };
+      }
+      throw error;
     }
 
+    const likesCount = await this.commentLikeRepository.count({ where: { commentId } });
     return { liked: true, likesCount };
   }
 
@@ -417,8 +436,16 @@ export class EngagementService {
       return { saved: false };
     }
 
-    const savedPost = this.savedPostRepository.create({ userId, postId });
-    await this.savedPostRepository.save(savedPost);
+    try {
+      const savedPost = this.savedPostRepository.create({ userId, postId });
+      await this.savedPostRepository.save(savedPost);
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        return { saved: true };
+      }
+      throw error;
+    }
+
     return { saved: true };
   }
 

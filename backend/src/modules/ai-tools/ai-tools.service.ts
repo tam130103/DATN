@@ -5,7 +5,7 @@ import { Post, PostStatus } from '../post/entities/post.entity';
 import { User, UserStatus } from '../user/entities/user.entity';
 import { Comment, CommentStatus } from '../engagement/entities/comment.entity';
 import { Like } from '../engagement/entities/like.entity';
-import { Hashtag } from '../search/entities/hashtag.entity';
+import { Hashtag } from '../post/entities/hashtag.entity';
 import { Report, ReportStatus, ReportTargetType } from '../admin/entities/report.entity';
 
 type PostSummary = {

@@ -22,6 +22,19 @@ import { assertAllowedCloudinaryUrl } from '../../common/media-validation.util';
 
 const FOLLOWER_MENTION_COMMAND_ALIASES = ['followers', 'tatca', 'moinguoi'] as const;
 
+export type PublicEnrichedPost = Omit<
+  Post,
+  'moderationReason' | 'moderatedBy' | 'moderatedAt'
+> & {
+  user: User;
+  media: Media[];
+  postHashtags: PostHashtag[];
+  likesCount: number;
+  commentsCount: number;
+  liked: boolean;
+  saved: boolean;
+};
+
 @Injectable()
 export class PostService {
   private readonly logger = new Logger(PostService.name);
@@ -528,7 +541,7 @@ export class PostService {
     source: string,
     sourceId: string,
     sourceCreatedAt?: Date,
-  ): Promise<Post> {
+  ): Promise<PublicEnrichedPost> {
     const savedPost = await this.dataSource.transaction(async (manager) => {
       const post = manager.create(Post, {
         userId,
@@ -550,7 +563,7 @@ export class PostService {
     return post;
   }
 
-  async enrichPosts(posts: Post[], viewerId?: string): Promise<Post[]> {
+  async enrichPosts(posts: Post[], viewerId?: string): Promise<PublicEnrichedPost[]> {
     if (posts.length === 0) {
       return [];
     }
@@ -610,7 +623,7 @@ export class PostService {
     });
 
     return posts.map((post) => {
-      const { moderationReason: _mr, moderatedBy: _mb, moderatedAt: _ma, ...safePost } = post as any;
+      const { moderationReason: _mr, moderatedBy: _mb, moderatedAt: _ma, ...safePost } = post;
       return {
         ...safePost,
         createdAt: this.getEffectivePostDate(post),
@@ -621,11 +634,11 @@ export class PostService {
         commentsCount: commentsCountMap.get(post.id) ?? 0,
         liked: viewerId ? likedPostIds.has(post.id) : false,
         saved: viewerId ? savedPostIds.has(post.id) : false,
-      } as Post;
+      } as PublicEnrichedPost;
     });
   }
 
-  async create(userId: string, createPostDto: CreatePostDto): Promise<Post> {
+  async create(userId: string, createPostDto: CreatePostDto): Promise<PublicEnrichedPost> {
     const normalizedCaption = (createPostDto.caption ?? '').trim();
     const mediaDto = createPostDto.media ?? [];
 
@@ -674,7 +687,7 @@ export class PostService {
     userId: string,
     cursor?: string,
     limit = 20,
-  ): Promise<{ posts: Post[]; nextCursor: string | null }> {
+  ): Promise<{ posts: PublicEnrichedPost[]; nextCursor: string | null }> {
     if (!cursor) {
       await this.refreshFacebookPostsIfNeeded();
     }
@@ -720,7 +733,7 @@ export class PostService {
     const hasMore = rawPosts.length > limit;
     const visiblePosts = hasMore ? rawPosts.slice(0, limit) : rawPosts;
     const posts = await this.enrichPosts(visiblePosts, userId);
-    const nextCursor = hasMore
+    const nextCursor = (hasMore && visiblePosts.length > 0)
       ? (() => {
           const lastPost = visiblePosts[visiblePosts.length - 1];
           const pinBucket = lastPost.userId === userId && lastPost.isPinned ? 1 : 0;
@@ -736,7 +749,7 @@ export class PostService {
     viewerId?: string,
     cursor?: string,
     limit = 24,
-  ): Promise<{ posts: Post[]; nextCursor: string | null }> {
+  ): Promise<{ posts: PublicEnrichedPost[]; nextCursor: string | null }> {
     const sortExpression = 'COALESCE("post"."sourceCreatedAt", "post"."createdAt")';
     let query = this.postRepository
       .createQueryBuilder('post')
@@ -759,7 +772,7 @@ export class PostService {
     const hasMore = rawPosts.length > limit;
     const visiblePosts = hasMore ? rawPosts.slice(0, limit) : rawPosts;
     const posts = await this.enrichPosts(visiblePosts, viewerId);
-    const nextCursor = hasMore
+    const nextCursor = (hasMore && visiblePosts.length > 0)
       ? (() => {
           const lastPost = visiblePosts[visiblePosts.length - 1];
           const pinBucket = lastPost.isPinned ? 1 : 0;
@@ -770,7 +783,7 @@ export class PostService {
     return { posts, nextCursor };
   }
 
-  async findById(id: string, viewerId?: string): Promise<Post> {
+  async findById(id: string, viewerId?: string): Promise<PublicEnrichedPost> {
     const post = await this.postRepository.findOne({
       where: { id, status: PostStatus.VISIBLE },
     });
@@ -806,7 +819,7 @@ export class PostService {
     return newPinnedStatus;
   }
 
-  async updateCaption(postId: string, userId: string, caption: string): Promise<Post> {
+  async updateCaption(postId: string, userId: string, caption: string): Promise<PublicEnrichedPost> {
     const post = await this.postRepository.findOne({
       where: { id: postId, userId },
     });
@@ -918,7 +931,7 @@ export class PostService {
     viewerId?: string,
     cursor?: string,
     limit = 24,
-  ): Promise<{ posts: Post[]; nextCursor: string | null }> {
+  ): Promise<{ posts: PublicEnrichedPost[]; nextCursor: string | null }> {
     const sortExpression = 'COALESCE("post"."sourceCreatedAt", "post"."createdAt")';
     let query = this.postMentionRepository
       .createQueryBuilder('mention')
@@ -950,7 +963,7 @@ export class PostService {
     viewerId?: string,
     cursor?: string,
     limit = 24,
-  ): Promise<{ posts: Post[]; nextCursor: string | null }> {
+  ): Promise<{ posts: PublicEnrichedPost[]; nextCursor: string | null }> {
     let query = this.savedPostRepository
       .createQueryBuilder('saved')
       .where('saved.userId = :userId', { userId })
@@ -965,10 +978,12 @@ export class PostService {
 
     const rawSaved = await query.getMany();
     const rawPosts = rawSaved.map((s) => s.post).filter(Boolean);
-    const hasMore = rawPosts.length > limit;
+    const hasMore = rawSaved.length > limit;
     const visiblePosts = hasMore ? rawPosts.slice(0, limit) : rawPosts;
     const posts = await this.enrichPosts(visiblePosts, viewerId);
-    const nextCursor = hasMore ? rawSaved[visiblePosts.length - 1].createdAt.toISOString() : null;
+
+    const lastSaved = (hasMore && visiblePosts.length > 0) ? rawSaved[visiblePosts.length - 1] : null;
+    const nextCursor = lastSaved ? lastSaved.createdAt.toISOString() : null;
 
     return { posts, nextCursor };
   }
@@ -976,7 +991,7 @@ export class PostService {
   async importFromFacebookPage(
     userId: string,
     options?: { pageId?: string; accessToken?: string; limit?: number },
-  ): Promise<{ imported: Post[]; skipped: number; removed: number }> {
+  ): Promise<{ imported: PublicEnrichedPost[]; skipped: number; removed: number }> {
     const { pageId, accessToken, limit, version, fields } = this.getFacebookConfig(options);
 
     if (!pageId || !accessToken) {
@@ -1022,7 +1037,7 @@ export class PostService {
     });
     const existingBySourceId = new Map(existing.map((item) => [item.sourceId, item]));
 
-    const imported: Post[] = [];
+    const imported: PublicEnrichedPost[] = [];
     let skipped = 0;
 
     for (const fbPost of fbPosts) {
@@ -1069,7 +1084,7 @@ export class PostService {
     userId: string,
     postId: string,
     options?: { accessToken?: string },
-  ): Promise<{ imported: Post | null; skipped: boolean }> {
+  ): Promise<{ imported: PublicEnrichedPost | null; skipped: boolean }> {
     const { accessToken, version, fields } = this.getFacebookConfig({
       accessToken: options?.accessToken,
     });

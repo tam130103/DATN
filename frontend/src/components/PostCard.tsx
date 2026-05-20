@@ -48,20 +48,6 @@ export const PostCard: React.FC<PostCardProps> = memo(({ post, highlightCommentI
   const [editCaptionText, setEditCaptionText] = useState(post.caption);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
-  const ensureCommentsLoaded = useCallback(async () => {
-    if (showComments) {
-      setShowComments(false);
-      return;
-    }
-    try {
-      const data = await engagementService.getPostComments(post.id);
-      setComments(data);
-      setShowComments(true);
-    } catch {
-      toast.error('Không thể tải bình luận.');
-    }
-  }, [post.id, showComments]);
-
   useEffect(() => {
     setLocalCaption(post.caption);
     setLocalIsEdited(post.isEdited || false);
@@ -73,9 +59,9 @@ export const PostCard: React.FC<PostCardProps> = memo(({ post, highlightCommentI
 
   useEffect(() => {
     if (targetCommentId && !showComments) {
-      void ensureCommentsLoaded();
+      void loadComments();
     }
-  }, [targetCommentId, showComments, ensureCommentsLoaded]);
+  }, [targetCommentId, showComments, loadComments]);
 
   const handleLikeToggle = async () => {
     const originalLiked = liked;

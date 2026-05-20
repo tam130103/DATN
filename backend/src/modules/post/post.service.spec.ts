@@ -141,6 +141,15 @@ const createServiceSetup = () => {
     notificationService,
     notificationGateway,
     hashtagQueryBuilder,
+    userRepository,
+    savedPostRepository,
+    mediaRepository,
+    hashtagRepository,
+    postHashtagRepository,
+    postMentionRepository,
+    followRepository,
+    likeRepository,
+    commentRepository,
   };
 };
 
@@ -186,7 +195,7 @@ describe('PostService.create', () => {
     jest.spyOn(service as any, 'processMedia').mockResolvedValue(undefined);
     jest.spyOn(service as any, 'processHashtags').mockResolvedValue(undefined);
     jest.spyOn(service as any, 'processMentions').mockResolvedValue([]);
-    jest.spyOn(service, 'enrichPosts').mockImplementation(async (posts) => posts);
+    jest.spyOn(service, 'enrichPosts').mockImplementation(async (posts) => posts as any);
 
     const result = await service.create('user-1', {
       caption: '  Bai viet an toan #tag @friend  ',
@@ -239,7 +248,7 @@ describe('PostService.create', () => {
       createUser('user-2', 'friend'),
       createUser('user-1', 'author'),
     ]);
-    jest.spyOn(service, 'enrichPosts').mockImplementation(async (posts) => posts);
+    jest.spyOn(service, 'enrichPosts').mockImplementation(async (posts) => posts as any);
 
     notificationService.createPostTagNotification.mockResolvedValue({
       id: 'notif-1',
@@ -345,7 +354,7 @@ describe('PostService.updateCaption', () => {
       createUser('user-3', 'newfriend'),
       createUser('user-1', 'author'),
     ]);
-    jest.spyOn(service, 'findById').mockResolvedValue({ id: 'post-1' } as Post);
+    jest.spyOn(service, 'findById').mockResolvedValue({ id: 'post-1' } as any);
 
     await service.updateCaption('post-1', 'user-1', 'new caption @existing @newfriend');
     await flushPromises();
@@ -391,11 +400,71 @@ describe('PostService.updateCaption', () => {
     jest.spyOn(service as any, 'processMentions').mockResolvedValue([
       createUser('user-2', 'existing'),
     ]);
-    jest.spyOn(service, 'findById').mockResolvedValue({ id: 'post-1' } as Post);
+    jest.spyOn(service, 'findById').mockResolvedValue({ id: 'post-1' } as any);
 
     await service.updateCaption('post-1', 'user-1', 'new caption @existing');
     await flushPromises();
 
     expect(notificationService.createPostTagNotification).not.toHaveBeenCalled();
+  });
+});
+
+describe('PostService.enrichPosts', () => {
+  it('excludes sensitive moderation fields from public responses', async () => {
+    const { service, userRepository } = createServiceSetup();
+    userRepository.find.mockResolvedValue([createUser('user-1', 'test')]);
+
+    const post = {
+      id: 'post-1',
+      userId: 'user-1',
+      moderationReason: 'secret',
+      moderatedBy: 'admin-id',
+      moderatedAt: new Date(),
+    } as Post;
+
+    const [enriched] = await service.enrichPosts([post]);
+
+    expect((enriched as any).moderationReason).toBeUndefined();
+    expect((enriched as any).moderatedBy).toBeUndefined();
+    expect((enriched as any).moderatedAt).toBeUndefined();
+    expect(enriched.id).toBe('post-1');
+  });
+
+  it('includes all required enrichment fields', async () => {
+    const { service, userRepository } = createServiceSetup();
+    userRepository.find.mockResolvedValue([createUser('user-1', 'test')]);
+
+    const post = { id: 'post-1', userId: 'user-1' } as Post;
+
+    const [enriched] = await service.enrichPosts([post]);
+
+    expect(enriched.user).toBeDefined();
+    expect(enriched.media).toEqual([]);
+    expect(enriched.postHashtags).toEqual([]);
+    expect(enriched.likesCount).toBe(0);
+    expect(enriched.commentsCount).toBe(0);
+    expect(enriched.liked).toBe(false);
+    expect(enriched.saved).toBe(false);
+  });
+});
+
+describe('PostService pagination robustness', () => {
+  it('getSavedPosts returns nextCursor: null when no posts are visible', async () => {
+    const { service, savedPostRepository } = createServiceSetup();
+    
+    // Mock savedPostRepository to return 1 item (hasMore will be false for limit=20, 
+    // but we want to test the case where hasMore might be true but list is empty)
+    savedPostRepository.createQueryBuilder.mockReturnValue({
+      where: jest.fn().mockReturnThis(),
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([{ id: 'saved-1', post: null }]), // post is null (e.g. deleted but still in saved_posts)
+    } as any);
+
+    const result = await service.getSavedPosts('user-1');
+    expect(result.posts).toHaveLength(0);
+    expect(result.nextCursor).toBeNull();
   });
 });

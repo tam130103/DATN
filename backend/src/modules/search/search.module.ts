@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { SearchService } from './search.service';
 import { SearchController } from './search.controller';
 import { User } from '../user/entities/user.entity';
-import { Hashtag } from './entities/hashtag.entity';
+import { Hashtag } from '../post/entities/hashtag.entity';
 import { Post } from '../post/entities/post.entity';
 import { PostHashtag } from '../post/entities/post-hashtag.entity';
 import { PostModule } from '../post/post.module';

@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { AuthLayout } from '../components/layout/AuthLayout';
+import { getApiMessage } from '../utils/api-error';
 
 declare global {
   interface Window {
@@ -81,14 +82,7 @@ const LoginPage: React.FC = () => {
       await login(email, password);
       navigate('/feed');
     } catch (error: unknown) {
-      const message =
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
-          ? (error as { response: { data: { message: string } } }).response.data.message
-          : 'Đăng nhập thất bại.';
-      toast.error(message);
+      toast.error(getApiMessage(error, 'Đăng nhập thất bại.'));
     } finally {
       setIsLoggingIn(false);
     }

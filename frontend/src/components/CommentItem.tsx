@@ -101,6 +101,8 @@ export const CommentItem: React.FC<CommentItemProps> = ({
     };
   }, [highlightCommentId, comment.id]);
 
+  // Merge incoming replies from props using only functional state updates
+  // to avoid stale closure over showReplies / localRepliesCount.
   React.useEffect(() => {
     if (!comment.replies || comment.replies.length === 0) return;
 
@@ -111,11 +113,9 @@ export const CommentItem: React.FC<CommentItemProps> = ({
       if (toAdd.length === 0 && cleaned.length === prev.length) return prev;
       return [...cleaned, ...toAdd];
     });
-    if (!showReplies) setShowReplies(true);
-    if (localRepliesCount < (comment.repliesCount || 0)) {
-      setLocalRepliesCount(comment.repliesCount!);
-    }
-  }, [comment.replies, comment.repliesCount, showReplies, localRepliesCount]);
+    setShowReplies(true);
+    setLocalRepliesCount((prev) => Math.max(prev, comment.repliesCount || 0));
+  }, [comment.replies, comment.repliesCount]);
 
   const isOwner = currentUserId === comment.userId;
   const authorLabel = comment.user?.username || comment.user?.name || 'Thành viên';

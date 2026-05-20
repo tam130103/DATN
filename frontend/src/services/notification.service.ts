@@ -62,11 +62,11 @@ class NotificationService {
     });
 
     this.socket.on('connect', () => {
-      console.log('[Notifications] Connected');
+      if (import.meta.env.DEV) console.log('[Notifications] Connected');
     });
 
     this.socket.on('disconnect', (reason: string) => {
-      console.log('[Notifications] Disconnected:', reason);
+      if (import.meta.env.DEV) console.log('[Notifications] Disconnected:', reason);
       if (reason === 'io server disconnect') {
         this.scheduleRefreshAndReconnect();
       }
@@ -83,7 +83,7 @@ class NotificationService {
 
     this.socket.on('connect_error', async (error: Error) => {
       const code = error.message?.trim();
-      console.warn('[Notifications] connect_error:', code);
+      if (import.meta.env.DEV) console.warn('[Notifications] connect_error:', code);
 
       if (code === 'ACCOUNT_BLOCKED') {
         this.handleAccountBlocked();
@@ -177,9 +177,9 @@ class NotificationService {
       if (fresh && this.socket) {
         this.token = fresh;
         this.socket.auth = { token: fresh };
-        console.log('[Notifications] Token refreshed, will retry connection');
+        if (import.meta.env.DEV) console.log('[Notifications] Token refreshed, will retry connection');
       } else {
-        console.warn('[Notifications] Token refresh failed, redirecting to login');
+        if (import.meta.env.DEV) console.warn('[Notifications] Token refresh failed, redirecting to login');
         this.disconnect();
         window.location.href = '/login';
       }
@@ -203,7 +203,7 @@ class NotificationService {
       this.reconnectTimer = null;
       await this.doRefresh();
       if (this.socket && this.token) {
-        console.log('[Notifications] Manually reconnecting after server disconnect');
+        if (import.meta.env.DEV) console.log('[Notifications] Manually reconnecting after server disconnect');
         this.socket.connect();
       }
     }, 2000);

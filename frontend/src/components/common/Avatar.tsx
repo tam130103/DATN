@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 interface AvatarProps {
   src?: string | null;
@@ -21,6 +21,11 @@ const DEFAULT_AVATAR =
   import.meta.env.VITE_DEFAULT_AVATAR_URL ||
   'https://res.cloudinary.com/dctovnwlk/image/upload/v1775806448/datn-social/defaults/default-avatar.jpg';
 
+const FALLBACK_AVATAR =
+  'data:image/svg+xml,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23999"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-8 2.5-8 6v2h16v-2c0-3.5-3-6-8-6z"/></svg>'
+  );
+
 export const Avatar: React.FC<AvatarProps> = ({
   src,
   name,
@@ -29,17 +34,23 @@ export const Avatar: React.FC<AvatarProps> = ({
   className = '',
   ring,
 }) => {
+  const [imgError, setImgError] = useState(false);
   const sizeClass = sizeMap[size];
   const wrapperClass = ring
     ? 'inline-flex rounded-full bg-[linear-gradient(135deg,#f9ce34,#ee2a7b,#6228d7)] p-[2px]'
     : 'inline-flex';
   const innerClass = `${sizeClass} rounded-full border border-[var(--app-border)] bg-[#efefef] object-cover ${ring ? 'border-2 border-white' : ''} ${className}`.trim();
 
-  const imgSrc = src || DEFAULT_AVATAR;
+  const imgSrc = imgError ? FALLBACK_AVATAR : (src || DEFAULT_AVATAR);
 
   return (
     <div className={wrapperClass}>
-      <img src={imgSrc} alt={name || username || 'Avatar'} className={innerClass} />
+      <img
+        src={imgSrc}
+        alt={name || username || 'Avatar'}
+        className={innerClass}
+        onError={() => setImgError(true)}
+      />
     </div>
   );
 };

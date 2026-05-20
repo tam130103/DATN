@@ -13,6 +13,7 @@ const createRepositoryMock = <T>() =>
     find: jest.fn(),
     findOne: jest.fn(),
     findOneOrFail: jest.fn(),
+    update: jest.fn(),
     createQueryBuilder: jest.fn(),
   }) as unknown as jest.Mocked<Repository<T>>;
 
@@ -46,13 +47,17 @@ const createServiceSetup = () => {
     getAssistantBotUserId: jest.fn(),
   } as unknown as jest.Mocked<UserService>;
 
+  const aiService = {
+    chatWithAssistant: jest.fn(),
+  } as unknown as jest.Mocked<AIService>;
+
   const service = new ChatService(
     conversationRepository,
     memberRepository,
     messageRepository,
     userRepository,
     dataSource,
-    {} as AIService,
+    aiService,
     userService,
   );
 
@@ -65,6 +70,8 @@ const createServiceSetup = () => {
     dataSource,
     manager,
     directConversationQuery,
+    aiService,
+    userService,
   };
 };
 
@@ -115,5 +122,49 @@ describe('ChatService.createMessage', () => {
     await expect(service.createMessage('conv-1', 'user-1', 'hello')).rejects.toThrow(
       ForbiddenException,
     );
+  });
+});
+
+describe('ChatService.sendAssistantReplyIfNeeded', () => {
+  it('clears stale difyConversationId with null and retries when Dify returns 404', async () => {
+    const {
+      service,
+      conversationRepository,
+      aiService,
+      userService,
+      messageRepository,
+      memberRepository,
+    } = createServiceSetup();
+
+    userService.getAssistantBotUserId.mockResolvedValue('bot-1');
+    conversationRepository.findOne.mockResolvedValue({
+      id: 'conv-1',
+      difyConversationId: 'stale-id',
+      members: [{ userId: 'bot-1', hasLeft: false }],
+    } as any);
+
+    aiService.chatWithAssistant
+      .mockRejectedValueOnce({ status: 404 }) // Stale ID error
+      .mockResolvedValueOnce({ answer: 'fresh reply', conversationId: 'new-id' });
+
+    memberRepository.findOne.mockResolvedValue({
+      id: 'member-bot',
+      userId: 'bot-1',
+    } as any);
+
+    messageRepository.findOneOrFail.mockResolvedValue({
+      id: 'msg-reply',
+      content: 'fresh reply',
+    } as any);
+
+    const reply = await service.sendAssistantReplyIfNeeded('conv-1', 'user-1', 'hello');
+
+    expect(conversationRepository.update).toHaveBeenCalledWith('conv-1', {
+      difyConversationId: null,
+    });
+    expect(aiService.chatWithAssistant).toHaveBeenCalledTimes(2);
+    expect(aiService.chatWithAssistant.mock.calls[0][1]).toBe('stale-id');
+    expect(aiService.chatWithAssistant.mock.calls[1][1]).toBeNull();
+    expect(reply?.content).toBe('fresh reply');
   });
 });

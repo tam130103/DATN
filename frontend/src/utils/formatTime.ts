@@ -1,6 +1,7 @@
 export const formatTimeAgo = (dateString: string | undefined): string => {
   if (!dateString) return 'Vừa xong';
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) return 'Vừa xong';
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 

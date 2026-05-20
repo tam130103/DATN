@@ -4,6 +4,7 @@ import { CheckCircle } from '@phosphor-icons/react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { AuthLayout } from '../components/layout/AuthLayout';
+import { getApiMessage } from '../utils/api-error';
 
 const inputClass =
   'min-h-[38px] w-full border-0 border-b border-[var(--app-border)] bg-white px-3 pb-[1px] pt-[18px] text-[15px] font-medium text-[var(--app-text)] transition-colors placeholder:text-[var(--app-muted)] focus:border-b-2 focus:border-[var(--app-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-primary)]';
@@ -30,7 +31,7 @@ const RegisterPage: React.FC = () => {
   const validation = useMemo(
     () => ({
       email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
-      password: password.length >= 6,
+      password: password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password),
       confirmPassword: Boolean(confirmPassword) && password === confirmPassword,
       name: name.trim().length >= 2,
     }),
@@ -50,7 +51,7 @@ const RegisterPage: React.FC = () => {
       return;
     }
     if (!validation.password) {
-      toast.error('Mật khẩu phải có ít nhất 6 ký tự.');
+      toast.error('Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và số.');
       return;
     }
     if (!validation.confirmPassword) {
@@ -63,14 +64,7 @@ const RegisterPage: React.FC = () => {
       await register(email, password, name || undefined);
       navigate('/feed');
     } catch (error: unknown) {
-      const message =
-        typeof error === 'object' &&
-        error !== null &&
-        'response' in error &&
-        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message === 'string'
-          ? (error as { response: { data: { message: string } } }).response.data.message
-          : 'Đăng ký thất bại.';
-      toast.error(message);
+      toast.error(getApiMessage(error, 'Đăng ký thất bại.'));
     } finally {
       setIsRegistering(false);
     }

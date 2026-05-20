@@ -218,7 +218,7 @@ export class ChatService {
     }
     const normalizedContent = content?.trim();
     if (!normalizedContent) {
-      throw new BadRequestException('Ná»™i dung tin nháº¯n khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng.');
+      throw new BadRequestException('Nội dung tin nhắn không được để trống.');
     }
     if (mediaUrl) {
       assertAllowedCloudinaryUrl(mediaUrl, 'media URL');
@@ -378,7 +378,7 @@ export class ChatService {
             `[ChatService] Stale difyConversationId on conv ${conversationId} — clearing and retrying fresh`,
           );
           await this.conversationRepository.update(conversationId, {
-            difyConversationId: null as any,
+            difyConversationId: null,
           });
           // Retry without the stale id — this starts a new Dify conversation
           aiResult = await this.aiService.chatWithAssistant(

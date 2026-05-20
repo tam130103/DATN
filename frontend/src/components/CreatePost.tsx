@@ -240,7 +240,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
             setSuggestions(nextSuggestions);
             setShowSuggestions(nextSuggestions.length > 0);
           } catch (error) {
-            console.error('Failed to load mention suggestions', error);
+            if (import.meta.env.DEV) console.error('Failed to load mention suggestions', error);
             setSuggestions([]);
             setShowSuggestions(false);
           }

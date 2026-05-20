@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { User, UserStatus } from '../user/entities/user.entity';
-import { Hashtag } from './entities/hashtag.entity';
+import { Hashtag } from '../post/entities/hashtag.entity';
 import { Post, PostStatus } from '../post/entities/post.entity';
 import { PostHashtag } from '../post/entities/post-hashtag.entity';
-import { PostService } from '../post/post.service';
+import { PostService, PublicEnrichedPost } from '../post/post.service';
 
 @Injectable()
 export class SearchService {
@@ -41,7 +41,7 @@ export class SearchService {
       .getMany();
   }
 
-  async getHashtagPosts(name: string, viewerId: string, page = 1, limit = 20): Promise<Post[]> {
+  async getHashtagPosts(name: string, viewerId: string, page = 1, limit = 20): Promise<PublicEnrichedPost[]> {
     const hashtag = await this.hashtagRepository.findOne({ where: { name } });
 
     if (!hashtag) {

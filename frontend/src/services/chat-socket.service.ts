@@ -67,7 +67,7 @@ class ChatSocketService {
     });
 
     this.socket.on('connect', () => {
-      console.log('[Chat] Connected');
+      if (import.meta.env.DEV) console.log('[Chat] Connected');
     });
 
     // ── Handle server-initiated disconnect ──────────────────────────────
@@ -75,7 +75,7 @@ class ChatSocketService {
     // reason 'io server disconnect'. Auto-reconnect is suppressed in this
     // case, so we handle it manually.
     this.socket.on('disconnect', (reason: string) => {
-      console.log('[Chat] Disconnected:', reason);
+      if (import.meta.env.DEV) console.log('[Chat] Disconnected:', reason);
       if (reason === 'io server disconnect') {
         this._scheduleRefreshAndReconnect();
       }
@@ -87,7 +87,7 @@ class ChatSocketService {
     // IS active here, but we still need to refresh the token first.
     this.socket.on('connect_error', async (error: Error) => {
       const code = error.message?.trim();
-      console.warn('[Chat] connect_error:', code);
+      if (import.meta.env.DEV) console.warn('[Chat] connect_error:', code);
 
       if (code === 'ACCOUNT_BLOCKED') {
         this._handleAccountBlocked();
@@ -165,10 +165,10 @@ class ChatSocketService {
       if (fresh && this.socket) {
         this.token = fresh;
         this.socket.auth = { token: fresh };
-        console.log('[Chat] Token refreshed, will retry connection');
+        if (import.meta.env.DEV) console.log('[Chat] Token refreshed, will retry connection');
       } else {
         // Refresh failed — session is truly expired, force re-login
-        console.warn('[Chat] Token refresh failed, redirecting to login');
+        if (import.meta.env.DEV) console.warn('[Chat] Token refresh failed, redirecting to login');
         this.disconnect();
         window.location.href = '/login';
       }
@@ -187,7 +187,7 @@ class ChatSocketService {
       this.reconnectTimer = null;
       await this._doRefresh();
       if (this.socket && this.token) {
-        console.log('[Chat] Manually reconnecting after server disconnect');
+        if (import.meta.env.DEV) console.log('[Chat] Manually reconnecting after server disconnect');
         this.socket.connect();
       }
     }, 2000);
