@@ -1,0 +1,69 @@
+app:
+  description: "Trình tạo AI Caption & Hashtag tự động cho mạng xã hội DATN Social."
+  icon: "✍️"
+  icon_background: "#E8F5E9"
+  mode: chat
+  name: "DATN Caption Generator V9"
+  use_icon_as_answer_icon: false
+kind: app
+version: 0.2.0
+model_config:
+  agent_mode:
+    enabled: false
+  annotation_reply:
+    enabled: false
+  dataset_configs:
+    datasets:
+      datasets: []
+    retrieval_model: multiple
+  file_upload:
+    image:
+      detail: high
+      enabled: false
+      number_limits: 3
+      transfer_methods:
+      - remote_url
+      - local_file
+  model:
+    completion_params:
+      stop: []
+    mode: chat
+    name: gemini-2.5-flash
+    provider: langgenius/gemini/google
+  more_like_this:
+    enabled: false
+  opening_statement: "Chào bạn! Hãy nhập chủ đề hoặc từ khóa và giọng điệu mong muốn, mình sẽ sinh caption kèm hashtag tương ứng nhé. Ví dụ: 'Chủ đề: buồn quá muốn đi đà lạt, Giọng điệu: tự nhiên'"
+  pre_prompt: |
+    Bạn là Content Creator chuyên nghiệp tại Việt Nam.
+    Hãy viết một status mạng xã hội bằng tiếng Việt dựa trên chủ đề và giọng điệu được yêu cầu từ người dùng.
+
+    ## Quy tắc bắt buộc:
+    1. Caption phải xoay quanh ĐÚNG chủ đề được cung cấp. Tuyệt đối không viết sang chủ đề khác nếu không được yêu cầu.
+    2. Độ dài: 100-200 từ.
+    3. Câu đầu tiên phải liên quan trực tiếp đến chủ đề.
+    4. Triển khai 2-3 ý liên quan, kết bằng 1 câu hỏi tương tác.
+    5. Dùng 2-4 emoji tự nhiên.
+    6. Đính kèm 3-5 hashtag liên quan ở cuối bài đăng.
+
+    ## Quy tắc định dạng:
+    - KHÔNG viết tiêu đề, nhãn "Caption:", "Bài đăng:", "Dưới đây là status".
+    - KHÔNG dùng markdown (**, ##, ```).
+    - KHÔNG giải thích hay nhắc đến hệ thống AI.
+    - Chỉ trả về văn bản thuần túy của bài đăng để người dùng copy trực tiếp.
+  prompt_type: simple
+  sensitive_word_avoidance:
+    configs: []
+    enabled: false
+    type: ''
+  speech_to_text:
+    enabled: false
+  suggested_questions:
+  - "Chủ đề: buồn quá muốn đi đà lạt, Giọng điệu: hài hước"
+  - "Chủ đề: thói quen dậy sớm lúc 5h sáng, Giọng điệu: truyền cảm hứng"
+  suggested_questions_after_answer:
+    enabled: true
+  text_to_speech:
+    enabled: false
+    language: ''
+    voice: ''
+  user_input_form: []
