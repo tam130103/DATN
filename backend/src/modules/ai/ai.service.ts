@@ -35,7 +35,7 @@ export type SentimentResult = {
 };
 
 export type AIResultMeta = {
-  source: 'dify' | 'fallback';
+  source: 'dify' | 'gemini' | 'fallback';
   degraded: boolean;
 };
 
@@ -311,6 +311,24 @@ export class AIService implements OnModuleInit {
       );
     }
 
+    // Prioritize direct Gemini API if configured
+    const geminiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (geminiKey) {
+      try {
+        this.logger.log(`[AI] Generating caption directly via Gemini API using topic: "${normalizedPrompt}"`);
+        const geminiPrompt = this.buildGeminiCaptionPrompt(normalizedPrompt, normalizedTone);
+        const text = await this.generateWithGemini(geminiPrompt, 1024);
+        return {
+          text,
+          meta: { source: 'gemini', degraded: false },
+        };
+      } catch (error) {
+        this.logger.error(
+          `Caption via direct Gemini API failed: ${(error as Error).message ?? error}`,
+        );
+      }
+    }
+
     const captionKey = this.getCaptionApiKey();
     if (!captionKey) {
       return {
@@ -482,6 +500,24 @@ Trả về DUY NHẤT JSON, không thêm markdown hay giải thích.`,
       return [];
     }
 
+    // Prioritize direct Gemini API if configured
+    const geminiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (geminiKey) {
+      try {
+        const geminiPrompt = `Đọc nội dung sau và gợi ý 5 đến 8 hashtag ngắn, sát chủ đề bằng tiếng Việt.
+Nội dung bài đăng: "${normalizedText}"
+
+Trả về định dạng JSON duy nhất theo schema: {"hashtags":["#tag1","#tag2"]}. Không thêm chữ thừa hay giải thích.`;
+        const raw = await this.generateWithGemini(geminiPrompt, 256);
+        const tags = this.extractHashtagsFromRawText(raw);
+        if (tags.length > 0) {
+          return tags;
+        }
+      } catch (error) {
+        this.logger.error(`Hashtag suggestion via direct Gemini API failed: ${(error as Error).message ?? error}`);
+      }
+    }
+
     if (!this.configService.get<string>('DIFY_GENERAL_API_KEY')) {
       return this.buildLocalHashtagFallback(normalizedText);
     }
@@ -505,6 +541,33 @@ Trả về DUY NHẤT JSON, không thêm markdown hay giải thích.`,
           degraded: true,
         },
       };
+    }
+
+    // Prioritize direct Gemini API if configured
+    const geminiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (geminiKey) {
+      try {
+        const geminiPrompt = `Đọc nội dung sau và gợi ý 5 đến 8 hashtag ngắn, sát chủ đề bằng tiếng Việt.
+Nội dung bài đăng: "${normalizedText}"
+
+Trả về định dạng JSON duy nhất theo schema: {"hashtags":["#tag1","#tag2"]}. Không thêm chữ thừa hay giải thích.`;
+        
+        const raw = await this.generateWithGemini(geminiPrompt, 256);
+        const tags = this.extractHashtagsFromRawText(raw);
+        if (tags.length > 0) {
+          return {
+            hashtags: tags,
+            meta: {
+              source: 'gemini',
+              degraded: false,
+            },
+          };
+        }
+      } catch (error) {
+        this.logger.error(
+          `Hashtags via direct Gemini API failed: ${(error as Error).message ?? error}`,
+        );
+      }
     }
 
     if (!this.configService.get<string>('DIFY_GENERAL_API_KEY')) {
@@ -1268,5 +1331,74 @@ Khong them giai thich, khong markdown, khong lap lai noi dung.`,
       .replace(/```/g, '')
       .replace(/^["'\s]+|["'\s]+$/g, '')
       .trim();
+  }
+
+  private async generateWithGemini(prompt: string, maxTokens = 1024): Promise<string> {
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    const model = this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash';
+
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY is not configured.');
+    }
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    const response = await axios.post(
+      url,
+      {
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: maxTokens,
+        },
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 30_000,
+      },
+    );
+
+    const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (typeof text !== 'string') {
+      throw new Error('Gemini API response did not contain text.');
+    }
+
+    return text.trim();
+  }
+
+  private buildGeminiCaptionPrompt(topic: string, tone: string): string {
+    return [
+      'Bạn là Content Creator chuyên nghiệp tại Việt Nam.',
+      'Hãy viết một status mạng xã hội bằng tiếng Việt dựa trên chủ đề và giọng điệu được yêu cầu.',
+      '',
+      '## Quy tắc bắt buộc:',
+      '1. Caption phải xoay quanh ĐÚNG chủ đề được cung cấp.',
+      '2. Độ dài: 100-200 từ.',
+      '3. Câu đầu tiên phải liên quan trực tiếp đến chủ đề.',
+      '4. Triển khai 2-3 ý liên quan, kết bằng 1 câu hỏi tương tác.',
+      '5. Dùng 2-4 emoji tự nhiên.',
+      '6. Đính kèm 3-5 hashtag liên quan ở cuối bài đăng.',
+      '',
+      '## Quy tắc định dạng:',
+      '- KHÔNG viết tiêu đề, nhãn "Caption:", "Bài đăng:", "Dưới đây là status".',
+      '- KHÔNG dùng markdown (**, ##, ```).',
+      '- KHÔNG giải thích hay nhắc đến hệ thống AI.',
+      '- Chỉ trả về văn bản thuần túy của bài đăng để người dùng copy trực tiếp.',
+      '',
+      `Chủ đề cần viết: "${topic}"`,
+      `Giọng điệu: ${tone}`,
+      '',
+      'Viết ngay status, không giải thích dài dòng.',
+    ].join('\n');
   }
 }

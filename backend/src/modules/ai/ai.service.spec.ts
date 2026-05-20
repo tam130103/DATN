@@ -28,6 +28,9 @@ describe('AIService', () => {
         if (key === 'DIFY_API_URL') {
           return 'https://api.dify.ai/v1';
         }
+        if (key === 'GEMINI_API_KEY') {
+          return undefined;
+        }
         return 'fake-key';
       }),
     } as unknown as ConfigService;
@@ -209,6 +212,93 @@ describe('AIService', () => {
       label: 'neutral',
       score: null,
       summary: 'AI sentiment unavailable',
+    });
+  });
+
+  describe('with GEMINI_API_KEY configured', () => {
+    beforeEach(() => {
+      configService = {
+        get: jest.fn((key: string) => {
+          if (key === 'GEMINI_API_KEY') {
+            return 'fake-gemini-key';
+          }
+          if (key === 'GEMINI_MODEL') {
+            return 'gemini-2.0-flash';
+          }
+          return 'fake-key';
+        }),
+      } as unknown as ConfigService;
+      service = new AIService(configService);
+    });
+
+    it('generates caption directly using Gemini API', async () => {
+      mockedAxios.post.mockResolvedValue({
+        data: {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: 'Caption from Gemini',
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      } as any);
+
+      const result = await service.generateCaptionResult('di du lich', 'vui ve');
+      expect(result).toEqual({
+        text: 'Caption from Gemini',
+        meta: {
+          source: 'gemini',
+          degraded: false,
+        },
+      });
+
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        expect.stringContaining('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'),
+        expect.objectContaining({
+          contents: [
+            {
+              parts: [
+                {
+                  text: expect.stringContaining('di du lich'),
+                },
+              ],
+            },
+          ],
+        }),
+        expect.any(Object),
+      );
+    });
+
+    it('suggests hashtags directly using Gemini API', async () => {
+      mockedAxios.post.mockResolvedValue({
+        data: {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: '{"hashtags":["#tag1","#tag2"]}',
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      } as any);
+
+      const result = await service.suggestHashtagsResult('Bai dang di du lich');
+      expect(result).toEqual({
+        hashtags: ['#tag1', '#tag2'],
+        meta: {
+          source: 'gemini',
+          degraded: false,
+        },
+      });
     });
   });
 });
