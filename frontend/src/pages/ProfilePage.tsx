@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { PushPin } from '@phosphor-icons/react';
@@ -21,10 +21,9 @@ const EmptyIcon = ({ children }: { children: React.ReactNode }) => (
 );
 
 const tabButtonClass = (isActive: boolean) =>
-  `inline-flex min-h-[40px] items-center gap-2 border-t px-1 py-3 text-xs font-semibold uppercase tracking-[0.14em] transition ${
-    isActive
-      ? 'border-[var(--app-text)] text-[var(--app-text)]'
-      : 'border-transparent text-[var(--app-muted)] hover:text-[var(--app-text)]'
+  `inline-flex min-h-[40px] items-center gap-2 border-t px-1 py-3 text-xs font-semibold uppercase tracking-[0.14em] transition ${isActive
+    ? 'border-[var(--app-text)] text-[var(--app-text)]'
+    : 'border-transparent text-[var(--app-muted)] hover:text-[var(--app-text)]'
   }`;
 
 const ProfilePage: React.FC = () => {
@@ -107,7 +106,7 @@ const ProfilePage: React.FC = () => {
       .then((res) => {
         if (active) setTaggedPosts(res.posts);
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => {
       active = false;
     };
@@ -123,7 +122,7 @@ const ProfilePage: React.FC = () => {
       .then((res) => {
         if (active) setSavedPosts(res.posts);
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => {
       active = false;
     };
@@ -343,11 +342,10 @@ const ProfilePage: React.FC = () => {
                       <button
                         type="button"
                         onClick={handleFollowToggle}
-                        className={`inline-flex min-h-[36px] items-center justify-center rounded-md px-4 text-sm font-semibold transition ${
-                          isFollowing
+                        className={`inline-flex min-h-[36px] items-center justify-center rounded-md px-4 text-sm font-semibold transition ${isFollowing
                             ? 'border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] hover:bg-[var(--app-bg-soft)]'
                             : 'bg-[var(--app-primary)] text-white hover:bg-[var(--app-primary-strong)]'
-                        }`}
+                          }`}
                       >
                         {isFollowing ? 'Đang theo dõi' : 'Theo dõi'}
                       </button>
