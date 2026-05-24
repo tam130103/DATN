@@ -4,7 +4,9 @@ import { v2 as cloudinary } from 'cloudinary';
 export const CloudinaryProvider: Provider = {
   provide: 'CLOUDINARY',
   useFactory: () => {
-    // Cloudinary SDK automatically uses the CLOUDINARY_URL environment variable
+    if (process.env.NODE_ENV === 'production' && !process.env.CLOUDINARY_URL) {
+      throw new Error('CLOUDINARY_URL is required in production');
+    }
     return cloudinary;
   },
 };

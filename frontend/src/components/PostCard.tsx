@@ -1,7 +1,7 @@
-import React, { memo, useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Comment, Post } from '../types';
+import { Comment, Post, PostMedia as PostMediaType } from '../types';
 import { engagementService } from '../services/engagement.service';
 import { postService } from '../services/post.service';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,7 +21,7 @@ interface PostCardProps {
   onDeleted?: (postId: string) => void;
 }
 
-export const PostCard: React.FC<PostCardProps> = memo(({ post, highlightCommentId, onDeleted }) => {
+const PostCardInner: React.FC<PostCardProps> = ({ post, highlightCommentId, onDeleted }) => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const isTargetPost = location.pathname.includes(`/posts/${post.id}`);
@@ -274,15 +274,22 @@ export const PostCard: React.FC<PostCardProps> = memo(({ post, highlightCommentI
       />
     </article>
   );
-}, (prev, next) =>
+};
+
+const mediaEqual = (a: PostMediaType[], b: PostMediaType[]) => {
+  if (a.length !== b.length) return false;
+  return a.every((item, i) =>
+    item.id === b[i].id && item.url === b[i].url &&
+    item.type === b[i].type && item.orderIndex === b[i].orderIndex
+  );
+};
+
+export const PostCard = React.memo(PostCardInner, (prev, next) =>
   prev.post.id === next.post.id &&
-  prev.post.caption === next.post.caption &&
+  mediaEqual(prev.post.media || [], next.post.media || []) &&
   prev.post.likesCount === next.post.likesCount &&
   prev.post.commentsCount === next.post.commentsCount &&
   prev.post.liked === next.post.liked &&
   prev.post.saved === next.post.saved &&
-  prev.post.isPinned === next.post.isPinned &&
-  prev.post.isEdited === next.post.isEdited &&
-  prev.post.media?.length === next.post.media?.length &&
   prev.highlightCommentId === next.highlightCommentId,
-);
+) as typeof PostCardInner;

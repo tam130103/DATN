@@ -32,6 +32,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(userData);
   };
 
+  // Socket lifecycle: disconnect on logout, connect on login
+  useEffect(() => {
+    if (!user) {
+      chatSocketService.disconnect();
+      notificationService.disconnect();
+    }
+    return () => {
+      chatSocketService.disconnect();
+      notificationService.disconnect();
+    };
+  }, [user]);
+
   useEffect(() => {
     const initAuth = async () => {
       try {

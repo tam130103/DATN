@@ -11,7 +11,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { Inject, forwardRef } from '@nestjs/common';
+import { Inject, forwardRef, Logger } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { createSocketCorsOptions } from '../../common/cors.util';
 import { UserService } from '../user/user.service';
@@ -24,6 +24,8 @@ import { UserStatus } from '../user/entities/user.entity';
 export class NotificationGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
+  private readonly logger = new Logger(NotificationGateway.name);
+
   @WebSocketServer()
   server: Server;
 
@@ -62,12 +64,12 @@ export class NotificationGateway
       } catch (err: any) {
         const code =
           err?.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN';
-        console.warn(`[NotificationGateway] Auth rejected (${code}): ${err?.message}`);
+        this.logger.warn(`Auth rejected (${code}): ${err?.message}`);
         return next(new Error(code));
       }
     });
 
-    console.log('Notification gateway initialized');
+    this.logger.log('Notification gateway initialized');
   }
 
   private async ensureActiveSocketUser(client: Socket): Promise<string | null> {
@@ -109,10 +111,10 @@ export class NotificationGateway
       const unreadCount = await this.notificationService.getUnreadCount(userId);
       client.emit('unreadCount', unreadCount);
     } catch (error) {
-      console.warn(`Notification unread count error for user ${userId}:`, error);
+      this.logger.warn(`Notification unread count error for user ${userId}:`, error);
     }
 
-    console.log(`User ${userId} connected to notifications`);
+    this.logger.log(`User ${userId} connected to notifications`);
   }
 
   handleDisconnect(client: Socket) {
@@ -123,7 +125,7 @@ export class NotificationGateway
         this.userSockets.delete(userId);
       }
     }
-    console.log(`Client disconnected from notifications: ${client.id}`);
+    this.logger.log(`Client disconnected from notifications: ${client.id}`);
   }
 
   emitToUser(userId: string, event: string, data: any) {

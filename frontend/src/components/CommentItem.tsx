@@ -44,6 +44,13 @@ export const CommentItem: React.FC<CommentItemProps> = ({
   const [localContent, setLocalContent] = useState(comment.content);
   const [isFollowing, setIsFollowing] = useState(!!comment.user?.isFollowing);
   const [liked, setLiked] = useState(!!comment.liked);
+
+  const displayContent = React.useMemo(() => {
+    if (comment.replyToUser && comment.replyToUser.username && localContent.startsWith(`@${comment.replyToUser.username}`)) {
+      return localContent.slice(comment.replyToUser.username.length + 1).trimStart();
+    }
+    return localContent;
+  }, [localContent, comment.replyToUser]);
   const [likesCount, setLikesCount] = useState(comment.likesCount || 0);
   const [showReplies, setShowReplies] = useState(false);
   const [replies, setReplies] = useState<Comment[]>([]);
@@ -274,7 +281,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
                     @{comment.replyToUser.username || comment.replyToUser.name}
                   </Link>
                 ) : null}
-                <CommentContent content={localContent} onNavigate={handleNavigateClick} />
+                <CommentContent content={displayContent} onNavigate={handleNavigateClick} />
               </span>
               <div className="mt-1 flex items-center gap-3 text-xs font-semibold text-[var(--app-muted)]">
                 <span>{formatTimeAgo(comment.createdAt)}</span>

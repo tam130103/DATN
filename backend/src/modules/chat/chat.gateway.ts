@@ -11,6 +11,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { Logger } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { Message } from './entities/message.entity';
 import { createSocketCorsOptions } from '../../common/cors.util';
@@ -26,6 +27,9 @@ const onlineUsers = new Map<string, Set<string>>();
 export class ChatGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
+  private readonly logger = new Logger(ChatGateway.name);
+  private messageCounts = new Map<string, { count: number; resetAt: number }>();
+
   @WebSocketServer()
   server: Server;
 
@@ -61,12 +65,12 @@ export class ChatGateway
       } catch (err: any) {
         const code =
           err?.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN';
-        console.warn(`[ChatGateway] Auth rejected (${code}): ${err?.message}`);
+        this.logger.warn(`Auth rejected (${code}): ${err?.message}`);
         return next(new Error(code));
       }
     });
 
-    console.log('Chat gateway initialized');
+    this.logger.log('Chat gateway initialized');
   }
 
   private async ensureActiveSocketUser(client: Socket): Promise<string | null> {
@@ -110,10 +114,10 @@ export class ChatGateway
       const unreadCount = await this.chatService.getUnreadCount(userId);
       client.emit('unreadCount', unreadCount);
     } catch (error) {
-      console.error('Chat unread count error:', error);
+      this.logger.error('Chat unread count error:', error);
     }
 
-    console.log(`User ${userId} connected to chat`);
+    this.logger.log(`User ${userId} connected to chat`);
   }
 
   handleDisconnect(client: Socket) {
@@ -128,7 +132,7 @@ export class ChatGateway
       }
     }
 
-    console.log(`Client disconnected from chat: ${client.id}`);
+    this.logger.log(`Client disconnected from chat: ${client.id}`);
   }
 
   @SubscribeMessage('joinConversation')
@@ -181,6 +185,19 @@ export class ChatGateway
     if (!data.content?.trim()) {
       client.emit('error', { message: 'Nội dung tin nhắn không được để trống.' });
       return;
+    }
+
+    // In-memory rate limit: 10 messages per 10 seconds per user
+    const now = Date.now();
+    const record = this.messageCounts.get(userId) || { count: 0, resetAt: now + 10000 };
+    if (now > record.resetAt) {
+      record.count = 0;
+      record.resetAt = now + 10000;
+    }
+    record.count++;
+    this.messageCounts.set(userId, record);
+    if (record.count > 10) {
+      return client.emit('error', { message: 'Too many messages. Slow down.' });
     }
 
     try {
@@ -295,12 +312,13 @@ export class ChatGateway
         this.server.to(conversationId).emit('newMessage', reply);
       }
     } catch (err) {
+      const botUserId = await this.userService.getAssistantBotUserId().catch(() => null);
       this.server.to(conversationId).emit('userTyping', {
         conversationId,
-        userId: await this.userService.getAssistantBotUserId(),
+        userId: botUserId,
         isTyping: false,
       });
-      console.error('AI assistant reply error:', err);
+      this.logger.error('AI assistant reply error:', err);
     }
   }
 }

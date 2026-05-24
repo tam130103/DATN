@@ -12,9 +12,11 @@ export class CloudinaryService {
         return reject(new BadRequestException('No file provided'));
       }
 
+      const timeout = setTimeout(() => reject(new Error('Upload timeout')), 30000);
       const uploadStream = cloudinary.uploader.upload_stream(
         { folder, resource_type: 'auto' },
         (error, result) => {
+          clearTimeout(timeout);
           if (error) return reject(error);
           resolve(result as UploadApiResponse);
         },

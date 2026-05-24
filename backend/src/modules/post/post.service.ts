@@ -813,18 +813,12 @@ export class PostService {
 
   async togglePin(postId: string, userId: string): Promise<boolean> {
     return await this.dataSource.transaction(async (manager) => {
-      await manager
-        .createQueryBuilder()
-        .select([])
-        .from('users', 'u')
-        .where('u.id = :userId', { userId })
+      const post = await manager
+        .createQueryBuilder(Post, 'p')
+        .where('p.id = :postId', { postId })
+        .andWhere('p.userId = :userId', { userId })
         .setLock('pessimistic_write')
         .getOne();
-
-      const post = await manager.findOne(Post, {
-        where: { id: postId, userId },
-        select: ['id', 'isPinned'],
-      });
 
       if (!post) {
         throw new NotFoundException('Post not found or unauthorized');
@@ -906,12 +900,14 @@ export class PostService {
   }
 
   async delete(id: string, userId: string): Promise<void> {
-    const post = await this.postRepository.findOne({ where: { id } });
-    if (!post || post.userId !== userId) {
-      throw new NotFoundException('Post not found or unauthorized');
-    }
-
     await this.dataSource.transaction(async (manager) => {
+      const post = await manager.findOne(Post, {
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!post || post.userId !== userId) {
+        throw new NotFoundException('Post not found or unauthorized');
+      }
       const postHashtags = await manager.find(PostHashtag, { where: { postId: id } });
       if (postHashtags.length > 0) {
         const hashtagIds = postHashtags.map((ph) => ph.hashtagId);

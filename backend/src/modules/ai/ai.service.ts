@@ -59,11 +59,12 @@ export class AIService implements OnModuleInit {
   private static readonly CAPTION_WORKFLOW_TIMEOUT_MS = 18_000;
   private static readonly HASHTAG_CHAT_TIMEOUT_MS = 18_000;
   private static readonly HIGH_SEVERITY_CONTENT_PATTERN =
-    /\b(dit me|dit may|dmm|vai lon|vcl|con cho|thang cho|mat day|do ngu|may ngu|chet di|giet|kill you|rape|terrorist|nazi)\b/i;
+    /\b(dit( me| may| nhau)?|du( me| ma| nhau)?|dmm|vai lon|vcl|con cho|thang cho|cho de|do ngu|may ngu|do khon|khon nan|khon kiet|do dien|thang dien|con dien|suc vat|cam thu|do deu|luu manh|that kinh|ngu dot|chet tiep|chet di|cut di|bien di|deo( me)?( may)?|di me|con di|dam duc|dam dang|khieu dam|bien thai|khoa than|sex|porn|porno|quay roi|giet|kill you|fuck(ing)?|bitch|shit|asshole|motherfucker|rape|terrorist|nazi)\b/i;
+
+  private static readonly ACCENTED_PROFANITY_PATTERN =
+    /\b(địt( mẹ| mày| nhau)?|đụ( mẹ| má| nhau)?|đĩ mẹ|con đĩ|đĩ thoã|vô học|mạt hạng|lộ hàng|mặt dày|đồ ngu|mày ngu|đồ chó|thằng chó|con chó|chó đẻ|đồ khốn|khốn nạn|khốn kiếp|đồ điên|thằng điên|con điên|vô học|súc vật|cầm thú|đồ đểu|chết tiệt|cút đi|biến đi|biến thái|khỏa thân|dâm dục|dâm đãng|khiêu dâm|đâm nhau|đéo( mẹ)?( mày)?)\b/i;
   private static readonly NON_HARMFUL_REASON_PATTERN =
     /\b(mat khau|password|api key|secret|token|jwt|bearer|thong tin nhay cam|so dien thoai|phone|lien he)\b/i;
-  private static readonly STRUCTURED_BENIGN_TEXT_PATTERN = /^[a-z0-9\s@#.,!?;:()'"\/_-]+$/i;
-
   constructor(private readonly configService: ConfigService) {}
 
   onModuleInit() {
@@ -71,22 +72,20 @@ export class AIService implements OnModuleInit {
     const generalKey = this.configService.get<string>('DIFY_GENERAL_API_KEY');
     const chatbotKey = this.getAssistantApiKey();
 
-    if (captionKey) {
-      this.logger.log(`Dify Caption AI ready (${captionKey.slice(0, 8)}...) — Dedicated Chatbot App`);
-    } else if (generalKey) {
-      this.logger.warn('DIFY_CAPTION_CHATBOT_KEY not set, Caption will use DIFY_GENERAL_API_KEY as fallback.');
+    if (captionKey || generalKey) {
+      this.logger.log('Dify Caption AI configured');
     } else {
       this.logger.warn('No Caption AI key configured. Caption will use local fallback.');
     }
 
     if (generalKey) {
-      this.logger.log(`Dify General AI ready (${generalKey.slice(0, 8)}...)`);
+      this.logger.log('Dify General AI ready');
     }
 
     if (!chatbotKey) {
       this.logger.warn('DIFY_CHATBOT_API_KEY not configured. AI Assistant disabled.');
     } else {
-      this.logger.log(`Dify AI Assistant ready (${chatbotKey.slice(0, 8)}...)`);
+      this.logger.log('Dify AI Assistant ready');
     }
   }
 
@@ -96,6 +95,17 @@ export class AIService implements OnModuleInit {
    * Send a user message to the Dify Chatbot and get a reply.
    * Supports conversation memory via difyConversationId.
    */
+  private async withRetry<T>(fn: () => Promise<T>, delays = [1000, 2000, 4000]): Promise<T> {
+    for (let i = 0; i < delays.length; i++) {
+      try { return await fn(); }
+      catch (e) {
+        if (i === delays.length - 1) throw e;
+        await new Promise(r => setTimeout(r, delays[i]));
+      }
+    }
+    throw new Error('Unreachable');
+  }
+
   async chatWithAssistant(
     query: string,
     difyConversationId?: string | null,
@@ -397,43 +407,24 @@ export class AIService implements OnModuleInit {
 
     try {
       const raw = await this.generateGenericChat(
-        `Bạn là hệ thống kiểm duyệt nội dung mạng xã hội tiếng Việt.
+        `Phân loại bài viết mạng xã hội tiếng Việt này.
+Trả về DUY NHẤT một JSON, viết reason bằng tiếng Việt.
 
-## Nội dung cần đánh giá
-"${text}"
+Bài viết: "${text}"
 
-## Tiêu chí đánh giá (chỉ đánh dấu không an toàn khi VI PHẠM RÕ RÀNG)
+Danh mục vi phạm: harassment, hate_speech, violence, sexual, self_harm, spam.
 
-### Các loại vi phạm
-1. harassment: Quấy rối, xúc phạm trực tiếp cá nhân
-2. hate_speech: Ngôn từ thù ghét, kích động nhóm
-3. violence: Bạo lực, đe dọa tính mạng
-4. sexual: Nội dung khiêu dâm
-5. self_harm: Tự gây thương tích
-6. spam: Quảng cáo, lừa đảo rõ ràng
-
-### Các nội dung KHÔNG vi phạm (mặc định isSafe=true)
-- Số, mã đơn, timestamp, giá tiền, ký tự viết tắt
-- Thông tin liên hệ thông thường
-- Trạng thái cá nhân, sinh hoạt đời thường
-- Nội dung trung tính hoặc không rõ ý đồ
-
-## Output Format (JSON only)
-Nếu an toàn: {"isSafe": true, "reason": "", "category": null}
-Nếu không an toàn: {"isSafe": false, "reason": "mô tả ngắn gọn lý do", "category": "harassment|hate_speech|violence|sexual|self_harm|spam"}
-Trả về DUY NHẤT JSON, không thêm markdown hay giải thích.`,
+Ví dụ: {"isSafe": false, "reason": "Nội dung khiêu dâm", "category": "sexual"}`,
       );
 
-      const parsed = this.parseJsonPayload<ModerationResult>(raw);
-      if (!parsed || typeof parsed.isSafe !== 'boolean') {
+      const parsed = this.parseJsonPayload<Record<string, any>>(raw);
+      const derived = this.deriveModerationResult(parsed);
+      if (!derived) {
+        this.logger.warn(`Moderation parse failed. Raw: "${raw.slice(0, 200)}"`);
         return { isSafe: true };
       }
 
-      return this.applyModerationGuardrails(text, {
-        isSafe: parsed.isSafe,
-        reason: parsed.reason?.trim() || undefined,
-        category: parsed.category ?? undefined,
-      });
+      return this.applyModerationGuardrails(text, derived);
     } catch (error) {
       this.logger.warn(`Moderation fallback triggered: ${error}`);
       return { isSafe: true };
@@ -739,19 +730,51 @@ Trả về định dạng JSON duy nhất theo schema: {"hashtags":["#tag1","#ta
       {
         inputs: {},
         query: query.trim(),
-        response_mode: 'blocking',
+        response_mode: 'streaming',
         user: 'datn-engine',
       },
       {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
         },
         timeout: timeoutMs,
+        responseType: 'stream',
       },
     );
 
-    return response.data?.answer || '';
+    return await new Promise<string>((resolve, reject) => {
+      let buffer = '';
+      let answer = '';
+
+      response.data.on('data', (chunk: Buffer) => {
+        buffer += chunk.toString('utf8');
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
+
+          try {
+            const event = JSON.parse(jsonStr) as Record<string, any>;
+            if ((event.event === 'message' || event.event === 'agent_message') && typeof event.answer === 'string') {
+              answer += event.answer;
+            }
+          } catch { /* skip malformed JSON */ }
+        }
+      });
+
+      response.data.on('end', () => {
+        resolve(answer.trim());
+      });
+
+      response.data.on('error', (err: Error) => {
+        reject(err);
+      });
+    });
   }
 
   private normalizeDifyApiUrl(rawUrl?: string): string {
@@ -1216,16 +1239,68 @@ Khong them giai thich, khong markdown, khong lap lai noi dung.`,
 
   private parseJsonPayload<T>(raw: string): T | null {
     const withoutThink = raw.replace(/<think>[\s\S]*?<\/think>/gi, '');
-    const candidate =
-      withoutThink.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1] ||
-      withoutThink.match(/\{[\s\S]*\}/)?.[0] ||
-      withoutThink;
+    const candidates = [
+      withoutThink.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1],
+      ...(withoutThink.match(/\{[^{}]*\}/g) || []),
+    ];
+
+    for (const c of candidates) {
+      if (!c) continue;
+      try {
+        return JSON.parse(c) as T;
+      } catch { /* not valid, try next */ }
+    }
 
     try {
-      return JSON.parse(candidate) as T;
+      return JSON.parse(withoutThink) as T;
     } catch {
       return null;
     }
+  }
+
+  private deriveModerationResult(parsed: Record<string, any> | null): ModerationResult | null {
+    if (!parsed) return null;
+
+    if (typeof parsed.isSafe === 'boolean') {
+      return {
+        isSafe: parsed.isSafe,
+        reason: typeof parsed.reason === 'string' ? parsed.reason.trim() : undefined,
+        category: parsed.category ?? null,
+      };
+    }
+
+    if (parsed.status === 'unsafe' || parsed.status === 'violation') {
+      const cat = typeof parsed.category === 'string' ? (parsed.category as ViolationCategory) :
+                  parsed.categories && typeof parsed.categories === 'object' ?
+                    (Object.keys(parsed.categories).find((k) => parsed.categories[k]) as ViolationCategory) : null;
+      return { isSafe: false, reason: parsed.reason || cat || 'Violation detected', category: cat ?? null };
+    }
+
+    if (parsed.categories && typeof parsed.categories === 'object') {
+      const flagged = Object.keys(parsed.categories).find((k) => parsed.categories[k]) as ViolationCategory | undefined;
+      if (flagged) return { isSafe: false, reason: `Flagged as ${flagged}`, category: flagged };
+    }
+
+    if (Array.isArray(parsed.categories) && parsed.categories.length > 0) {
+      const cat = parsed.categories[0] as ViolationCategory;
+      return { isSafe: false, reason: `Flagged as ${cat}`, category: cat };
+    }
+
+    if (parsed.unsafe === true || parsed.flagged === true || parsed.safe === false) {
+      return { isSafe: false, reason: parsed.reason || parsed.category || 'Flagged', category: (parsed.category as ViolationCategory) ?? null };
+    }
+
+    const lowered = JSON.stringify(parsed).toLowerCase();
+    if (/\b(unsafe|violation|flagge|blocked|not.safe)\b/.test(lowered) &&
+        !/\b(safe|clean|allow)\b/.test(lowered)) {
+      return { isSafe: false, reason: 'AI flagged content', category: null };
+    }
+
+    if (parsed.safe === true || parsed.isSafe === true || parsed.status === 'safe') {
+      return { isSafe: true };
+    }
+
+    return null;
   }
 
   private getHeuristicModerationResult(text: string): ModerationResult | null {
@@ -1235,18 +1310,18 @@ Khong them giai thich, khong markdown, khong lap lai noi dung.`,
       return { isSafe: true };
     }
 
-    if (AIService.HIGH_SEVERITY_CONTENT_PATTERN.test(normalizedText)) {
+    if (AIService.ACCENTED_PROFANITY_PATTERN.test(text)) {
       return {
         isSafe: false,
         reason: 'Noi dung chua tu ngu cong kich hoac de doa ro rang.',
       };
     }
 
-    if (
-      normalizedText.length <= 120 &&
-      AIService.STRUCTURED_BENIGN_TEXT_PATTERN.test(normalizedText)
-    ) {
-      return { isSafe: true };
+    if (AIService.HIGH_SEVERITY_CONTENT_PATTERN.test(normalizedText)) {
+      return {
+        isSafe: false,
+        reason: 'Noi dung chua tu ngu cong kich hoac de doa ro rang.',
+      };
     }
 
     return null;
@@ -1263,18 +1338,15 @@ Khong them giai thich, khong markdown, khong lap lai noi dung.`,
     const normalizedText = this.normalizeModerationText(text);
     const normalizedReason = this.normalizeModerationText(result.reason || '');
 
-    if (AIService.HIGH_SEVERITY_CONTENT_PATTERN.test(normalizedText)) {
+    if (AIService.ACCENTED_PROFANITY_PATTERN.test(text) ||
+        AIService.HIGH_SEVERITY_CONTENT_PATTERN.test(normalizedText)) {
       return {
         isSafe: false,
         reason: result.reason?.trim() || 'Noi dung khong phu hop.',
       };
     }
 
-    if (
-      AIService.NON_HARMFUL_REASON_PATTERN.test(normalizedReason) ||
-      (normalizedText.length <= 120 &&
-        AIService.STRUCTURED_BENIGN_TEXT_PATTERN.test(normalizedText))
-    ) {
+    if (AIService.NON_HARMFUL_REASON_PATTERN.test(normalizedReason)) {
       this.logger.warn(
         `Moderation override: allowed benign content flagged by AI (reason="${result.reason || 'unknown'}")`,
       );
@@ -1352,7 +1424,7 @@ Khong them giai thich, khong markdown, khong lap lai noi dung.`,
       throw new Error('GEMINI_API_KEY is not configured.');
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
     const response = await axios.post(
       url,
@@ -1374,6 +1446,7 @@ Khong them giai thich, khong markdown, khong lap lai noi dung.`,
       {
         headers: {
           'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
         },
         timeout: 30_000,
       },

@@ -43,6 +43,7 @@ const FeedPage: React.FC = () => {
   const isRefreshingRef = useRef(false);
   const refreshGenerationRef = useRef(0);
   const initialLoadResolvedRef = useRef(false);
+  const loadingMoreRef = useRef(false);
 
   const loadInitial = useCallback(async () => {
     setIsLoading(true);
@@ -113,7 +114,10 @@ const FeedPage: React.FC = () => {
     if (!observerTarget.current || !nextCursor || isLoadingMore) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && nextCursor && !isLoadingMore) void loadMore(nextCursor);
+        if (entries[0].isIntersecting && nextCursor && !loadingMoreRef.current) {
+          loadingMoreRef.current = true;
+          loadMore(nextCursor).finally(() => { loadingMoreRef.current = false; });
+        }
       },
       { threshold: 0.9 },
     );

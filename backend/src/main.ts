@@ -20,11 +20,14 @@ async function bootstrap() {
   const port = configService.get<number>('PORT', 3000);
   const frontendUrl = configService.get<string>('FRONTEND_URL', 'http://localhost:5173');
 
-  const uploadDir = join(process.cwd(), configService.get<string>('UPLOAD_DIR', 'uploads'));
-  if (!existsSync(uploadDir)) {
-    mkdirSync(uploadDir, { recursive: true });
+  // Local uploads only in non-production (Cloudinary is primary)
+  if (process.env.NODE_ENV !== 'production') {
+    const uploadDir = join(process.cwd(), configService.get<string>('UPLOAD_DIR', 'uploads'));
+    if (!existsSync(uploadDir)) {
+      mkdirSync(uploadDir, { recursive: true });
+    }
+    app.use('/uploads', express.static(uploadDir));
   }
-  app.use('/uploads', express.static(uploadDir));
 
   // Health check endpoint — outside global prefix so UptimeRobot can ping at /health
   app.use('/health', (_req: express.Request, res: express.Response) => {
@@ -46,15 +49,17 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger API Documentation setup
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('DATN Social API')
-    .setDescription('The API description for DATN Social project')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
+  // Swagger API Documentation — disabled in production
+  if (process.env.NODE_ENV !== 'production') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('DATN Social API')
+      .setDescription('The API description for DATN Social project')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   await app.listen(port);
   console.log(`Backend running on: http://localhost:${port}`);

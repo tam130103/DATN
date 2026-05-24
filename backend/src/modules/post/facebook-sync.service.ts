@@ -135,17 +135,27 @@ export class FacebookSyncService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    for (const postId of upsertIds) {
-      try {
-        const result = await this.postService.importFacebookPostById(bot.id, postId);
-        if (result.imported) {
-          imported += 1;
+    const BATCH_SIZE = 3;
+    for (let i = 0; i < upsertIds.length; i += BATCH_SIZE) {
+      const batch = upsertIds.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(postId => this.postService.importFacebookPostById(bot.id, postId)),
+      );
+      for (let j = 0; j < results.length; j++) {
+        const result = results[j];
+        if (result.status === 'fulfilled') {
+          if (result.value.imported) {
+            imported += 1;
+          } else {
+            skipped += 1;
+          }
         } else {
           skipped += 1;
+          this.logger.warn(`Facebook webhook import failed for ${batch[j]}: ${(result.reason as any)?.message || result.reason}`);
         }
-      } catch (error) {
-        skipped += 1;
-        this.logger.warn(`Facebook webhook import failed for ${postId}: ${(error as any)?.message || error}`);
+      }
+      if (i + BATCH_SIZE < upsertIds.length) {
+        await new Promise(r => setTimeout(r, 500));
       }
     }
 

@@ -16,6 +16,8 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser, RequestUser } from './decorators/current-user.decorator';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { toSafeUser } from '../user/user-response.mapper';
+import { User } from '../user/entities/user.entity';
 
 const REFRESH_COOKIE_NAME = 'refreshToken';
 const REFRESH_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -114,6 +116,6 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   getCurrentUser(@CurrentUser() user: RequestUser) {
-    return user;
+    return toSafeUser(user as unknown as User);
   }
 }

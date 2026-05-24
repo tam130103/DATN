@@ -86,7 +86,7 @@ const ProfilePage: React.FC = () => {
     return () => {
       isActive = false;
     };
-  }, [username, currentUser]);
+  }, [username, currentUser?.id]);
 
   useEffect(() => {
     if (!avatarFile) {
