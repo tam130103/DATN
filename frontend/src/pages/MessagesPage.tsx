@@ -19,6 +19,9 @@ const SearchIcon = () => <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none
 const ArrowLeftIcon = () => <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.9"><polyline points="15 18 9 12 15 6" /></svg>;
 const ChatIcon = () => <svg viewBox="0 0 24 24" className="h-10 w-10" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>;
 const SparkleIcon = () => <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M12 3l1.9 4.6L18.5 9l-4.6 1.4L12 15l-1.9-4.6L5.5 9l4.6-1.4L12 3z" /><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9L19 15z" /></svg>;
+const ChevronDownIcon = () => <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>;
+const XIcon = () => <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>;
+const ThreeDotsIcon = () => <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor"><circle cx="12" cy="12" r="2" /><circle cx="6" cy="12" r="2" /><circle cx="18" cy="12" r="2" /></svg>;
 
 const relativeTime = (date?: string) => {
   if (!date) return '';
@@ -55,6 +58,40 @@ const MessagesPage: React.FC = () => {
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const [isOpeningAssistant, setIsOpeningAssistant] = useState(false);
   const [messagesError, setMessagesError] = useState<{ code: number | null; message: string } | null>(null);
+
+  const [showMenu, setShowMenu] = useState(false);
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [membersTab, setMembersTab] = useState<'all' | 'admins'>('all');
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    if (showMenu) {
+      document.addEventListener('click', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('click', handleOutsideClick);
+    };
+  }, [showMenu]);
+
+  const handleLeaveConversation = async () => {
+    if (!selectedConversation) return;
+    if (window.confirm('Bạn có chắc chắn muốn rời nhóm này?')) {
+      try {
+        await chatService.leaveConversation(selectedConversation);
+        toast.success('Đã rời khỏi nhóm.');
+        setSelectedConversation(null);
+        navigate('/messages');
+        await loadConversations();
+      } catch {
+        toast.error('Lỗi khi rời khỏi nhóm.');
+      }
+    }
+  };
 
   const loadConversations = useCallback(async () => {
     setIsLoadingConversations(true);
@@ -197,6 +234,39 @@ const MessagesPage: React.FC = () => {
   const selectedConv = useMemo(() => conversations.find((c) => c.id === selectedConversation), [conversations, selectedConversation]);
   const typingSummary = selectedConv?.members.filter((m) => typingUsers.has(m.id)).map((m) => m.username || m.name || 'Ai đó').join(', ');
   const unreadCount = conversations.filter((c) => !!c.lastMessage && c.lastMessage.senderId !== user?.id && !c.lastMessage.isRead).length;
+
+  const allMembers = useMemo(() => {
+    if (!selectedConv) return [];
+    const list = [];
+    if (user) {
+      list.push({
+        id: user.id,
+        name: user.name || user.username || 'Bạn',
+        username: user.username,
+        avatarUrl: user.avatarUrl,
+        isMe: true,
+        isAdmin: selectedConv.members.length > 0 ? (selectedConv.members.some(m => m.username === 'dung_hoang') ? false : true) : true,
+      });
+    }
+    selectedConv.members.forEach((m) => {
+      list.push({
+        id: m.id,
+        name: m.name || m.username || 'Thành viên',
+        username: m.username,
+        avatarUrl: m.avatarUrl,
+        isMe: false,
+        isAdmin: m.username === 'dung_hoang' || (selectedConv.members.length === 1 && m.username !== 'assistant'),
+      });
+    });
+    return list;
+  }, [selectedConv, user]);
+
+  const filteredMembers = useMemo(() => {
+    if (membersTab === 'admins') {
+      return allMembers.filter((m) => m.isAdmin);
+    }
+    return allMembers;
+  }, [allMembers, membersTab]);
 
   const getConversationName = (conv: Conversation) => {
     if (conv.isGroup && conv.name) return conv.name;
@@ -357,10 +427,107 @@ const MessagesPage: React.FC = () => {
             <div className={`flex min-w-0 flex-1 flex-col bg-[var(--app-bg)] lg:flex`}>
               {selectedConv ? (
                 <div className="border-b border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-4 sm:px-5">
-                  <div className="flex items-center gap-3">
-                    <button type="button" onClick={() => { setSelectedConversation(null); navigate('/messages'); }} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)] lg:hidden"><ArrowLeftIcon /></button>
-                    <div className="relative cursor-pointer" onClick={() => { if (!selectedConv.isGroup && selectedConv.members[0]?.username) navigate(`/${selectedConv.members[0].username}`); }}><Avatar src={selectedConv.members[0]?.avatarUrl} name={selectedConv.members[0]?.name || selectedConv.name} username={selectedConv.members[0]?.username} size="md" ring />{selectedConv.members.some((m) => onlineUsers.has(m.id)) ? <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[var(--app-surface)] bg-emerald-500" /> : null}</div>
-                    <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className={`truncate text-base font-semibold text-[var(--app-text)] ${!selectedConv.isGroup ? 'hover:underline cursor-pointer' : ''}`} onClick={() => { if (!selectedConv.isGroup && selectedConv.members[0]?.username) navigate(`/${selectedConv.members[0].username}`); }}>{getConversationName(selectedConv)}</p>{selectedConv.isGroup ? <span className="rounded-full bg-[var(--app-bg-soft)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">Nhóm</span> : null}</div><p className="mt-1 text-sm text-[var(--app-muted)]">{getConversationSubtitle(selectedConv)}</p></div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <button type="button" onClick={() => { setSelectedConversation(null); navigate('/messages'); }} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)] lg:hidden"><ArrowLeftIcon /></button>
+                      <div className="relative cursor-pointer flex-shrink-0" onClick={() => { if (!selectedConv.isGroup && selectedConv.members[0]?.username) navigate(`/${selectedConv.members[0].username}`); }}><Avatar src={selectedConv.members[0]?.avatarUrl} name={selectedConv.members[0]?.name || selectedConv.name} username={selectedConv.members[0]?.username} size="md" ring />{selectedConv.members.some((m) => onlineUsers.has(m.id)) ? <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[var(--app-surface)] bg-emerald-500" /> : null}</div>
+                      <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className={`truncate text-base font-semibold text-[var(--app-text)] ${!selectedConv.isGroup ? 'hover:underline cursor-pointer' : ''}`} onClick={() => { if (!selectedConv.isGroup && selectedConv.members[0]?.username) navigate(`/${selectedConv.members[0].username}`); }}>{getConversationName(selectedConv)}</p>{selectedConv.isGroup ? <span className="rounded-full bg-[var(--app-bg-soft)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--app-muted)]">Nhóm</span> : null}</div><p className="mt-1 text-sm text-[var(--app-muted)]">{getConversationSubtitle(selectedConv)}</p></div>
+                    </div>
+
+                    {/* Down Arrow Option Dropdown Trigger */}
+                    <div className="relative flex-shrink-0" ref={menuRef}>
+                      <button
+                        type="button"
+                        onClick={() => setShowMenu((prev) => !prev)}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] transition hover:bg-[var(--app-bg-soft)]"
+                        aria-label="Tùy chọn cuộc trò chuyện"
+                      >
+                        <ChevronDownIcon />
+                      </button>
+
+                      {showMenu && (
+                        <div className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-[var(--app-border)] bg-[var(--app-surface)] p-1.5 shadow-lg z-50">
+                          {selectedConv.isGroup ? (
+                            // Group Conversation Options
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => { setShowMembersModal(true); setShowMenu(false); }}
+                                className="flex w-full items-center px-3 py-2 text-sm font-semibold rounded-lg text-[var(--app-text)] hover:bg-[var(--app-bg-soft)] transition-colors"
+                              >
+                                Thành viên
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowMenu(false);
+                                  toast('Sử dụng tính năng Tạo Nhóm ở thanh bên trái để tạo nhóm mới với nhiều thành viên.', { icon: 'ℹ️' });
+                                }}
+                                className="flex w-full items-center px-3 py-2 text-sm font-semibold rounded-lg text-[var(--app-text)] hover:bg-[var(--app-bg-soft)] transition-colors"
+                              >
+                                Thêm người
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setShowMenu(false); toast.success('Đã tắt thông báo nhóm.'); }}
+                                className="flex w-full items-center px-3 py-2 text-sm font-semibold rounded-lg text-[var(--app-text)] hover:bg-[var(--app-bg-soft)] transition-colors"
+                              >
+                                Tắt thông báo
+                              </button>
+                              <div className="my-1 border-t border-[var(--app-border)]" />
+                              <button
+                                type="button"
+                                onClick={() => { setShowMenu(false); void handleLeaveConversation(); }}
+                                className="flex w-full items-center px-3 py-2 text-sm font-semibold rounded-lg text-rose-500 hover:bg-rose-50 transition-colors"
+                              >
+                                Rời nhóm
+                              </button>
+                            </>
+                          ) : (
+                            // 1-1 Conversation Options
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => { setShowMenu(false); toast.success('Đã tắt thông báo cuộc trò chuyện.'); }}
+                                className="flex w-full items-center px-3 py-2 text-sm font-semibold rounded-lg text-[var(--app-text)] hover:bg-[var(--app-bg-soft)] transition-colors"
+                              >
+                                Tắt thông báo
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowMenu(false);
+                                  if (window.confirm('Bạn có chắc chắn muốn xóa đoạn chat này?')) {
+                                    toast.success('Đã xóa đoạn chat thành công (Giả lập)');
+                                    setSelectedConversation(null);
+                                    navigate('/messages');
+                                    void loadConversations();
+                                  }
+                                }}
+                                className="flex w-full items-center px-3 py-2 text-sm font-semibold rounded-lg text-rose-500 hover:bg-rose-50 transition-colors"
+                              >
+                                Xóa đoạn chat
+                              </button>
+                              <div className="my-1 border-t border-[var(--app-border)]" />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowMenu(false);
+                                  setShowCompose(true);
+                                  setComposeMode('group');
+                                  if (selectedConv.members[0]) {
+                                    setSelectedParticipants([selectedConv.members[0] as unknown as User]);
+                                  }
+                                }}
+                                className="flex w-full items-center px-3 py-2 text-sm font-semibold rounded-lg text-[var(--app-text)] hover:bg-[var(--app-bg-soft)] transition-colors"
+                              >
+                                Tạo nhóm
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : !messagesError && !isLoadingMessages ? (
@@ -412,6 +579,14 @@ const MessagesPage: React.FC = () => {
                             </div>
                           ) : null}
                           <div className="group max-w-[82%] sm:max-w-[70%]">
+                            {selectedConv?.isGroup && !isMine && showAvatar && (
+                              <span
+                                onClick={() => { if (msg.sender?.username) navigate(`/${msg.sender.username}`); }}
+                                className="mb-1 ml-2 text-xs font-semibold text-[var(--app-muted)] hover:text-[var(--app-primary)] transition-colors cursor-pointer block select-none"
+                              >
+                                {msg.sender?.name || msg.sender?.username || 'Thành viên'}
+                              </span>
+                            )}
                             <div className={`rounded-[22px] px-4 py-3 text-sm leading-6 ${isMine ? 'rounded-br-[8px] bg-[var(--app-primary)] text-white selection:bg-white/30 selection:text-white' : 'rounded-bl-[8px] border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] selection:bg-[var(--app-primary)] selection:text-white'}`}>
                                 <div className={`chat-markdown-body ${isMine ? 'chat-markdown-mine text-white' : ''}`}>
                                   <Suspense fallback={<span className="whitespace-pre-wrap">{msg.content}</span>}>
@@ -470,6 +645,66 @@ const MessagesPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Members Modal */}
+      {showMembersModal && selectedConv && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowMembersModal(false)}>
+          <div className="w-full max-w-md rounded-2xl border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] shadow-2xl overflow-hidden flex flex-col max-h-[80vh]" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--app-border)]">
+              <h3 className="text-lg font-bold">Thành viên</h3>
+              <button
+                type="button"
+                onClick={() => setShowMembersModal(false)}
+                className="h-8 w-8 inline-flex items-center justify-center rounded-full bg-[var(--app-bg-soft)] text-[var(--app-text)] hover:opacity-80 transition"
+              >
+                <XIcon />
+              </button>
+            </div>
+
+            {/* Modal Tabs */}
+            <div className="flex px-5 border-b border-[var(--app-border)] text-sm">
+              <button
+                type="button"
+                onClick={() => setMembersTab('all')}
+                className={`py-3 px-2 font-semibold border-b-2 transition ${membersTab === 'all' ? 'border-[var(--app-primary)] text-[var(--app-primary)]' : 'border-transparent text-[var(--app-muted)]'}`}
+              >
+                Tất cả ({allMembers.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setMembersTab('admins')}
+                className={`py-3 px-2 font-semibold border-b-2 ml-4 transition ${membersTab === 'admins' ? 'border-[var(--app-primary)] text-[var(--app-primary)]' : 'border-transparent text-[var(--app-muted)]'}`}
+              >
+                Quản trị viên ({allMembers.filter(m => m.isAdmin).length})
+              </button>
+            </div>
+
+            {/* Modal Body / Member List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {filteredMembers.map((member) => (
+                <div key={member.id} className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-[var(--app-bg-soft)] transition">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar src={member.avatarUrl} name={member.name} username={member.username} size="md" />
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm truncate">{member.name}</p>
+                      <p className="text-xs text-[var(--app-muted)] truncate">
+                        {member.isAdmin ? 'Quản trị viên nhóm' : 'Thành viên'} {member.isMe ? '• Bạn' : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="h-8 w-8 inline-flex items-center justify-center rounded-full hover:bg-[var(--app-bg-soft)] text-[var(--app-muted)]"
+                  >
+                    <ThreeDotsIcon />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 };
