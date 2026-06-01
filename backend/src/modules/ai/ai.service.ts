@@ -1426,38 +1426,47 @@ Khong them giai thich, khong markdown, khong lap lai noi dung.`,
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
-    const response = await axios.post(
-      url,
-      {
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt,
-              },
-            ],
+    try {
+      const response = await axios.post(
+        url,
+        {
+          contents: [
+            {
+              parts: [
+                {
+                  text: prompt,
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: maxTokens,
           },
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: maxTokens,
         },
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey,
+          },
+          timeout: 30_000,
         },
-        timeout: 30_000,
-      },
-    );
+      );
 
-    const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (typeof text !== 'string') {
-      throw new Error('Gemini API response did not contain text.');
+      const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (typeof text !== 'string') {
+        throw new Error('Gemini API response did not contain text.');
+      }
+
+      return text.trim();
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const apiErrorMessage = error?.response?.data?.error?.message;
+      if (apiErrorMessage) {
+        throw new Error(`Gemini API error (status ${status}): ${apiErrorMessage}`);
+      }
+      throw error;
     }
-
-    return text.trim();
   }
 
   private buildGeminiCaptionPrompt(topic: string, tone: string): string {
