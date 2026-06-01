@@ -12,7 +12,8 @@ export const envValidationSchema = Joi.object({
   DB_USERNAME: Joi.string().required(),
   DB_PASSWORD: Joi.string().required(),
   DB_DATABASE: Joi.string().required(),
-  DB_SSL_REJECT_UNAUTHORIZED: Joi.boolean().default(true),
+  DB_SSL: Joi.boolean(),
+  DB_SSL_REJECT_UNAUTHORIZED: Joi.boolean().default(false),
 
   // JWT - Always required
   JWT_SECRET: Joi.string().required(),

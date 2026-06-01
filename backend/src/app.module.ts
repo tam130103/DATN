@@ -17,6 +17,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { getRateLimitTracker } from './common/rate-limit.util';
 
 import { envValidationSchema } from './config/env.validation';
+import { buildDatabaseSslOptions } from './config/database.config';
 
 @Module({
   imports: [
@@ -40,9 +41,11 @@ import { envValidationSchema } from './config/env.validation';
         username: configService.get('DB_USERNAME', 'postgres'),
         password: configService.get('DB_PASSWORD', 'postgres'),
         database: configService.get('DB_DATABASE', 'datn_social'),
-        ssl: process.env.NODE_ENV === 'production'
-          ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' }
-          : false,
+        ssl: buildDatabaseSslOptions({
+          NODE_ENV: configService.get('NODE_ENV'),
+          DB_SSL: configService.get('DB_SSL'),
+          DB_SSL_REJECT_UNAUTHORIZED: configService.get('DB_SSL_REJECT_UNAUTHORIZED'),
+        }),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: false, // Disable auto-sync for safety in production
         logging: configService.get('DATABASE_LOGGING') === 'true',
